@@ -1,0 +1,16 @@
+# SQL Server 2022 local para desarrollar en Mac (Apple Silicon corre la imagen x86 con Rosetta).
+# En Windows pueden usar su instancia local con SSMS; los scripts de 02_SQL son los mismos.
+# Contraseña solo para desarrollo local.
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
+    container_name: tecnostore-sql
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "TecnoStore#2026"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    volumes:
+      - ./02_SQL:/scripts:ro
