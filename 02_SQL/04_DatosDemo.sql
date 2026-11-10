@@ -120,6 +120,9 @@ INSERT INTO Cliente (nombre, apellidos, correo, telefono, fecha_registro) VALUES
 
 -- Cliente inactivo (sin movimientos)
 UPDATE Cliente SET activo = 0 WHERE id_cliente = 30;
+-- Algunos clientes piden factura
+UPDATE Cliente SET rfc = CASE id_cliente WHEN 1 THEN 'GORA850312KL1' WHEN 6 THEN 'RICF900814AB2' WHEN 13 THEN 'VAPM781120QW3' END
+WHERE id_cliente IN (1, 6, 13);
 
 -- stock_actual arranca en 0: lo llenan las compras y lo bajan las ventas
 INSERT INTO Producto (sku, nombre, id_categoria, id_marca, id_condicion, precio_venta, costo, requiere_serie, stock_minimo) VALUES
@@ -178,6 +181,12 @@ INSERT INTO Usuario (id_empleado, nombre_usuario, hash_contrasena) VALUES
 
 INSERT INTO UsuarioRol (id_usuario, id_rol) VALUES (1,1),(2,2),(3,3),(4,4),(5,3);
 
+-- N:M Empleado–TipoServicio: qué servicios puede hacer cada técnico
+INSERT INTO EmpleadoTipoServicio (id_empleado, id_tipo_servicio)
+SELECT 6, id_tipo_servicio FROM TipoServicio                                   -- Sofía: todos
+UNION ALL SELECT 7,  id_tipo_servicio FROM TipoServicio WHERE id_tipo_servicio <> 7    -- Diego: todo menos placa
+UNION ALL SELECT 11, id_tipo_servicio FROM TipoServicio WHERE id_tipo_servicio NOT IN (4, 7);  -- Héctor: sin pantallas ni placa
+
 INSERT INTO Configuracion (clave, valor, descripcion) VALUES
  ('IVA','0.16','Tasa de IVA incluida en precios'),
  ('DESCUENTO_MAX_OPERADOR','10','% máximo de descuento sin autorización de Supervisor'),
@@ -208,8 +217,8 @@ BEGIN
     OPEN cur; FETCH NEXT FROM cur INTO @p;
     WHILE @@FETCH_STATUS = 0
     BEGIN
-        SET @qty = CASE WHEN (SELECT requiere_serie FROM Producto WHERE id_producto = @p) = 1 THEN 5
-                        WHEN (SELECT id_categoria FROM Producto WHERE id_producto = @p) = 8 THEN 4
+        SET @qty = CASE WHEN (SELECT requiere_serie FROM Producto WHERE id_producto = @p) = 1 THEN 8
+                        WHEN (SELECT id_categoria FROM Producto WHERE id_producto = @p) = 8 THEN 12
                         ELSE 30 END;
         INSERT INTO DetalleCompra (id_compra, id_producto, cantidad, costo_unitario, subtotal)
         SELECT @id_compra, @p, @qty, costo, costo * @qty FROM Producto WHERE id_producto = @p;
@@ -309,7 +318,9 @@ BEGIN
 END
 
 -- Dos ventas canceladas: se reintegra stock y se liberan las unidades
-UPDATE Venta SET estado = 'Cancelada' WHERE folio IN ('V-01009','V-01027');
+UPDATE Venta SET estado = 'Cancelada', fecha_cancelacion = DATEADD(HOUR, 3, fecha),
+       motivo_cancelacion = CASE folio WHEN 'V-01009' THEN 'Cliente se arrepintió en caja' ELSE 'Error en el método de pago' END
+WHERE folio IN ('V-01009','V-01027');
 UPDATE p SET stock_actual = p.stock_actual + x.cant
 FROM Producto p
 JOIN (SELECT dv.id_producto, SUM(dv.cantidad) cant FROM DetalleVenta dv JOIN Venta v ON v.id_venta = dv.id_venta
@@ -346,15 +357,16 @@ WHILE @o <= 24
 BEGIN
     SET @seed = (@seed * 1103515245 + 12345) % 2147483648; SET @r = (@seed / 65536) % 1000;
     SET @fecha = DATEADD(MINUTE, 600 + (@r % 420), DATEADD(DAY, (@o - 1) * 7, CAST('2026-05-05' AS DATETIME2)));
-    SET @tec = CASE @r % 3 WHEN 0 THEN 6 WHEN 1 THEN 7 ELSE 11 END;
+    SET @tec = CASE WHEN @o % 10 = 1 THEN 6   -- reparación de placa: solo Sofía está habilitada
+                    ELSE CASE @r % 3 WHEN 0 THEN 6 WHEN 1 THEN 7 ELSE 11 END END;
     -- Las órdenes viejas ya se entregaron; las recientes siguen en proceso
     SET @destino = CASE WHEN @o IN (5, 14) THEN 6
                         WHEN @o <= 18 THEN 5
                         ELSE ((@o - 19) % 4) + 1 END;
 
-    INSERT INTO OrdenServicio (folio, fecha_recepcion, id_cliente, id_empleado_tecnico, id_estado_orden,
+    INSERT INTO OrdenServicio (folio, fecha_recepcion, id_cliente, id_empleado_tecnico, id_sucursal, id_estado_orden,
                                equipo_descripcion, numero_serie_equipo, descripcion_falla, fecha_entrega, total)
-    SELECT CONCAT('OS-', RIGHT('0000' + CAST(3000 + @o AS VARCHAR), 4)), @fecha, ((@r * 7) % 25) + 1, @tec, @destino,
+    SELECT CONCAT('OS-', RIGHT('0000' + CAST(3000 + @o AS VARCHAR), 4)), @fecha, ((@r * 7) % 25) + 1, @tec, (SELECT id_sucursal FROM Empleado WHERE id_empleado = @tec), @destino,
            eq.equipo, CASE WHEN @r % 4 = 0 THEN NULL ELSE CONCAT('SN', 100000 + @r * 37) END, eq.falla,
            CASE WHEN @destino = 5 THEN DATEADD(DAY, 3 + @r % 5, @fecha) END, 0
     FROM @equipos eq WHERE eq.i = @o % 10;
@@ -378,6 +390,7 @@ BEGIN
         BEGIN
             INSERT INTO DetalleOrdenServicio (id_orden, id_producto, cantidad, precio_unitario, subtotal)
             SELECT @id_orden, @ref, 1, precio_venta, precio_venta FROM Producto WHERE id_producto = @ref;
+            UPDATE Producto SET stock_actual = stock_actual - 1 WHERE id_producto = @ref;  -- la refacción sale del almacén
         END
     END
 

@@ -143,7 +143,8 @@ const rutas = {
 
   'POST /api/ventas/cancelar': async ({ body, user }) => {
     if (!PUEDE.cancelar.includes(user.rol)) throw new Error('Solo Supervisor o Administrador pueden cancelar ventas.');
-    await sp('usp_CancelarVenta', { id_venta: [sql.Int, +body.id_venta] });
+    await q(`EXEC sp_set_session_context N'id_usuario', @u; EXEC usp_CancelarVenta @id, @m;`,
+      { u: [sql.Int, user.id_usuario], id: [sql.Int, +body.id_venta], m: [sql.VarChar(200), body.motivo || 'Cancelada desde la vista previa'] });
     return { ok: true };
   },
 
@@ -164,10 +165,7 @@ const rutas = {
   'POST /api/ordenes/estado': async ({ body, user }) => {
     if (!PUEDE.avanzarOrden.includes(user.rol)) throw new Error('Tu rol no puede cambiar órdenes.');
     // SESSION_CONTEXT le dice al trigger qué usuario de la app hizo el cambio
-    await q(`EXEC sp_set_session_context N'id_usuario', @u;
-             UPDATE OrdenServicio SET id_estado_orden = @e,
-                    fecha_entrega = CASE WHEN @e = 5 THEN SYSDATETIME() ELSE fecha_entrega END
-             WHERE id_orden = @id;`,
+    await q(`EXEC sp_set_session_context N'id_usuario', @u; EXEC usp_CambiarEstadoOrden @id, @e;`,
       { u: [sql.Int, user.id_usuario], e: [sql.Int, +body.id_estado], id: [sql.Int, +body.id_orden] });
     return { ok: true };
   },

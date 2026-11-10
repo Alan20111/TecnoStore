@@ -1,7 +1,10 @@
 ﻿/* =============================================================
    TecnoStore · 10_Triggers.sql
-   Todos manejan operaciones de varias filas (inserted/deleted
-   como conjuntos, sin variables escalares).
+   5 triggers. Todos manejan operaciones de varias filas
+   (inserted/deleted como conjuntos, sin variables escalares).
+   usuario_app y motivo salen de SESSION_CONTEXT, que la app y los
+   SP llenan; si el cambio se hace desde SSMS quedan en NULL y
+   "usuario" guarda el login de SQL Server.
    ============================================================= */
 USE TecnoStore;
 GO
@@ -15,16 +18,19 @@ AFTER UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
+    DECLARE @usuario_app VARCHAR(40) = (SELECT nombre_usuario FROM Usuario
+                                        WHERE id_usuario = TRY_CAST(SESSION_CONTEXT(N'id_usuario') AS INT));
+    DECLARE @motivo VARCHAR(200) = CAST(SESSION_CONTEXT(N'motivo') AS VARCHAR(200));
     IF UPDATE(precio_venta)
-        INSERT INTO Auditoria (usuario, tabla, operacion, id_registro, valor_anterior, valor_nuevo)
-        SELECT ORIGINAL_LOGIN(), 'Producto', 'UPDATE', i.id_producto,
+        INSERT INTO Auditoria (usuario, usuario_app, motivo, tabla, operacion, id_registro, valor_anterior, valor_nuevo)
+        SELECT ORIGINAL_LOGIN(), @usuario_app, @motivo, 'Producto', 'UPDATE', i.id_producto,
                CONCAT('precio_venta=', d.precio_venta), CONCAT('precio_venta=', i.precio_venta)
         FROM inserted i JOIN deleted d ON d.id_producto = i.id_producto
         WHERE i.precio_venta <> d.precio_venta;
 
     IF UPDATE(stock_actual)
-        INSERT INTO Auditoria (usuario, tabla, operacion, id_registro, valor_anterior, valor_nuevo)
-        SELECT ORIGINAL_LOGIN(), 'Producto', 'UPDATE', i.id_producto,
+        INSERT INTO Auditoria (usuario, usuario_app, motivo, tabla, operacion, id_registro, valor_anterior, valor_nuevo)
+        SELECT ORIGINAL_LOGIN(), @usuario_app, @motivo, 'Producto', 'UPDATE', i.id_producto,
                CONCAT('stock_actual=', d.stock_actual), CONCAT('stock_actual=', i.stock_actual)
         FROM inserted i JOIN deleted d ON d.id_producto = i.id_producto
         WHERE i.stock_actual <> d.stock_actual;
@@ -38,11 +44,13 @@ AFTER UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-    INSERT INTO Auditoria (usuario, tabla, operacion, id_registro, valor_anterior, valor_nuevo)
-    SELECT ORIGINAL_LOGIN(), 'Venta', 'UPDATE', i.id_venta,
+    INSERT INTO Auditoria (usuario, usuario_app, motivo, tabla, operacion, id_registro, valor_anterior, valor_nuevo)
+    SELECT ORIGINAL_LOGIN(),
+           (SELECT nombre_usuario FROM Usuario WHERE id_usuario = TRY_CAST(SESSION_CONTEXT(N'id_usuario') AS INT)),
+           i.motivo_cancelacion, 'Venta', 'UPDATE', i.id_venta,
            CONCAT('estado=', d.estado, '; total=', d.total), CONCAT('estado=', i.estado, '; total=', i.total)
     FROM inserted i JOIN deleted d ON d.id_venta = i.id_venta
-    WHERE i.estado <> d.estado OR i.total <> d.total AND d.total <> 0;
+    WHERE i.estado <> d.estado OR (i.total <> d.total AND d.total <> 0);
 END
 GO
 
@@ -81,5 +89,34 @@ INSTEAD OF UPDATE, DELETE
 AS
 BEGIN
     THROW 50041, 'La auditoría es de solo lectura.', 1;
+END
+GO
+
+/* Regla: no se borra información histórica. Un DELETE sobre un producto
+   que ya tuvo movimientos se convierte en baja lógica (activo = 0); los
+   que nunca se usaron sí se eliminan. Funciona igual desde la app o SSMS. */
+CREATE OR ALTER TRIGGER trg_Producto_BajaLogica
+ON Producto
+INSTEAD OF DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    UPDATE p SET activo = 0
+    FROM Producto p JOIN deleted d ON d.id_producto = p.id_producto
+    WHERE EXISTS (SELECT 1 FROM DetalleVenta x WHERE x.id_producto = d.id_producto)
+       OR EXISTS (SELECT 1 FROM DetalleCompra x WHERE x.id_producto = d.id_producto)
+       OR EXISTS (SELECT 1 FROM DetalleOrdenServicio x WHERE x.id_producto = d.id_producto)
+       OR EXISTS (SELECT 1 FROM UnidadSerie x WHERE x.id_producto = d.id_producto);
+
+    DELETE pp FROM ProductoProveedor pp JOIN deleted d ON d.id_producto = pp.id_producto
+    WHERE NOT EXISTS (SELECT 1 FROM DetalleVenta x WHERE x.id_producto = d.id_producto)
+      AND NOT EXISTS (SELECT 1 FROM DetalleCompra x WHERE x.id_producto = d.id_producto)
+      AND NOT EXISTS (SELECT 1 FROM DetalleOrdenServicio x WHERE x.id_producto = d.id_producto)
+      AND NOT EXISTS (SELECT 1 FROM UnidadSerie x WHERE x.id_producto = d.id_producto);
+    DELETE p FROM Producto p JOIN deleted d ON d.id_producto = p.id_producto
+    WHERE NOT EXISTS (SELECT 1 FROM DetalleVenta x WHERE x.id_producto = d.id_producto)
+      AND NOT EXISTS (SELECT 1 FROM DetalleCompra x WHERE x.id_producto = d.id_producto)
+      AND NOT EXISTS (SELECT 1 FROM DetalleOrdenServicio x WHERE x.id_producto = d.id_producto)
+      AND NOT EXISTS (SELECT 1 FROM UnidadSerie x WHERE x.id_producto = d.id_producto);
 END
 GO

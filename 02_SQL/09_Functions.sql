@@ -1,6 +1,6 @@
 ﻿/* =============================================================
    TecnoStore · 09_Functions.sql
-   3 escalares + 1 de tabla. Se usan en SP, reportes y la app.
+   6 escalares + 1 de tabla. Se usan en SP, reportes y la app.
    ============================================================= */
 USE TecnoStore;
 GO
@@ -35,6 +35,43 @@ AS
 BEGIN
     RETURN (SELECT CAST((precio_venta - costo) * 100.0 / precio_venta AS DECIMAL(5,2))
             FROM Producto WHERE id_producto = @id_producto);
+END
+GO
+
+-- ¿El usuario de la app tiene al menos ese nivel? Administrador cubre a Supervisor.
+-- Se usa en los SP que piden autorización (descuentos, ajustes, precios).
+CREATE OR ALTER FUNCTION fn_UsuarioTieneRol (@id_usuario INT, @rol VARCHAR(40))
+RETURNS BIT
+AS
+BEGIN
+    RETURN CASE WHEN EXISTS (
+        SELECT 1 FROM UsuarioRol ur
+        JOIN Rol r     ON r.id_rol = ur.id_rol
+        JOIN Usuario u ON u.id_usuario = ur.id_usuario AND u.activo = 1
+        WHERE ur.id_usuario = @id_usuario
+          AND (r.nombre = @rol OR r.nombre = 'Administrador')) THEN 1 ELSE 0 END;
+END
+GO
+
+-- ¿El técnico está activo y habilitado para el tipo de servicio? (N:M EmpleadoTipoServicio)
+CREATE OR ALTER FUNCTION fn_TecnicoHabilitado (@id_empleado INT, @id_tipo_servicio INT)
+RETURNS BIT
+AS
+BEGIN
+    RETURN CASE WHEN EXISTS (
+        SELECT 1 FROM EmpleadoTipoServicio ets
+        JOIN Empleado e ON e.id_empleado = ets.id_empleado
+        WHERE ets.id_empleado = @id_empleado AND ets.id_tipo_servicio = @id_tipo_servicio
+          AND e.activo = 1 AND e.puesto = 'Técnico') THEN 1 ELSE 0 END;
+END
+GO
+
+-- Costo total de una orden de servicio (mano de obra + refacciones)
+CREATE OR ALTER FUNCTION fn_TotalOrden (@id_orden INT)
+RETURNS DECIMAL(12,2)
+AS
+BEGIN
+    RETURN ISNULL((SELECT SUM(subtotal) FROM DetalleOrdenServicio WHERE id_orden = @id_orden), 0);
 END
 GO
 
