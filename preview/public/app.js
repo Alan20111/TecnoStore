@@ -64,8 +64,19 @@ const options = (list, sel, empty) => (empty ? `<option value="">${esc(empty)}</
 
 function titlebar(title) {
   return `<div class="titlebar"><div class="icon">T</div><div class="title">${esc(title)}</div>
-    <div class="caption"><span>─</span><span>☐</span><span class="close">✕</span></div></div>`;
+    <div class="caption"><span data-win="min" title="Minimizar">─</span><span data-win="max" title="Maximizar">☐</span><span data-win="close" class="close" title="Cerrar">✕</span></div></div>`;
 }
+
+// Botones ─ ☐ ✕ de la ventana: minimizar deja solo la barra de título,
+// maximizar ocupa toda la pantalla y cerrar ejecuta la acción de salida.
+function ventana(el, alCerrar) {
+  el.querySelector('[data-win=min]').onclick = () => el.classList.toggle('min');
+  el.querySelector('[data-win=max]').onclick = () => el.classList.toggle('max');
+  el.querySelector('.titlebar .title').ondblclick = () => el.classList.toggle('max');
+  el.querySelector('[data-win=close]').onclick = alCerrar;
+}
+
+const salirApp = () => messageBox('En la aplicación de Windows Forms este botón cierra el programa.\nEn la vista previa no hay nada que cerrar.', { title: 'Salir' });
 
 /* ---------- FrmLogin ---------- */
 function renderLogin() {
@@ -77,13 +88,16 @@ function renderLogin() {
       <div class="field"><span>Usuario:</span><input name="usuario" required></div>
       <div class="field"><span>Contraseña:</span><input name="contrasena" type="password" required></div>
       <div class="error-label"></div>
-      <div class="row"><span class="spacer"></span><button type="submit" class="primary">Ingresar</button><button type="button" disabled>Salir</button></div>
+      <div class="row"><span class="spacer"></span><button type="submit" class="primary">Ingresar</button><button type="button" data-salir-app>Salir</button></div>
       <div class="hint">Usuarios demo (contraseña <code data-p>Tecno123!</code>):<br>
         <code data-u>admin</code> Administrador · <code data-u>csupervisor</code> Supervisor<br>
         <code data-u>loperador</code> Operador · <code data-u>fconsulta</code> Consulta</div>
     </form></div>`);
   const form = el.querySelector('form');
   el.querySelectorAll('[data-u]').forEach((c) => c.onclick = () => { form.usuario.value = c.textContent; form.contrasena.value = 'Tecno123!'; });
+  el.querySelector('[data-p]').onclick = () => { form.contrasena.value = 'Tecno123!'; };
+  el.querySelector('[data-salir-app]').onclick = salirApp;
+  ventana(el, salirApp);
   form.onsubmit = async (ev) => {
     ev.preventDefault();
     const btn = form.querySelector('button[type=submit]');
@@ -119,7 +133,7 @@ function renderMain() {
   $app.innerHTML = '';
   const el = h(`<div class="form">
     ${titlebar(`TecnoStore — Sistema Integral de Gestión  [${u.rol}]`)}
-    <div class="menustrip"><span>Archivo</span><span>Catálogos</span><span>Procesos</span><span>Reportes</span><span>Ventana</span><span>Ayuda</span></div>
+    <div class="menustrip">${menuHtml(u)}</div>
     <div class="body">
       <div class="nav">
         <div class="brand"><b>TecnoStore</b><small>${esc(u.sucursal)}</small></div>
@@ -135,13 +149,52 @@ function renderMain() {
       <span class="grow"></span>
       <span><i class="dot"></i>SQL Server · localhost · TecnoStore</span>
     </div></div>`);
-  el.querySelectorAll('[data-m]').forEach((b) => b.onclick = () => abrir(b.dataset.m));
-  el.querySelector('[data-salir]').onclick = async () => {
+  const cerrarSesion = async () => {
     if (await messageBox('¿Deseas cerrar la sesión?', { icon: 'question', buttons: ['Sí', 'No'] }) === 'Sí') { state.token = null; renderLogin(); }
+  };
+  el.querySelectorAll('[data-m]').forEach((b) => b.onclick = () => { cerrarMenus(); abrir(b.dataset.m); });
+  el.querySelector('[data-salir]').onclick = cerrarSesion;
+  ventana(el, cerrarSesion);
+
+  // Menús desplegables: clic abre; con uno abierto, pasar el mouse cambia de menú
+  const menus = el.querySelectorAll('.menustrip .menu');
+  menus.forEach((m) => {
+    m.querySelector('.top').onclick = (ev) => { ev.stopPropagation(); const abierto = m.classList.contains('open'); cerrarMenus(); if (!abierto) m.classList.add('open'); };
+    m.onmouseenter = () => { if (el.querySelector('.menu.open') && !m.classList.contains('open')) { cerrarMenus(); m.classList.add('open'); } };
+  });
+  el.querySelectorAll('[data-accion]').forEach((b) => b.onclick = () => {
+    cerrarMenus();
+    ({ cerrar: cerrarSesion, salir: salirApp, acerca: acercaDe, atajos: atajos })[b.dataset.accion]();
+  });
+  document.onclick = cerrarMenus;
+  document.onkeydown = (ev) => {
+    if (ev.key === 'Escape') cerrarMenus();
+    const tecla = { F2: 'productos', F3: 'clientes', F5: 'venta', F6: 'ordenes' }[ev.key];
+    if (tecla && state.user?.modulos.includes(tecla) && !document.querySelector('.overlay')) { ev.preventDefault(); abrir(tecla); }
   };
   $app.appendChild(el);
   abrir(state.modulo);
 }
+
+function menuHtml(u) {
+  const tiene = (m) => u.modulos.includes(m);
+  const item = (m, atajo) => (tiene(m) ? `<button data-m="${m}">${MODULOS[m][0]}${atajo ? `<kbd>${atajo}</kbd>` : ''}</button>` : '');
+  const grupos = [
+    ['Archivo', `<button data-accion="cerrar">Cerrar sesión</button><button data-accion="salir">Salir</button>`],
+    ['Catálogos', item('productos', 'F2') + item('clientes', 'F3')],
+    ['Procesos', item('venta', 'F5') + item('ordenes', 'F6')],
+    ['Consultas', item('ventas') + item('reportes')],
+    ['Administración', item('auditoria')],
+    ['Ayuda', `<button data-accion="atajos">Atajos de teclado</button><button data-accion="acerca">Acerca de TecnoStore</button>`],
+  ];
+  return grupos.filter(([, html]) => html)
+    .map(([t, html]) => `<div class="menu"><span class="top">${t}</span><div class="dropdown">${html}</div></div>`).join('');
+}
+
+function cerrarMenus() { document.querySelectorAll('.menu.open').forEach((m) => m.classList.remove('open')); }
+
+const acercaDe = () => messageBox('TecnoStore — Sistema Integral de Gestión\nProyecto final de Taller de Bases de Datos\n\nVista previa conectada a SQL Server. La aplicación real es la solución de Windows Forms en 03_WindowsForms.', { title: 'Acerca de' });
+const atajos = () => messageBox('F2  Productos\nF3  Clientes\nF5  Nueva venta\nF6  Órdenes de servicio\nEnter  Buscar en los filtros\nEsc  Cerrar menús', { title: 'Atajos de teclado' });
 
 async function abrir(m) {
   state.modulo = m;

@@ -53,9 +53,23 @@ body {
 .titlebar .caption span:hover { background: #e5e5e5; }
 .titlebar .caption span.close:hover { background: #e81123; color: #fff; }
 
-.menustrip { display: flex; gap: 2px; padding: 2px 4px; background: var(--window); border-bottom: 1px solid var(--border-light); flex: none; }
-.menustrip span { padding: 3px 8px; }
-.menustrip span:hover { background: #cce8ff; outline: 1px solid #99d1ff; }
+.menustrip { display: flex; gap: 2px; padding: 2px 4px; background: var(--window); border-bottom: 1px solid var(--border-light); flex: none; position: relative; z-index: 5; }
+.menustrip .menu { position: relative; }
+.menustrip .top { display: block; padding: 3px 8px; cursor: default; }
+.menustrip .top:hover, .menustrip .menu.open .top { background: #cce8ff; outline: 1px solid #99d1ff; }
+.menustrip .dropdown { display: none; position: absolute; top: 100%; left: 0; min-width: 210px; background: #f2f2f2;
+  border: 1px solid #ccc; box-shadow: 2px 3px 6px rgba(0,0,0,.25); padding: 2px; }
+.menustrip .menu.open .dropdown { display: block; }
+.menustrip .dropdown button { display: flex; width: 100%; justify-content: space-between; gap: 24px; text-align: left;
+  border: 1px solid transparent; background: transparent; padding: 4px 10px 4px 26px; min-height: 0; }
+.menustrip .dropdown button:hover { background: #91c9f7; border-color: #91c9f7; }
+.menustrip kbd { font: inherit; color: var(--muted); }
+
+.titlebar .caption span { cursor: default; }
+.titlebar .title { cursor: default; }
+.form.min { height: auto; }
+.form.min > :not(.titlebar) { display: none; }
+.form.max { width: 100vw; height: 100vh; position: fixed; inset: 0; border: 0; }
 
 .body { flex: 1; display: flex; min-height: 0; }
 .nav { width: 190px; flex: none; padding: 8px; display: flex; flex-direction: column; gap: 4px; border-right: 1px solid var(--border-light); }
