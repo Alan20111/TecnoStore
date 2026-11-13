@@ -30,6 +30,13 @@ namespace TecnoStore.Forms
             this.mnuAdministracion = new System.Windows.Forms.ToolStripMenuItem();
             this.mnuAjusteStock = new System.Windows.Forms.ToolStripMenuItem();
             this.mnuAuditoria = new System.Windows.Forms.ToolStripMenuItem();
+            this.mnuCategorias = new System.Windows.Forms.ToolStripMenuItem();
+            this.mnuMarcas = new System.Windows.Forms.ToolStripMenuItem();
+            this.mnuTiposServicio = new System.Windows.Forms.ToolStripMenuItem();
+            this.mnuProveedores = new System.Windows.Forms.ToolStripMenuItem();
+            this.mnuCompras = new System.Windows.Forms.ToolStripMenuItem();
+            this.mnuUsuarios = new System.Windows.Forms.ToolStripMenuItem();
+            this.sepCatalogos = new System.Windows.Forms.ToolStripSeparator();
             this.statusStrip = new System.Windows.Forms.StatusStrip();
             this.lblUsuario = new System.Windows.Forms.ToolStripStatusLabel();
             this.lblRol = new System.Windows.Forms.ToolStripStatusLabel();
@@ -60,7 +67,7 @@ namespace TecnoStore.Forms
             //
             // mnuCatalogos
             //
-            this.mnuCatalogos.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { this.mnuProductos, this.mnuClientes });
+            this.mnuCatalogos.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { this.mnuProductos, this.mnuClientes, this.mnuProveedores, this.sepCatalogos, this.mnuCategorias, this.mnuMarcas, this.mnuTiposServicio });
             this.mnuCatalogos.Name = "mnuCatalogos";
             this.mnuCatalogos.Text = "&Catálogos";
             this.mnuProductos.Name = "mnuProductos";
@@ -74,7 +81,7 @@ namespace TecnoStore.Forms
             //
             // mnuProcesos
             //
-            this.mnuProcesos.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { this.mnuNuevaVenta, this.mnuOrdenes });
+            this.mnuProcesos.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { this.mnuNuevaVenta, this.mnuOrdenes, this.mnuCompras });
             this.mnuProcesos.Name = "mnuProcesos";
             this.mnuProcesos.Text = "&Procesos";
             this.mnuNuevaVenta.Name = "mnuNuevaVenta";
@@ -100,7 +107,7 @@ namespace TecnoStore.Forms
             //
             // mnuAdministracion
             //
-            this.mnuAdministracion.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { this.mnuAjusteStock, this.mnuAuditoria });
+            this.mnuAdministracion.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { this.mnuUsuarios, this.mnuAjusteStock, this.mnuAuditoria });
             this.mnuAdministracion.Name = "mnuAdministracion";
             this.mnuAdministracion.Text = "A&dministración";
             this.mnuAjusteStock.Name = "mnuAjusteStock";
@@ -109,6 +116,30 @@ namespace TecnoStore.Forms
             this.mnuAuditoria.Name = "mnuAuditoria";
             this.mnuAuditoria.Text = "A&uditoría";
             this.mnuAuditoria.Click += new System.EventHandler(this.mnuAuditoria_Click);
+            //
+            // menús agregados: catálogos, proveedores, compras y usuarios
+            //
+            this.mnuCategorias.Name = "mnuCategorias";
+            this.mnuCategorias.Text = "&Categorías";
+            this.mnuCategorias.Click += new System.EventHandler(this.mnuCategorias_Click);
+            this.mnuMarcas.Name = "mnuMarcas";
+            this.mnuMarcas.Text = "&Marcas";
+            this.mnuMarcas.Click += new System.EventHandler(this.mnuMarcas_Click);
+            this.mnuTiposServicio.Name = "mnuTiposServicio";
+            this.mnuTiposServicio.Text = "&Tipos de servicio";
+            this.mnuTiposServicio.Click += new System.EventHandler(this.mnuTiposServicio_Click);
+            this.mnuProveedores.Name = "mnuProveedores";
+            this.mnuProveedores.Text = "Pro&veedores";
+            this.mnuProveedores.Click += new System.EventHandler(this.mnuProveedores_Click);
+            this.mnuCompras.Name = "mnuCompras";
+            this.mnuCompras.Text = "&Compras a proveedor";
+            this.mnuCompras.Click += new System.EventHandler(this.mnuCompras_Click);
+            this.mnuUsuarios.Name = "mnuUsuarios";
+            this.mnuUsuarios.Text = "&Usuarios y roles";
+            this.mnuUsuarios.Click += new System.EventHandler(this.mnuUsuarios_Click);
+            this.mnuProveedores.ShortcutKeys = System.Windows.Forms.Keys.F4;
+            this.mnuCompras.ShortcutKeys = System.Windows.Forms.Keys.F7;
+            this.sepCatalogos.Name = "sepCatalogos";
             //
             // statusStrip
             //
@@ -166,6 +197,13 @@ namespace TecnoStore.Forms
         private System.Windows.Forms.ToolStripMenuItem mnuAdministracion;
         private System.Windows.Forms.ToolStripMenuItem mnuAjusteStock;
         private System.Windows.Forms.ToolStripMenuItem mnuAuditoria;
+        private System.Windows.Forms.ToolStripMenuItem mnuCategorias;
+        private System.Windows.Forms.ToolStripMenuItem mnuMarcas;
+        private System.Windows.Forms.ToolStripMenuItem mnuTiposServicio;
+        private System.Windows.Forms.ToolStripMenuItem mnuProveedores;
+        private System.Windows.Forms.ToolStripMenuItem mnuCompras;
+        private System.Windows.Forms.ToolStripMenuItem mnuUsuarios;
+        private System.Windows.Forms.ToolStripSeparator sepCatalogos;
         private System.Windows.Forms.StatusStrip statusStrip;
         private System.Windows.Forms.ToolStripStatusLabel lblUsuario;
         private System.Windows.Forms.ToolStripStatusLabel lblRol;

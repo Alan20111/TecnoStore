@@ -21,11 +21,45 @@ const config = {
 
 // Permisos por rol (matriz del documento: Administrador, Supervisor, Operador, Consulta)
 const MODULOS = {
-  Administrador: ['inicio', 'productos', 'clientes', 'venta', 'ventas', 'ordenes', 'reportes', 'auditoria'],
-  Supervisor:    ['inicio', 'productos', 'clientes', 'venta', 'ventas', 'ordenes', 'reportes', 'auditoria'],
-  Operador:      ['inicio', 'productos', 'clientes', 'venta', 'ventas', 'ordenes'],
-  Consulta:      ['inicio', 'productos', 'clientes', 'ventas', 'reportes'],
+  Administrador: ['inicio', 'productos', 'clientes', 'proveedores', 'categorias', 'marcas', 'tipos', 'venta', 'ordenes', 'compras', 'ventas', 'reportes', 'usuarios', 'ajustes', 'auditoria'],
+  Supervisor:    ['inicio', 'productos', 'clientes', 'proveedores', 'categorias', 'marcas', 'tipos', 'venta', 'ordenes', 'compras', 'ventas', 'reportes', 'ajustes', 'auditoria'],
+  Operador:      ['inicio', 'productos', 'clientes', 'proveedores', 'categorias', 'marcas', 'tipos', 'venta', 'ordenes', 'ventas'],
+  Consulta:      ['inicio', 'productos', 'clientes', 'proveedores', 'categorias', 'marcas', 'tipos', 'ventas', 'reportes'],
 };
+
+// Catálogos administrados con la misma pantalla. Los nombres de tabla son fijos
+// aquí; del usuario solo llegan valores como parámetros.
+const CATALOGOS = {
+  categorias: {
+    listar: `SELECT c.id_categoria AS id, c.nombre, c.descripcion AS campo2,
+               (SELECT COUNT(*) FROM Producto p WHERE p.id_categoria = c.id_categoria) AS en_uso
+             FROM Categoria c WHERE @t IS NULL OR c.nombre LIKE '%'+@t+'%' ORDER BY c.nombre`,
+    insertar: 'INSERT INTO Categoria (nombre, descripcion) VALUES (@nombre, @c2)',
+    editar: 'UPDATE Categoria SET nombre = @nombre, descripcion = @c2 WHERE id_categoria = @id',
+    eliminar: 'DELETE FROM Categoria WHERE id_categoria = @id',
+    c2: () => sql.VarChar(200),
+  },
+  marcas: {
+    listar: `SELECT m.id_marca AS id, m.nombre, m.pais_origen AS campo2,
+               (SELECT COUNT(*) FROM Producto p WHERE p.id_marca = m.id_marca) AS en_uso
+             FROM Marca m WHERE @t IS NULL OR m.nombre LIKE '%'+@t+'%' ORDER BY m.nombre`,
+    insertar: 'INSERT INTO Marca (nombre, pais_origen) VALUES (@nombre, @c2)',
+    editar: 'UPDATE Marca SET nombre = @nombre, pais_origen = @c2 WHERE id_marca = @id',
+    eliminar: 'DELETE FROM Marca WHERE id_marca = @id',
+    c2: () => sql.VarChar(60),
+  },
+  tipos: {
+    listar: `SELECT ts.id_tipo_servicio AS id, ts.nombre, ts.precio_base AS campo2,
+               (SELECT COUNT(*) FROM DetalleOrdenServicio d WHERE d.id_tipo_servicio = ts.id_tipo_servicio) AS en_uso,
+               (SELECT COUNT(*) FROM EmpleadoTipoServicio e WHERE e.id_tipo_servicio = ts.id_tipo_servicio) AS tecnicos
+             FROM TipoServicio ts WHERE @t IS NULL OR ts.nombre LIKE '%'+@t+'%' ORDER BY ts.nombre`,
+    insertar: 'INSERT INTO TipoServicio (nombre, precio_base) VALUES (@nombre, @c2)',
+    editar: 'UPDATE TipoServicio SET nombre = @nombre, precio_base = @c2 WHERE id_tipo_servicio = @id',
+    eliminar: 'DELETE FROM TipoServicio WHERE id_tipo_servicio = @id',
+    c2: () => sql.Decimal(10, 2),
+  },
+};
+const soloRol = (user, roles, msg) => { if (!roles.includes(user.rol)) throw new Error(msg); };
 const PUEDE = {
   cancelar: ['Administrador', 'Supervisor'],
   vender: ['Administrador', 'Supervisor', 'Operador'],
@@ -53,17 +87,10 @@ const vacio = (v) => (v === undefined || v === null || v === '' ? null : v);
 
 const rutas = {
   'POST /api/login': async ({ body }) => {
-    const rows = await q(`
-      SELECT u.id_usuario, u.id_empleado, u.nombre_usuario, CONCAT(e.nombre,' ',e.apellidos) AS nombre,
-             e.puesto, s.nombre AS sucursal, r.nombre AS rol
-      FROM Usuario u
-      JOIN Empleado e   ON e.id_empleado = u.id_empleado
-      JOIN Sucursal s   ON s.id_sucursal = e.id_sucursal
-      JOIN UsuarioRol ur ON ur.id_usuario = u.id_usuario
-      JOIN Rol r        ON r.id_rol = ur.id_rol
-      WHERE u.nombre_usuario = @u AND u.hash_contrasena = HASHBYTES('SHA2_256', @p)
-        AND u.activo = 1 AND e.activo = 1`,
-      { u: [sql.VarChar(40), body.usuario || ''], p: [sql.VarChar(100), body.contrasena || ''] });
+    // Mismo procedimiento que la app: valida el hash y bloquea tras 5 intentos
+    const { rows } = await sp('usp_Login', {
+      nombre_usuario: [sql.VarChar(40), body.usuario || ''], contrasena: [sql.VarChar(100), body.contrasena || ''],
+    });
     if (!rows.length) throw new Error('Usuario o contraseña incorrectos.');
     const token = crypto.randomUUID();
     const user = { ...rows[0], modulos: MODULOS[rows[0].rol] };
@@ -189,9 +216,160 @@ const rutas = {
     };
   },
 
+  'GET /api/catalogo': async ({ query }) => {
+    const c = CATALOGOS[query.tipo];
+    if (!c) throw new Error('Catálogo desconocido.');
+    return q(c.listar, { t: [sql.VarChar(60), vacio(query.texto)] });
+  },
+
+  'POST /api/catalogo': async ({ body, user }) => {
+    soloRol(user, ['Administrador'], 'Solo el Administrador modifica catálogos.');
+    const c = CATALOGOS[body.tipo];
+    if (!c) throw new Error('Catálogo desconocido.');
+    const nombre = String(body.nombre || '').trim();
+    if (!nombre) throw new Error('El nombre es obligatorio.');
+    const c2 = body.tipo === 'tipos' ? +body.campo2 || 0 : vacio(String(body.campo2 || '').trim());
+    try {
+      const r = pool.request();
+      r.input('id', sql.Int, body.id ? +body.id : null);
+      r.input('nombre', sql.VarChar(80), nombre);
+      r.input('c2', c.c2(), c2);
+      const res = await r.query(body.id ? c.editar : c.insertar);
+      if (res.rowsAffected[0] === 0) throw new Error('El registro ya no existe; recarga la lista.');
+    } catch (e) {
+      if ([2627, 2601].includes(e.number)) throw new Error(`Ya existe un registro llamado "${nombre}".`);
+      throw e;
+    }
+    return { ok: true };
+  },
+
+  'POST /api/catalogo/eliminar': async ({ body, user }) => {
+    soloRol(user, ['Administrador'], 'Solo el Administrador modifica catálogos.');
+    const c = CATALOGOS[body.tipo];
+    if (!c) throw new Error('Catálogo desconocido.');
+    try {
+      const res = await pool.request().input('id', sql.Int, +body.id).query(c.eliminar);
+      if (res.rowsAffected[0] === 0) throw new Error('El registro ya no existe.');
+    } catch (e) {
+      // La FK protege la integridad: no se borra lo que está en uso
+      if (e.number === 547) throw new Error('No se puede eliminar: hay productos, órdenes o técnicos que lo usan.');
+      throw e;
+    }
+    return { ok: true };
+  },
+
+  'GET /api/proveedores': async ({ query }) => q(`
+    SELECT pv.id_proveedor, pv.razon_social, pv.rfc, pv.correo, pv.telefono, pv.activo,
+           (SELECT COUNT(*) FROM ProductoProveedor pp WHERE pp.id_proveedor = pv.id_proveedor) AS productos,
+           (SELECT COUNT(*) FROM Compra c WHERE c.id_proveedor = pv.id_proveedor) AS compras,
+           (SELECT ISNULL(SUM(total),0) FROM Compra c WHERE c.id_proveedor = pv.id_proveedor AND c.estado = 'Recibida') AS total_comprado
+    FROM Proveedor pv
+    WHERE @t IS NULL OR pv.razon_social LIKE '%'+@t+'%' OR pv.rfc LIKE '%'+@t+'%'
+    ORDER BY pv.razon_social`, { t: [sql.VarChar(60), vacio(query.texto)] }),
+
+  'GET /api/proveedores/productos': async ({ query }) => q(`
+    SELECT p.sku, p.nombre, pp.costo_proveedor, p.costo AS costo_actual, p.stock_actual
+    FROM ProductoProveedor pp JOIN Producto p ON p.id_producto = pp.id_producto
+    WHERE pp.id_proveedor = @id ORDER BY p.nombre`, { id: [sql.Int, +query.id] }),
+
+  'POST /api/proveedores': async ({ body, user }) => {
+    soloRol(user, ['Administrador', 'Supervisor'], 'Solo Supervisor o Administrador modifican proveedores.');
+    await sp('usp_ProveedorGuardar', {
+      id_proveedor: [sql.Int, body.id ? +body.id : null],
+      razon_social: [sql.VarChar(120), String(body.razon_social || '').trim()],
+      rfc: [sql.VarChar(13), body.rfc || ''],
+      correo: [sql.VarChar(100), vacio(body.correo)],
+      telefono: [sql.VarChar(20), vacio(body.telefono)],
+      activo: [sql.Bit, !!body.activo],
+    });
+    return { ok: true };
+  },
+
+  'GET /api/compras': async () => ({
+    recientes: await q(`
+      SELECT TOP 50 c.folio, c.fecha, pv.razon_social AS proveedor, CONCAT(e.nombre,' ',e.apellidos) AS recibio,
+             (SELECT COUNT(*) FROM DetalleCompra d WHERE d.id_compra = c.id_compra) AS lineas, c.total, c.estado
+      FROM Compra c JOIN Proveedor pv ON pv.id_proveedor = c.id_proveedor JOIN Empleado e ON e.id_empleado = c.id_empleado
+      ORDER BY c.fecha DESC`),
+    proveedores: await q(`SELECT id_proveedor AS id, razon_social AS nombre FROM Proveedor WHERE activo = 1 ORDER BY razon_social`),
+    productos: await q(`SELECT id_producto AS id, sku, nombre, costo, requiere_serie FROM Producto WHERE activo = 1 ORDER BY nombre`),
+  }),
+
+  'POST /api/compras': async ({ body, user }) => {
+    soloRol(user, ['Administrador', 'Supervisor'], 'Solo Supervisor o Administrador registran compras.');
+    const r = pool.request();
+    r.input('u', sql.Int, user.id_usuario);
+    r.input('prov', sql.Int, +body.id_proveedor);
+    r.input('emp', sql.Int, user.id_empleado);
+    r.input('lineas', sql.NVarChar(sql.MAX), JSON.stringify(body.lineas || []));
+    const res = await r.query(`EXEC sp_set_session_context N'id_usuario', @u;
+      DECLARE @id INT, @folio VARCHAR(20);
+      EXEC usp_RegistrarCompra @prov, @emp, @lineas, @id OUTPUT, @folio OUTPUT;
+      SELECT @folio AS folio;`);
+    return res.recordset[0];
+  },
+
+  'GET /api/usuarios': async ({ user }) => {
+    soloRol(user, ['Administrador'], 'Solo el Administrador administra usuarios.');
+    return {
+      usuarios: await q(`
+        SELECT u.id_usuario, u.id_empleado, ur.id_rol, u.nombre_usuario AS usuario,
+               CONCAT(e.nombre,' ',e.apellidos) AS empleado, e.puesto, r.nombre AS rol,
+               u.activo, u.ultimo_acceso, u.intentos_fallidos
+        FROM Usuario u JOIN Empleado e ON e.id_empleado = u.id_empleado
+        LEFT JOIN UsuarioRol ur ON ur.id_usuario = u.id_usuario LEFT JOIN Rol r ON r.id_rol = ur.id_rol
+        ORDER BY u.nombre_usuario`),
+      empleados: await q(`
+        SELECT e.id_empleado AS id, CONCAT(e.nombre,' ',e.apellidos,' — ',e.puesto,
+               CASE WHEN u.id_usuario IS NULL THEN '' ELSE ' (ya tiene usuario)' END) AS nombre
+        FROM Empleado e LEFT JOIN Usuario u ON u.id_empleado = e.id_empleado
+        WHERE e.activo = 1 ORDER BY e.nombre`),
+      roles: await q(`SELECT id_rol AS id, nombre FROM Rol ORDER BY id_rol`),
+    };
+  },
+
+  'POST /api/usuarios': async ({ body, user }) => {
+    soloRol(user, ['Administrador'], 'Solo el Administrador administra usuarios.');
+    await sp('usp_UsuarioGuardar', {
+      id_usuario: [sql.Int, body.id ? +body.id : null],
+      id_empleado: [sql.Int, +body.id_empleado],
+      nombre_usuario: [sql.VarChar(40), body.usuario || ''],
+      id_rol: [sql.Int, +body.id_rol],
+      contrasena: [sql.VarChar(100), vacio(body.contrasena)],
+      activo: [sql.Bit, !!body.activo],
+      id_admin: [sql.Int, user.id_usuario],
+    });
+    return { ok: true };
+  },
+
+  'POST /api/ajustes/stock': async ({ body, user }) => {
+    const r = pool.request();
+    r.input('u', sql.Int, user.id_usuario);
+    r.input('p', sql.Int, +body.id_producto);
+    r.input('c', sql.Int, +body.cantidad);
+    r.input('m', sql.VarChar(200), body.motivo || '');
+    await r.query(`EXEC sp_set_session_context N'id_usuario', @u; EXEC usp_AjustarStock @p, @c, @m, @u;`);
+    return { ok: true };
+  },
+
+  'POST /api/ajustes/precio': async ({ body, user }) => {
+    const r = pool.request();
+    r.input('u', sql.Int, user.id_usuario);
+    r.input('pct', sql.Decimal(5, 2), +body.porcentaje);
+    r.input('cat', sql.Int, +body.id_categoria);
+    await r.query(`EXEC sp_set_session_context N'id_usuario', @u; EXEC usp_AjustarPrecio @pct, @u, NULL, @cat;`);
+    return { ok: true };
+  },
+
+  'GET /api/ajustes': async () => ({
+    productos: await q(`SELECT id_producto AS id, CONCAT(sku,' — ',nombre,' (stock ',stock_actual,')') AS nombre
+                        FROM Producto WHERE requiere_serie = 0 AND activo = 1 ORDER BY nombre`),
+    categorias: await q(`SELECT id_categoria AS id, nombre FROM Categoria ORDER BY nombre`),
+  }),
+
   'GET /api/auditoria': async ({ user }) => {
     if (!['Administrador', 'Supervisor'].includes(user.rol)) throw new Error('Sin permiso para ver la auditoría.');
-    return q(`SELECT TOP 300 fecha, usuario, tabla, operacion, id_registro, valor_anterior, valor_nuevo FROM Auditoria ORDER BY id_auditoria DESC`);
+    return q(`SELECT TOP 300 fecha, usuario_app, usuario, tabla, operacion, id_registro, valor_anterior, valor_nuevo, motivo FROM Auditoria ORDER BY id_auditoria DESC`);
   },
 };
 

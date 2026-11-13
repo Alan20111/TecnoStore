@@ -52,7 +52,7 @@ namespace TecnoStore.Utils
             foreach (DataGridViewColumn col in g.Columns)
             {
                 string n = col.DataPropertyName.ToLowerInvariant();
-                if (n.StartsWith("id_") || n == "idproducto" || n == "es_final") { col.Visible = false; continue; }
+                if (n.StartsWith("id_") || n == "id" || n == "idproducto" || n == "es_final") { col.Visible = false; continue; }
                 col.HeaderText = Titulo(col.DataPropertyName);
                 if (n.Contains("precio") || n.Contains("total") || n.Contains("subtotal") || n.Contains("costo") ||
                     n.Contains("ingresos") || n.Contains("vendido") || n.Contains("utilidad") || n.Contains("descuento") ||

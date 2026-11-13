@@ -1,0 +1,39 @@
+== 01_CrearBase
+== 02_CrearTablas
+== 03_Alter_Constraints
+
+(0 rows affected)
+== 04_DatosDemo
+== 06_Vistas
+== 08_StoredProcedures
+== 09_Functions
+== 10_Triggers
+== 07_Seguridad
+
+(5 rows affected)
+--- Consulta: puede leer productos
+productos_visibles
+------------------
+                33
+
+(1 rows affected)
+--- Consulta: NO puede registrar una venta
+Esperado: The EXECUTE permission was denied on the object 'usp_RegistrarVenta', database 'TecnoStore', schema 'dbo'.
+--- Operador: NO puede ver la auditoría ni los usuarios
+Esperado: The SELECT permission was denied on the object 'Auditoria', database 'TecnoStore', schema 'dbo'.
+Esperado: The SELECT permission was denied on the object 'Usuario', database 'TecnoStore', schema 'dbo'.
+--- Operador: NO puede cambiar precios directamente ni con el SP
+
+(0 rows affected)
+Esperado: The UPDATE permission was denied on the object 'Producto', database 'TecnoStore', schema 'dbo'.
+Esperado: The EXECUTE permission was denied on the object 'usp_AjustarPrecio', database 'TecnoStore', schema 'dbo'.
+--- Supervisor: SÍ puede leer la auditoría, NO puede borrarla
+filas_auditoria
+---------------
+              0
+
+(1 rows affected)
+
+(0 rows affected)
+Esperado: The DELETE permission was denied on the object 'Auditoria', database 'TecnoStore', schema 'dbo'.
+Base TecnoStore lista.

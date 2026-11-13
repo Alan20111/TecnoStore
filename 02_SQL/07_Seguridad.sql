@@ -15,6 +15,7 @@
    Matriz de permisos
    Objeto/Módulo          Administrador  Supervisor        Operador            Consulta
    Catálogos              CRUD           R                 R                   R
+   Proveedores            CRUD           R + guardar (SP)  R                   R
    Clientes/Productos     CRUD           R + guardar (SP)  R + clientes (SP)   R
    Venta / Orden          CRUD           Ejecuta + cancela Ejecuta (SP)        R
    Compra / Ajustes       CRUD           Ejecuta (SP)      -                   -
@@ -109,6 +110,9 @@ DENY INSERT, UPDATE, DELETE ON dbo.Categoria    TO rol_operador, rol_consulta;
 DENY INSERT, UPDATE, DELETE ON dbo.Marca        TO rol_operador, rol_consulta;
 DENY INSERT, UPDATE, DELETE ON dbo.Producto     TO rol_operador, rol_consulta;
 DENY INSERT, UPDATE, DELETE ON dbo.Configuracion TO rol_operador, rol_consulta, rol_supervisor;
+DENY INSERT, UPDATE, DELETE ON dbo.TipoServicio TO rol_operador, rol_consulta;
+-- usp_UsuarioGuardar: solo el Administrador (le llega por EXECUTE sobre el esquema)
+DENY EXECUTE ON dbo.usp_UsuarioGuardar TO rol_supervisor, rol_operador, rol_consulta;
 GO
 
 /* ---------- Supervisor: autoriza, cancela, compra y ajusta ---------- */
@@ -117,6 +121,7 @@ GRANT EXECUTE ON dbo.usp_RegistrarCompra TO rol_supervisor, rol_administrador;
 GRANT EXECUTE ON dbo.usp_AjustarStock    TO rol_supervisor, rol_administrador;
 GRANT EXECUTE ON dbo.usp_AjustarPrecio   TO rol_supervisor, rol_administrador;
 GRANT EXECUTE ON dbo.usp_ProductoGuardar TO rol_supervisor, rol_administrador;
+GRANT EXECUTE ON dbo.usp_ProveedorGuardar TO rol_supervisor, rol_administrador;
 GO
 
 /* ---------- Administrador: todo el esquema, sin db_owner ---------- */

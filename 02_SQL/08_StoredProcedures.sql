@@ -1,12 +1,14 @@
 ﻿/* =============================================================
    TecnoStore · 08_StoredProcedures.sql
-   14 procedimientos.
+   16 procedimientos.
 
    Grupo           Procedimiento                 Transacción
    Seguridad       usp_Login                     —
    Catálogos       usp_ProductoBuscar            —   (parámetros opcionales)
                    usp_ProductoGuardar           —
                    usp_ClienteGuardar            —
+                   usp_ProveedorGuardar          —
+   Seguridad app   usp_UsuarioGuardar            Sí  (Usuario + UsuarioRol)
    Procesos        usp_RegistrarVenta            Sí  (proceso 1, principal)
                    usp_RegistrarCompra           Sí  (proceso 2, secundario)
                    usp_RegistrarOrdenServicio    Sí
@@ -169,6 +171,109 @@ BEGIN
         WHERE id_cliente = @id_cliente;
         IF @@ROWCOUNT = 0 THROW 50124, 'El cliente no existe.', 1;
     END
+END
+GO
+
+CREATE OR ALTER PROCEDURE usp_ProveedorGuardar
+    @id_proveedor INT = NULL OUTPUT,
+    @razon_social VARCHAR(120),
+    @rfc          VARCHAR(13),
+    @correo       VARCHAR(100) = NULL,
+    @telefono     VARCHAR(20)  = NULL,
+    @activo       BIT = 1
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET @rfc = UPPER(LTRIM(RTRIM(@rfc)));
+    IF LTRIM(ISNULL(@razon_social, '')) = ''
+        THROW 50130, 'La razón social es obligatoria.', 1;
+    IF LEN(@rfc) NOT IN (12, 13)
+        THROW 50131, 'El RFC debe tener 12 (moral) o 13 (física) caracteres.', 1;
+    IF NULLIF(@correo, '') IS NOT NULL AND @correo NOT LIKE '_%@_%._%'
+        THROW 50132, 'El correo no tiene un formato válido.', 1;
+    IF EXISTS (SELECT 1 FROM Proveedor WHERE rfc = @rfc AND id_proveedor <> ISNULL(@id_proveedor, 0))
+        THROW 50133, 'Ya existe un proveedor con ese RFC.', 1;
+
+    IF @id_proveedor IS NULL
+    BEGIN
+        INSERT INTO Proveedor (razon_social, rfc, correo, telefono, activo)
+        VALUES (@razon_social, @rfc, NULLIF(LOWER(@correo), ''), NULLIF(@telefono, ''), @activo);
+        SET @id_proveedor = SCOPE_IDENTITY();
+    END
+    ELSE
+    BEGIN
+        UPDATE Proveedor SET razon_social = @razon_social, rfc = @rfc, correo = NULLIF(LOWER(@correo), ''),
+                             telefono = NULLIF(@telefono, ''), activo = @activo
+        WHERE id_proveedor = @id_proveedor;
+        IF @@ROWCOUNT = 0 THROW 50134, 'El proveedor no existe.', 1;
+    END
+END
+GO
+
+/* ======================== Seguridad de la app ======================== */
+
+/* Alta o edición de un usuario de la aplicación y su rol (Usuario + UsuarioRol
+   en una transacción). Solo un Administrador. La contraseña se guarda como
+   hash SHA2_256; en edición, NULL conserva la actual. Reactivar un usuario
+   reinicia sus intentos fallidos. Un administrador no puede desactivarse ni
+   quitarse el rol a sí mismo. */
+CREATE OR ALTER PROCEDURE usp_UsuarioGuardar
+    @id_usuario     INT = NULL OUTPUT,
+    @id_empleado    INT,
+    @nombre_usuario VARCHAR(40),
+    @id_rol         INT,
+    @contrasena     VARCHAR(100) = NULL,
+    @activo         BIT = 1,
+    @id_admin       INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+    BEGIN TRY
+        SET @nombre_usuario = LOWER(LTRIM(RTRIM(@nombre_usuario)));
+        IF dbo.fn_UsuarioTieneRol(@id_admin, 'Administrador') = 0
+            THROW 50140, 'Solo un Administrador puede administrar usuarios.', 1;
+        IF LEN(@nombre_usuario) < 4 OR @nombre_usuario LIKE '% %'
+            THROW 50141, 'El usuario debe tener al menos 4 caracteres y no llevar espacios.', 1;
+        IF @id_usuario IS NULL AND @contrasena IS NULL
+            THROW 50142, 'Un usuario nuevo necesita contraseña.', 1;
+        IF @contrasena IS NOT NULL AND (LEN(@contrasena) < 8 OR @contrasena NOT LIKE '%[0-9]%')
+            THROW 50143, 'La contraseña debe tener al menos 8 caracteres y un número.', 1;
+        IF NOT EXISTS (SELECT 1 FROM Empleado WHERE id_empleado = @id_empleado AND activo = 1)
+            THROW 50144, 'El empleado no existe o está inactivo.', 1;
+        IF NOT EXISTS (SELECT 1 FROM Rol WHERE id_rol = @id_rol)
+            THROW 50145, 'El rol no existe.', 1;
+        IF EXISTS (SELECT 1 FROM Usuario WHERE nombre_usuario = @nombre_usuario AND id_usuario <> ISNULL(@id_usuario, 0))
+            THROW 50146, 'Ese nombre de usuario ya está en uso.', 1;
+        IF EXISTS (SELECT 1 FROM Usuario WHERE id_empleado = @id_empleado AND id_usuario <> ISNULL(@id_usuario, 0))
+            THROW 50147, 'Ese empleado ya tiene un usuario.', 1;
+        IF @id_usuario = @id_admin AND (@activo = 0 OR @id_rol <> (SELECT id_rol FROM Rol WHERE nombre = 'Administrador'))
+            THROW 50148, 'No puedes desactivarte ni quitarte el rol de Administrador a ti mismo.', 1;
+
+        BEGIN TRANSACTION;
+        IF @id_usuario IS NULL
+        BEGIN
+            INSERT INTO Usuario (id_empleado, nombre_usuario, hash_contrasena, activo)
+            VALUES (@id_empleado, @nombre_usuario, HASHBYTES('SHA2_256', @contrasena), @activo);
+            SET @id_usuario = SCOPE_IDENTITY();
+        END
+        ELSE
+        BEGIN
+            UPDATE Usuario
+               SET id_empleado = @id_empleado, nombre_usuario = @nombre_usuario, activo = @activo,
+                   hash_contrasena = CASE WHEN @contrasena IS NULL THEN hash_contrasena ELSE HASHBYTES('SHA2_256', @contrasena) END,
+                   intentos_fallidos = CASE WHEN @activo = 1 THEN 0 ELSE intentos_fallidos END
+             WHERE id_usuario = @id_usuario;
+            IF @@ROWCOUNT = 0 THROW 50149, 'El usuario no existe.', 1;
+            DELETE FROM UsuarioRol WHERE id_usuario = @id_usuario;
+        END
+        INSERT INTO UsuarioRol (id_usuario, id_rol) VALUES (@id_usuario, @id_rol);
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
 END
 GO
 

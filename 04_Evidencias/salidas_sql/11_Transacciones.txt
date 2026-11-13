@@ -1,0 +1,71 @@
+=== Proceso 1 · venta correcta
+folio total lineas
+----- ----- ------
+V-01046 17897.00 2
+stock_antes stock_despues
+----------- -------------
+7 6
+id_detalle_venta numero_serie estado garantia_hasta
+---------------- ------------ ------ --------------
+123 SGS-24-256-002 Vendida 2027-11-13
+=== Proceso 1 · venta fallida: la segunda línea no tiene stock
+Error capturado: Stock insuficiente para uno o más productos.
+venta
+-----
+OK: sin encabezado nuevo
+detalle
+-------
+OK: sin detalle parcial
+stock
+-----
+OK: stock intacto
+=== Proceso 2 · compra correcta (con números de serie)
+folio total
+----- -----
+C-0013 36200.00
+numero_serie estado
+------------ ------
+IPH15-NEW-001 Disponible
+IPH15-NEW-002 Disponible
+=== Proceso 2 · compra fallida: número de serie repetido
+Error capturado: Uno o más números de serie ya están registrados.
+compra
+------
+OK: sin compra nueva
+stock
+-----
+OK: la refacción no entró
+=== Proceso 3 · cancelación correcta de la venta recién hecha
+folio estado fecha_cancelacion motivo_cancelacion
+----- ------ ----------------- ------------------
+V-01046 Cancelada 2026-11-13 15:52:37.5124931 Prueba de cancelación
+stock_antes stock_despues
+----------- -------------
+6 7
+numero_serie estado garantias
+------------ ------ ---------
+SGS-24-256-002 Disponible 0
+=== Proceso 3 · cancelación fallida: venta de hace más de 30 días
+Error capturado: Solo se pueden cancelar ventas de los últimos 30 días.
+folio estado
+----- ------
+V-01001 Completada
+=== Proceso 4 · ajuste correcto por conteo físico (queda en auditoría)
+stock_antes stock_despues
+----------- -------------
+20 18
+usuario_app motivo valor_anterior valor_nuevo
+----------- ------ -------------- -----------
+csupervisor Conteo físico: 2 cables dañados stock_actual=20 stock_actual=18
+=== Proceso 4 · ajuste fallido: el operador no tiene permiso
+Error capturado: Solo un Supervisor o Administrador puede ajustar inventario.
+=== Transacción manual · baja de pieza
+Pieza MMN-M2-008 dada de baja.
+numero_serie estado
+------------ ------
+MMN-M2-008 Baja
+=== Transacción manual · repetirla falla (la pieza ya está en Baja) y no cambia nada
+ROLLBACK: Solo se puede dar de baja una pieza Disponible.
+resultado
+---------
+OK: stock intacto

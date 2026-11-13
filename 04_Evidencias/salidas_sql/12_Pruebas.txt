@@ -1,0 +1,37 @@
+caso|tipo|descripcion|entrada|esperado|obtenido|resultado
+----|----|-----------|-------|--------|--------|---------
+P01|Correcta|Alta de cliente|Mariana Prueba, correo con mayúsculas|Se crea; correo en minúsculas|id=31 correo=mariana.prueba@correo.mx|PASA
+P02|Correcta|Edición de cliente|Nuevo teléfono y RFC|Se actualiza|5500000000 PULM900101AB1|PASA
+P03|Correcta|Alta de producto|SKU en minúsculas|Se crea con SKU en mayúsculas y stock 0|HUB-USBC-7 stock=0|PASA
+P04|Correcta|Venta de 3 cargadores|cliente 2, producto 22 x3|Folio nuevo, total 1347, stock -3|V-01046 total=1347.00 stock=25|PASA
+P05|Correcta|Compra con números de serie|2 Apple Watch|2 piezas Disponibles y costo actualizado|C-0013 piezas=2|PASA
+P06|Correcta|Recepción de equipo en taller|cliente 4, técnica Sofía|Orden Recibida, total 250 (diagnóstico), 1 historial|OS-3025 total=250.00 hist=1|PASA
+P07|Correcta|Agregar mano de obra y refacción|cambio de teclado + teclado MBA|Total 250+700+1999=2949, refacción -1|total=2949.00 stock=3|PASA
+P08|Correcta|Avanzar orden a En diagnóstico|Recibida -> En diagnóstico|Estado 2 y historial con usuario 2|estado=2 usuario=2|PASA
+P09|Correcta|Reporte resumen por periodo|mayo–octubre 2026|6 meses con ventas|6 meses|PASA
+P10|Correcta|Cancelar venta reciente|venta de P04|Cancelada y stock +3|Cancelada stock=28|PASA
+P11|Validación|Correo duplicado|alejandro.gomez@correo.mx|Ya existe un cliente con ese correo|Ya existe un cliente con ese correo.|PASA
+P12|Validación|SKU duplicado|IPH-15-128|Ya existe otro producto con ese SKU|Ya existe otro producto con ese SKU.|PASA
+P13|Validación|Precio menor al costo (directo en tabla)|precio 10, costo 14500|CK_Producto_precio_vs_costo|The UPDATE statement conflicted with the CHECK constraint "CK_Producto_precio_vs_costo". The conflict occurred in database "TecnoStore", table "dbo.Producto".|PASA
+P14|Validación|Cantidad cero|cantidad 0|Cantidades mayores a cero|Todas las cantidades deben ser mayores a cero.|PASA
+P15|Validación|Descuento 25 % autorizado por operador|descuento 25, usuario 3|Requiere Supervisor|Un descuento mayor al permitido requiere autorización de un Supervisor.|PASA
+P16|Validación|Saltar estados de la orden|En diagnóstico -> Entregada|Transición no permitida|Transición no permitida: la orden solo avanza un paso a la vez o se cancela.|PASA
+P17|Validación|Técnico no habilitado (N:M)|Héctor + reparación de placa|No habilitado|El técnico asignado no está habilitado para ese servicio.|PASA
+P18|Transacción|Venta con una línea sin stock|cargador x1 + pantalla x999|ROLLBACK: sin venta, sin detalle, stock igual|ventas=0 detalles=0 stock=28|PASA
+P19|Transacción|Compra con número de serie repetido|cables x10 + serie APW-T-01 (ya existe)|ROLLBACK: sin compra y cables sin entrar|compras=0 stock=20|PASA
+P20|Transacción|Refacción sin stock en orden|pantalla x999|ROLLBACK: sin línea nueva y total igual|lineas=0 total=2949.00|PASA
+P21|Seguridad|Rol consulta intenta vender|EXECUTE AS tecno_consulta|Permiso EXECUTE denegado|The EXECUTE permission was denied on the object 'usp_RegistrarVenta', database 'TecnoStore', schema 'dbo'.|PASA
+P22|Seguridad|Rol operador lee la auditoría|EXECUTE AS tecno_operador|Permiso SELECT denegado|The SELECT permission was denied on the object 'Auditoria', database 'TecnoStore', schema 'dbo'.|PASA
+P23|Trigger|Cambio de precio de una categoría queda auditado|+10 % a Audífonos (3 productos)|3 filas en Auditoria con usuario_app csupervisor|3 filas, usuario_app=csupervisor|PASA
+P24|Trigger|Cambiar una orden Entregada (directo en tabla)|OS-3001 -> En reparación|trg_OrdenServicio_Estado lo impide|Una orden Entregada o Cancelada ya no puede cambiar de estado.|PASA
+P25|Trigger|DELETE de producto con historial y sin historial|IPH-15-128 y HUB-USBC-7|IPH-15-128 queda inactivo; HUB-USBC-7 se borra|IPH activo=0 HUB existe=0|PASA
+P26|Trigger|Borrar la auditoría (como sa)|DELETE FROM Auditoria|Solo lectura|La auditoría es de solo lectura.|PASA
+P27|Correcta|Alta de proveedor|RFC y correo en minúsculas/mayúsculas|RFC en mayúsculas, correo en minúsculas|MNS2001019Z9 ventas@mns.example.mx|PASA
+P28|Validación|RFC de proveedor duplicado|IMM9501018A1|Ya existe un proveedor con ese RFC|Ya existe un proveedor con ese RFC.|PASA
+P29|Correcta|Alta de usuario con rol (Usuario + UsuarioRol)|mtorres, Operador|Usuario en minúsculas, rol Operador y la contraseña sirve para entrar|mtorres rol=Operador|PASA
+P30|Validación|Contraseña débil|"corta"|Mínimo 8 caracteres y un número|La contraseña debe tener al menos 8 caracteres y un número.|PASA
+P31|Seguridad|Supervisor intenta crear un Administrador|id_admin = csupervisor|Solo un Administrador|Solo un Administrador puede administrar usuarios.|PASA
+P32|Validación|Borrar categoría con productos|DELETE Categoria Celulares|Conflicto con FK_Producto_Categoria|The DELETE statement conflicted with the REFERENCE constraint "FK_Producto_Categoria". The conflict occurred in database "TecnoStore", table "dbo.Producto", column 'id_categoria'.|PASA
+pasan|total
+-----|-----
+32|32

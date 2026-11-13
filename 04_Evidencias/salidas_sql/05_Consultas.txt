@@ -1,0 +1,943 @@
+sku nombre precio_venta stock_actual
+--- ------ ------------ ------------
+LEN-TP-E14 Lenovo ThinkPad E14 18499.00 7
+IPH-15-128 iPhone 15 128 GB 17999.00 3
+SGS-24-256 Galaxy S24 256 GB 16999.00 7
+HP-AIO-24 HP All-in-One 24 15999.00 4
+HP-PAV-15 HP Pavilion 15 14999.00 4
+MBA-M1-R MacBook Air M1 reacondicionada 13999.00 1
+DEL-INS-14 Dell Inspiron 14 (open box) 12999.00 6
+MMN-M2 Mac mini M2 12999.00 6
+IPH-14-128-R iPhone 14 128 GB reacondicionado 11499.00 1
+
+(9 rows affected)
+folio fecha subtotal descuento total id_metodo_pago
+----- ----- -------- --------- ----- --------------
+V-01007 2026-05-26 15:54:00.0000000 15999.00 799.95 15199.05 2
+V-01008 2026-05-30 10:40:00.0000000 249.00 .00 249.00 5
+V-01012 2026-06-15 10:51:00.0000000 44942.00 .00 44942.00 5
+V-01013 2026-06-19 11:04:00.0000000 47094.00 .00 47094.00 5
+V-01014 2026-06-23 16:37:00.0000000 54695.00 2734.75 51960.25 2
+V-01015 2026-06-27 10:37:00.0000000 38497.00 .00 38497.00 5
+V-01016 2026-07-01 17:04:00.0000000 2997.00 .00 2997.00 5
+V-01020 2026-07-17 16:34:00.0000000 15498.00 .00 15498.00 5
+V-01021 2026-07-21 13:49:00.0000000 12645.00 632.25 12012.75 3
+V-01028 2026-08-18 15:08:00.0000000 5499.00 274.95 5224.05 5
+V-01035 2026-09-15 11:36:00.0000000 5999.00 299.95 5699.05 1
+V-01041 2026-10-09 10:59:00.0000000 16296.00 .00 16296.00 5
+V-01042 2026-10-13 14:05:00.0000000 3697.00 184.85 3512.15 3
+
+(13 rows affected)
+id_cliente nombre apellidos correo telefono rfc
+---------- ------ --------- ------ -------- ---
+2 Beatriz Navarro León beatriz.navarro@correo.mx 5530000002 NULL
+3 César Domínguez Paz cesar.dominguez@correo.mx 5530000003 NULL
+4 Daniela Herrera Villa daniela.herrera@correo.mx 5530000004 NULL
+5 Eduardo Sánchez Mejía eduardo.sanchez@correo.mx NULL NULL
+7 Gerardo Medina Ochoa gerardo.medina@correo.mx 5530000007 NULL
+8 Hilda Aguilar Fuentes hilda.aguilar@correo.mx 5530000008 NULL
+9 Iván Morales Rangel ivan.morales@correo.mx 5530000009 NULL
+10 Jimena Castro Bravo jimena.castro@correo.mx 5530000010 NULL
+11 Kevin Romero Lugo kevin.romero@correo.mx NULL NULL
+12 Laura Jiménez Arce laura.jimenez@correo.mx 5530000012 NULL
+14 Natalia Reyes Solís natalia.reyes@correo.mx 5530000014 NULL
+15 Óscar Guzmán Tapia oscar.guzman@correo.mx 5530000015 NULL
+16 Patricia Mendoza Cano patricia.mendoza@correo.mx 5530000016 NULL
+17 Quetzal Ortega Nava quetzal.ortega@correo.mx NULL NULL
+18 Rocío Silva Ponce rocio.silva@correo.mx 5530000018 NULL
+19 Samuel Delgado Rosas samuel.delgado@correo.mx 5530000019 NULL
+20 Tania Cortés Ávila tania.cortes@correo.mx 5530000020 NULL
+21 Ulises Peña Rivas ulises.pena@correo.mx 5530000021 NULL
+22 Verónica Luna Maldonado veronica.luna@correo.mx 5530000022 NULL
+23 Wilfrido Ibarra Soto wilfrido.ibarra@correo.mx 5530000023 NULL
+24 Ximena Campos Toledo ximena.campos@correo.mx 5530000024 NULL
+25 Yahir Rosales Vera yahir.rosales@correo.mx 5530000025 NULL
+26 Zaira Montes Olvera zaira.montes@correo.mx 5530000026 NULL
+27 Adrián Salazar Gil adrian.salazar@correo.mx 5530000027 NULL
+28 Brenda Figueroa Luna brenda.figueroa@correo.mx NULL NULL
+29 Cristian Esquivel Mora cristian.esquivel@correo.mx 5530000029 NULL
+
+(26 rows affected)
+folio equipo_descripcion total id_estado_orden
+----- ------------------ ----- ---------------
+OS-3020 iPhone 13 negro 4049.00 2
+OS-3024 Laptop HP Pavilion 700.00 2
+
+(2 rows affected)
+nombre apellidos puesto fecha_contratacion
+------ --------- ------ ------------------
+Ana López García Gerente 2021-02-15
+Carlos Ramírez Soto Supervisor 2022-01-10
+Sofía Méndez Lara Técnico 2022-08-22
+Ricardo Vega Núñez Almacenista 2022-11-30
+Diego Flores Ibarra Técnico 2023-09-04
+
+(5 rows affected)
+sku nombre precio_venta
+--- ------ ------------
+IPH-15-128 iPhone 15 128 GB 17999.00
+IPH-14-128-R iPhone 14 128 GB reacondicionado 11499.00
+IPH-12-64 iPhone 12 64 GB (descontinuado) 9999.00
+
+(3 rows affected)
+nombre apellidos correo
+------ --------- ------
+Alejandro Gómez Ruiz alejandro.gomez@correo.mx
+César Domínguez Paz cesar.dominguez@correo.mx
+Eduardo Sánchez Mejía eduardo.sanchez@correo.mx
+Laura Jiménez Arce laura.jimenez@correo.mx
+
+(4 rows affected)
+folio equipo_descripcion descripcion_falla
+----- ------------------ -----------------
+OS-3002 Galaxy S22 Batería dura menos de 4 horas
+OS-3005 iPad 9a gen Pantalla no responde en una esquina
+OS-3009 Apple Watch S6 Batería se infla
+OS-3010 iPhone 13 negro Pantalla estrellada, touch funciona
+OS-3012 Galaxy S22 Batería dura menos de 4 horas
+OS-3015 iPad 9a gen Pantalla no responde en una esquina
+OS-3019 Apple Watch S6 Batería se infla
+OS-3020 iPhone 13 negro Pantalla estrellada, touch funciona
+OS-3022 Galaxy S22 Batería dura menos de 4 horas
+
+(9 rows affected)
+folio fecha total
+----- ----- -----
+V-01016 2026-07-01 17:04:00.0000000 2997.00
+V-01017 2026-07-05 10:28:00.0000000 24195.00
+V-01018 2026-07-09 13:30:00.0000000 14895.00
+V-01019 2026-07-13 14:23:00.0000000 40796.00
+V-01020 2026-07-17 16:34:00.0000000 15498.00
+V-01021 2026-07-21 13:49:00.0000000 12012.75
+V-01022 2026-07-25 15:42:00.0000000 14895.00
+V-01023 2026-07-29 13:20:00.0000000 43497.00
+
+(8 rows affected)
+id_garantia fecha_inicio fecha_fin meses
+----------- ------------ --------- -----
+9 2026-05-14 2026-11-14 6
+10 2026-05-18 2026-11-18 6
+14 2026-06-07 2026-12-07 6
+20 2026-06-19 2026-12-19 6
+22 2026-06-23 2026-12-23 6
+27 2026-07-05 2027-01-05 6
+29 2026-07-13 2027-01-13 6
+35 2026-07-29 2027-01-29 6
+36 2026-07-29 2027-01-29 6
+38 2026-08-02 2027-02-02 6
+43 2026-08-10 2027-02-10 6
+
+(11 rows affected)
+folio fecha_recepcion equipo_descripcion
+----- --------------- ------------------
+OS-3020 2026-09-15 10:00:00.0000000 iPhone 13 negro
+OS-3021 2026-09-22 10:18:00.0000000 MacBook Air 2020
+OS-3022 2026-09-29 13:18:00.0000000 Galaxy S22
+OS-3023 2026-10-06 12:22:00.0000000 iPhone 14
+OS-3024 2026-10-13 16:44:00.0000000 Laptop HP Pavilion
+
+(5 rows affected)
+metodo ventas ingresos
+------ ------ --------
+Vale de tienda 10 270805.00
+Efectivo 10 264367.05
+Meses sin intereses 8 170797.05
+Tarjeta de crédito 6 161301.90
+Tarjeta de débito 5 131746.30
+Transferencia 4 125889.00
+
+(6 rows affected)
+categoria productos piezas valor_inventario
+--------- --------- ------ ----------------
+Laptops 6 26 451600.00
+Computadoras de escritorio 3 17 306100.00
+Audífonos 3 72 211740.00
+Celulares 6 20 191200.00
+Accesorios 6 123 62500.00
+Tabletas 2 8 55000.00
+Relojes inteligentes 2 10 55000.00
+Almacenamiento 2 52 22240.00
+Monitores 1 3 17400.00
+Refacciones 3 11 16200.00
+
+(10 rows affected)
+estado ordenes importe
+------ ------- -------
+Recibida 2 500.00
+En diagnóstico 2 4749.00
+En reparación 1 2050.00
+Lista 1 2149.00
+Entregada 16 27843.00
+Cancelada 2 250.00
+
+(6 rows affected)
+estado unidades
+------ --------
+Disponible 84
+Vendida 68
+
+(2 rows affected)
+id_cliente compras gastado
+---------- ------- -------
+6 3 129089.00
+10 4 121083.00
+18 3 111985.00
+2 4 89584.00
+5 4 81054.15
+16 3 42192.05
+
+(6 rows affected)
+nombre promedio_linea
+------ --------------
+Audífonos 9679.818181
+Celulares 11549.000000
+Computadoras de escritorio 19499.000000
+Laptops 19281.608695
+Monitores 7499.000000
+Relojes inteligentes 7999.000000
+Tabletas 9624.000000
+
+(7 rows affected)
+empleado fecha_contratacion anios dia_ingreso
+-------- ------------------ ----- -----------
+Ana López García 2021-02-15 5 Monday
+Carlos Ramírez Soto 2022-01-10 4 Monday
+Luis Hernández Ríos 2023-03-01 3 Wednesday
+María Torres Peña 2023-06-12 3 Monday
+Jorge Castillo Mora 2024-01-08 2 Monday
+Sofía Méndez Lara 2022-08-22 4 Monday
+Diego Flores Ibarra 2023-09-04 3 Monday
+Paola Ruiz Campos 2024-05-20 2 Monday
+Ricardo Vega Núñez 2022-11-30 4 Wednesday
+Fernanda Ortiz Salas 2025-02-03 1 Monday
+Héctor Juárez Pineda 2024-07-15 2 Monday
+Valeria Cruz Delgado 2023-10-01 3 Sunday
+
+(12 rows affected)
+cliente iniciales largo_correo
+------- --------- ------------
+GÓMEZ RUIZ, Alejandro AG 25
+NAVARRO LEÓN, Beatriz BN 25
+DOMÍNGUEZ PAZ, César CD 25
+HERRERA VILLA, Daniela DH 25
+SÁNCHEZ MEJÍA, Eduardo ES 25
+RÍOS CÁRDENAS, Fabiola FR 22
+MEDINA OCHOA, Gerardo GM 24
+AGUILAR FUENTES, Hilda HA 23
+MORALES RANGEL, Iván IM 22
+CASTRO BRAVO, Jimena JC 23
+ROMERO LUGO, Kevin KR 22
+JIMÉNEZ ARCE, Laura LJ 23
+VARGAS PERALTA, Mario MV 22
+REYES SOLÍS, Natalia NR 23
+GUZMÁN TAPIA, Óscar ÓG 22
+MENDOZA CANO, Patricia PM 26
+ORTEGA NAVA, Quetzal QO 24
+SILVA PONCE, Rocío RS 21
+DELGADO ROSAS, Samuel SD 24
+CORTÉS ÁVILA, Tania TC 22
+PEÑA RIVAS, Ulises UP 21
+LUNA MALDONADO, Verónica VL 23
+IBARRA SOTO, Wilfrido WI 25
+CAMPOS TOLEDO, Ximena XC 23
+ROSALES VERA, Yahir YR 23
+MONTES OLVERA, Zaira ZM 22
+SALAZAR GIL, Adrián AS 24
+FIGUEROA LUNA, Brenda BF 25
+ESQUIVEL MORA, Cristian CE 27
+VALENCIA RUIZ, Diana DV 24
+
+(30 rows affected)
+folio numero total_texto fecha_dd_mm_aaaa
+----- ------ ----------- ----------------
+V-01001 1001 $68,996.00 02/05/2026
+V-01002 1002 $37,999.00 06/05/2026
+V-01003 1003 $34,595.00 10/05/2026
+V-01004 1004 $19,498.00 14/05/2026
+V-01005 1005 $12,098.00 18/05/2026
+V-01006 1006 $25,498.00 22/05/2026
+V-01007 1007 $15,199.05 26/05/2026
+V-01008 1008 $249.00 30/05/2026
+V-01009 1009 $1,398.00 03/06/2026
+V-01010 1010 $15,396.00 07/06/2026
+V-01011 1011 $19,897.00 11/06/2026
+V-01012 1012 $44,942.00 15/06/2026
+V-01013 1013 $47,094.00 19/06/2026
+V-01014 1014 $51,960.25 23/06/2026
+V-01015 1015 $38,497.00 27/06/2026
+V-01016 1016 $2,997.00 01/07/2026
+V-01017 1017 $24,195.00 05/07/2026
+V-01018 1018 $14,895.00 09/07/2026
+V-01019 1019 $40,796.00 13/07/2026
+V-01020 1020 $15,498.00 17/07/2026
+V-01021 1021 $12,012.75 21/07/2026
+V-01022 1022 $14,895.00 25/07/2026
+V-01023 1023 $43,497.00 29/07/2026
+V-01024 1024 $25,497.00 02/08/2026
+V-01025 1025 $33,998.00 06/08/2026
+V-01026 1026 $34,997.00 10/08/2026
+V-01027 1027 $63,993.00 14/08/2026
+V-01028 1028 $5,224.05 18/08/2026
+V-01029 1029 $46,995.00 22/08/2026
+V-01030 1030 $62,196.00 26/08/2026
+V-01031 1031 $47,792.00 30/08/2026
+V-01032 1032 $8,298.00 03/09/2026
+V-01033 1033 $44,192.00 07/09/2026
+V-01034 1034 $22,094.00 11/09/2026
+V-01035 1035 $5,699.05 15/09/2026
+V-01036 1036 $13,398.00 19/09/2026
+V-01037 1037 $48,193.00 23/09/2026
+V-01038 1038 $17,197.00 27/09/2026
+V-01039 1039 $13,342.00 01/10/2026
+V-01040 1040 $2,695.00 05/10/2026
+V-01041 1041 $16,296.00 09/10/2026
+V-01042 1042 $3,512.15 13/10/2026
+V-01043 1043 $36,497.00 17/10/2026
+V-01044 1044 $10,598.00 21/10/2026
+V-01045 1045 $25,492.00 25/10/2026
+
+(45 rows affected)
+n dia ventas
+- --- ------
+1 Sunday 7
+2 Monday 6
+3 Tuesday 6
+4 Wednesday 7
+5 Thursday 6
+6 Friday 6
+7 Saturday 7
+
+(7 rows affected)
+sku nombre categoria marca condicion
+--- ------ --------- ----- ---------
+IPH-15-128 iPhone 15 128 GB Celulares Apple Nuevo
+IPH-14-128-R iPhone 14 128 GB reacondicionado Celulares Apple Reacondicionado
+SGS-24-256 Galaxy S24 256 GB Celulares Samsung Nuevo
+SGA-55-128 Galaxy A55 128 GB Celulares Samsung Nuevo
+XRN-13-256 Redmi Note 13 256 GB Celulares Xiaomi Nuevo
+MBA-M3-13 MacBook Air 13" M3 Laptops Apple Nuevo
+MBP-M3-14 MacBook Pro 14" M3 Laptops Apple Nuevo
+MBA-M1-R MacBook Air M1 reacondicionada Laptops Apple Reacondicionado
+LEN-TP-E14 Lenovo ThinkPad E14 Laptops Lenovo Nuevo
+HP-PAV-15 HP Pavilion 15 Laptops HP Nuevo
+DEL-INS-14 Dell Inspiron 14 (open box) Laptops Dell Open box
+IMC-M3-24 iMac 24" M3 Computadoras de escritorio Apple Nuevo
+MMN-M2 Mac mini M2 Computadoras de escritorio Apple Nuevo
+HP-AIO-24 HP All-in-One 24 Computadoras de escritorio HP Nuevo
+IPD-10-64 iPad 10a generación 64 GB Tabletas Apple Nuevo
+SGT-S9FE Galaxy Tab S9 FE Tabletas Samsung Nuevo
+APW-S9-41 Apple Watch Series 9 41 mm Relojes inteligentes Apple Nuevo
+SGW-6-40 Galaxy Watch6 40 mm Relojes inteligentes Samsung Nuevo
+APP-PRO2 AirPods Pro 2 Audífonos Apple Nuevo
+SNY-WH1000 Sony WH-1000XM5 Audífonos Sony Nuevo
+XBD-5 Redmi Buds 5 Audífonos Xiaomi Nuevo
+CRG-USBC-20 Cargador USB-C 20 W Accesorios Apple Nuevo
+ANK-PB-10K Power bank Anker 10000 mAh Accesorios Anker Nuevo
+LOG-MX3S Mouse Logitech MX Master 3S Accesorios Logitech Nuevo
+LOG-K380 Teclado Logitech K380 Accesorios Logitech Nuevo
+CBL-USBC-1M Cable USB-C a USB-C 1 m Accesorios Anker Nuevo
+FND-IPH15 Funda de silicón iPhone 15 Accesorios Apple Nuevo
+REF-BAT-IPH14 Batería iPhone 14 (refacción) Refacciones Apple Nuevo
+REF-PAN-IPH13 Pantalla iPhone 13 (refacción) Refacciones Apple Nuevo
+REF-TEC-MBA Teclado MacBook Air (refacción) Refacciones Apple Nuevo
+MON-DEL-27 Monitor Dell 27" 4K Monitores Dell Nuevo
+SSD-KNG-1TB SSD Kingston NV2 1 TB Almacenamiento Kingston Nuevo
+USB-KNG-128 Memoria USB Kingston 128 GB Almacenamiento Kingston Nuevo
+IPH-12-64 iPhone 12 64 GB (descontinuado) Celulares Apple Nuevo
+
+(34 rows affected)
+nombre apellidos puesto sucursal
+------ --------- ------ --------
+Ana López García Gerente TecnoStore Centro
+Carlos Ramírez Soto Supervisor TecnoStore Centro
+Luis Hernández Ríos Vendedor TecnoStore Centro
+María Torres Peña Vendedor TecnoStore Polanco
+Jorge Castillo Mora Vendedor TecnoStore Satélite
+Sofía Méndez Lara Técnico TecnoStore Centro
+Diego Flores Ibarra Técnico TecnoStore Polanco
+Paola Ruiz Campos Vendedor TecnoStore Polanco
+Ricardo Vega Núñez Almacenista TecnoStore Centro
+Fernanda Ortiz Salas Analista TecnoStore Centro
+Héctor Juárez Pineda Técnico TecnoStore Satélite
+Valeria Cruz Delgado Vendedor TecnoStore Satélite
+
+(12 rows affected)
+nombre_usuario rol nombre puesto
+-------------- --- ------ ------
+admin Administrador Ana Gerente
+csupervisor Supervisor Carlos Supervisor
+loperador Operador Luis Vendedor
+fconsulta Consulta Fernanda Analista
+smendez Operador Sofía Técnico
+
+(5 rows affected)
+folio fecha razon_social total
+----- ----- ------------ -----
+C-0001 2026-04-01 10:00:00.0000000 Distribuidora Ingram Micro México 268000.00
+C-0002 2026-04-06 10:00:00.0000000 CVA Comercializadora 217200.00
+C-0003 2026-04-11 10:00:00.0000000 CT Internacional del Noroeste 171300.00
+C-0004 2026-04-16 10:00:00.0000000 Exel del Norte 163800.00
+C-0005 2026-04-21 10:00:00.0000000 PCH Mayoreo 117800.00
+C-0006 2026-04-26 10:00:00.0000000 Grupo Daisytek 110000.00
+C-0007 2026-05-01 10:00:00.0000000 Tecnosinergia 215600.00
+C-0008 2026-05-06 10:00:00.0000000 Refacciones Móviles del Centro 412400.00
+C-0009 2026-05-11 10:00:00.0000000 Importadora Pacífico Tech 259000.00
+C-0010 2026-05-16 10:00:00.0000000 Mayoreo Digital Bajío 135200.00
+C-0011 2026-05-21 10:00:00.0000000 Distribuidora Ingram Micro México 103000.00
+C-0012 2026-05-26 10:00:00.0000000 CVA Comercializadora 91300.00
+
+(12 rows affected)
+nombre numero_serie grado costo_reparacion tecnico
+------ ------------ ----- ---------------- -------
+iPhone 14 128 GB reacondicionado IPH-14-128-R-001 B 800.00 Diego
+iPhone 14 128 GB reacondicionado IPH-14-128-R-002 C 1250.00 Héctor
+iPhone 14 128 GB reacondicionado IPH-14-128-R-003 A 350.00 Sofía
+iPhone 14 128 GB reacondicionado IPH-14-128-R-004 B 800.00 Diego
+iPhone 14 128 GB reacondicionado IPH-14-128-R-005 C 1250.00 Héctor
+iPhone 14 128 GB reacondicionado IPH-14-128-R-006 A 350.00 Sofía
+iPhone 14 128 GB reacondicionado IPH-14-128-R-007 B 800.00 Diego
+iPhone 14 128 GB reacondicionado IPH-14-128-R-008 C 1250.00 Héctor
+MacBook Air M1 reacondicionada MBA-M1-R-001 B 800.00 Diego
+MacBook Air M1 reacondicionada MBA-M1-R-002 C 1250.00 Héctor
+MacBook Air M1 reacondicionada MBA-M1-R-003 A 350.00 Sofía
+MacBook Air M1 reacondicionada MBA-M1-R-004 B 800.00 Diego
+MacBook Air M1 reacondicionada MBA-M1-R-005 C 1250.00 Héctor
+MacBook Air M1 reacondicionada MBA-M1-R-006 A 350.00 Sofía
+MacBook Air M1 reacondicionada MBA-M1-R-007 B 800.00 Diego
+MacBook Air M1 reacondicionada MBA-M1-R-008 C 1250.00 Héctor
+
+(16 rows affected)
+id_cliente nombre apellidos fecha_registro
+---------- ------ --------- --------------
+1 Alejandro Gómez Ruiz 2026-01-05 00:00:00.0000000
+14 Natalia Reyes Solís 2026-04-11 00:00:00.0000000
+23 Wilfrido Ibarra Soto 2026-06-13 00:00:00.0000000
+26 Zaira Montes Olvera 2026-07-04 00:00:00.0000000
+27 Adrián Salazar Gil 2026-08-01 00:00:00.0000000
+28 Brenda Figueroa Luna 2026-09-12 00:00:00.0000000
+29 Cristian Esquivel Mora 2026-10-03 00:00:00.0000000
+30 Diana Valencia Ruiz 2026-10-20 00:00:00.0000000
+
+(8 rows affected)
+sku nombre stock_actual
+--- ------ ------------
+USB-KNG-128 Memoria USB Kingston 128 GB 30
+IPH-12-64 iPhone 12 64 GB (descontinuado) 0
+
+(2 rows affected)
+nombre apellidos ordenes
+------ --------- -------
+Sofía Méndez Lara 13
+Diego Flores Ibarra 4
+Héctor Juárez Pineda 7
+
+(3 rows affected)
+folio fecha cliente vendedor sucursal producto categoria cantidad subtotal
+----- ----- ------- -------- -------- -------- --------- -------- --------
+V-01001 2026-05-02 10:04:00.0000000 Fabiola Ríos Cárdenas Luis Hernández Ríos TecnoStore Centro iPhone 15 128 GB Celulares 1 17999.00
+V-01001 2026-05-02 10:04:00.0000000 Fabiola Ríos Cárdenas Luis Hernández Ríos TecnoStore Centro MacBook Air 13" M3 Laptops 1 24999.00
+V-01001 2026-05-02 10:04:00.0000000 Fabiola Ríos Cárdenas Luis Hernández Ríos TecnoStore Centro Galaxy S24 256 GB Celulares 1 16999.00
+V-01001 2026-05-02 10:04:00.0000000 Fabiola Ríos Cárdenas Luis Hernández Ríos TecnoStore Centro Apple Watch Series 9 41 mm Relojes inteligentes 1 8999.00
+V-01002 2026-05-06 16:32:00.0000000 Fabiola Ríos Cárdenas Luis Hernández Ríos TecnoStore Centro MacBook Pro 14" M3 Laptops 1 37999.00
+V-01003 2026-05-10 14:14:00.0000000 Kevin Romero Lugo María Torres Peña TecnoStore Polanco HP Pavilion 15 Laptops 1 14999.00
+V-01003 2026-05-10 14:14:00.0000000 Kevin Romero Lugo María Torres Peña TecnoStore Polanco SSD Kingston NV2 1 TB Almacenamiento 2 2398.00
+V-01003 2026-05-10 14:14:00.0000000 Kevin Romero Lugo María Torres Peña TecnoStore Polanco HP All-in-One 24 Computadoras de escritorio 1 15999.00
+V-01003 2026-05-10 14:14:00.0000000 Kevin Romero Lugo María Torres Peña TecnoStore Polanco SSD Kingston NV2 1 TB Almacenamiento 1 1199.00
+V-01004 2026-05-14 10:23:00.0000000 Jimena Castro Bravo María Torres Peña TecnoStore Polanco Galaxy A55 128 GB Celulares 1 7999.00
+V-01004 2026-05-14 10:23:00.0000000 Jimena Castro Bravo María Torres Peña TecnoStore Polanco iPhone 14 128 GB reacondicionado Celulares 1 11499.00
+V-01005 2026-05-18 13:12:00.0000000 Patricia Mendoza Cano Paola Ruiz Campos TecnoStore Polanco Power bank Anker 10000 mAh Accesorios 1 599.00
+V-01005 2026-05-18 13:12:00.0000000 Patricia Mendoza Cano Paola Ruiz Campos TecnoStore Polanco iPhone 14 128 GB reacondicionado Celulares 1 11499.00
+V-01006 2026-05-22 15:25:00.0000000 Iván Morales Rangel Paola Ruiz Campos TecnoStore Polanco Monitor Dell 27" 4K Monitores 1 7499.00
+V-01006 2026-05-22 15:25:00.0000000 Iván Morales Rangel Paola Ruiz Campos TecnoStore Polanco iPhone 15 128 GB Celulares 1 17999.00
+V-01007 2026-05-26 15:54:00.0000000 Patricia Mendoza Cano Carlos Ramírez Soto TecnoStore Centro HP All-in-One 24 Computadoras de escritorio 1 15999.00
+V-01008 2026-05-30 10:40:00.0000000 Eduardo Sánchez Mejía Luis Hernández Ríos TecnoStore Centro Cable USB-C a USB-C 1 m Accesorios 1 249.00
+V-01009 2026-06-03 15:12:00.0000000 Ulises Peña Rivas María Torres Peña TecnoStore Polanco Redmi Buds 5 Audífonos 2 1398.00
+V-01010 2026-06-07 12:35:00.0000000 Mario Vargas Peralta Luis Hernández Ríos TecnoStore Centro iPhone 14 128 GB reacondicionado Celulares 1 11499.00
+V-01010 2026-06-07 12:35:00.0000000 Mario Vargas Peralta Luis Hernández Ríos TecnoStore Centro Batería iPhone 14 (refacción) Refacciones 3 3897.00
+V-01011 2026-06-11 17:41:00.0000000 Beatriz Navarro León Paola Ruiz Campos TecnoStore Polanco Galaxy Tab S9 FE Tabletas 1 9999.00
+V-01011 2026-06-11 17:41:00.0000000 Beatriz Navarro León Paola Ruiz Campos TecnoStore Polanco Apple Watch Series 9 41 mm Relojes inteligentes 1 8999.00
+V-01011 2026-06-11 17:41:00.0000000 Beatriz Navarro León Paola Ruiz Campos TecnoStore Polanco Teclado Logitech K380 Accesorios 1 899.00
+V-01012 2026-06-15 10:51:00.0000000 Daniela Herrera Villa María Torres Peña TecnoStore Polanco Galaxy Tab S9 FE Tabletas 1 9999.00
+V-01012 2026-06-15 10:51:00.0000000 Daniela Herrera Villa María Torres Peña TecnoStore Polanco iMac 24" M3 Computadoras de escritorio 1 32999.00
+V-01012 2026-06-15 10:51:00.0000000 Daniela Herrera Villa María Torres Peña TecnoStore Polanco Cable USB-C a USB-C 1 m Accesorios 3 747.00
+V-01012 2026-06-15 10:51:00.0000000 Daniela Herrera Villa María Torres Peña TecnoStore Polanco Funda de silicón iPhone 15 Accesorios 3 1197.00
+V-01013 2026-06-19 11:04:00.0000000 Rocío Silva Ponce Luis Hernández Ríos TecnoStore Centro iPhone 15 128 GB Celulares 1 17999.00
+V-01013 2026-06-19 11:04:00.0000000 Rocío Silva Ponce Luis Hernández Ríos TecnoStore Centro MacBook Air M1 reacondicionada Laptops 1 13999.00
+V-01013 2026-06-19 11:04:00.0000000 Rocío Silva Ponce Luis Hernández Ríos TecnoStore Centro iPad 10a generación 64 GB Tabletas 1 8499.00
+V-01013 2026-06-19 11:04:00.0000000 Rocío Silva Ponce Luis Hernández Ríos TecnoStore Centro Mouse Logitech MX Master 3S Accesorios 3 6597.00
+V-01014 2026-06-23 16:37:00.0000000 Mario Vargas Peralta Luis Hernández Ríos TecnoStore Centro MacBook Air M1 reacondicionada Laptops 1 13999.00
+V-01014 2026-06-23 16:37:00.0000000 Mario Vargas Peralta Luis Hernández Ríos TecnoStore Centro MacBook Pro 14" M3 Laptops 1 37999.00
+V-01014 2026-06-23 16:37:00.0000000 Mario Vargas Peralta Luis Hernández Ríos TecnoStore Centro Teclado Logitech K380 Accesorios 3 2697.00
+V-01015 2026-06-27 10:37:00.0000000 Jimena Castro Bravo Jorge Castillo Mora TecnoStore Satélite HP Pavilion 15 Laptops 1 14999.00
+V-01015 2026-06-27 10:37:00.0000000 Jimena Castro Bravo Jorge Castillo Mora TecnoStore Satélite Monitor Dell 27" 4K Monitores 1 7499.00
+V-01015 2026-06-27 10:37:00.0000000 Jimena Castro Bravo Jorge Castillo Mora TecnoStore Satélite HP All-in-One 24 Computadoras de escritorio 1 15999.00
+V-01016 2026-07-01 17:04:00.0000000 Hilda Aguilar Fuentes María Torres Peña TecnoStore Polanco SSD Kingston NV2 1 TB Almacenamiento 1 1199.00
+V-01016 2026-07-01 17:04:00.0000000 Hilda Aguilar Fuentes María Torres Peña TecnoStore Polanco Teclado Logitech K380 Accesorios 2 1798.00
+V-01017 2026-07-05 10:28:00.0000000 Hilda Aguilar Fuentes María Torres Peña TecnoStore Polanco Sony WH-1000XM5 Audífonos 1 6999.00
+V-01017 2026-07-05 10:28:00.0000000 Hilda Aguilar Fuentes María Torres Peña TecnoStore Polanco MacBook Air M1 reacondicionada Laptops 1 13999.00
+V-01017 2026-07-05 10:28:00.0000000 Hilda Aguilar Fuentes María Torres Peña TecnoStore Polanco Teclado MacBook Air (refacción) Refacciones 1 1999.00
+V-01017 2026-07-05 10:28:00.0000000 Hilda Aguilar Fuentes María Torres Peña TecnoStore Polanco Power bank Anker 10000 mAh Accesorios 2 1198.00
+V-01018 2026-07-09 13:30:00.0000000 Jimena Castro Bravo Luis Hernández Ríos TecnoStore Centro Teclado MacBook Air (refacción) Refacciones 2 3998.00
+V-01018 2026-07-09 13:30:00.0000000 Jimena Castro Bravo Luis Hernández Ríos TecnoStore Centro Teclado Logitech K380 Accesorios 1 899.00
+V-01018 2026-07-09 13:30:00.0000000 Jimena Castro Bravo Luis Hernández Ríos TecnoStore Centro AirPods Pro 2 Audífonos 2 9998.00
+V-01019 2026-07-13 14:23:00.0000000 Eduardo Sánchez Mejía Carlos Ramírez Soto TecnoStore Centro MacBook Air 13" M3 Laptops 1 24999.00
+V-01019 2026-07-13 14:23:00.0000000 Eduardo Sánchez Mejía Carlos Ramírez Soto TecnoStore Centro Teclado Logitech K380 Accesorios 2 1798.00
+V-01019 2026-07-13 14:23:00.0000000 Eduardo Sánchez Mejía Carlos Ramírez Soto TecnoStore Centro MacBook Air M1 reacondicionada Laptops 1 13999.00
+V-01020 2026-07-17 16:34:00.0000000 Verónica Luna Maldonado Jorge Castillo Mora TecnoStore Satélite Galaxy A55 128 GB Celulares 1 7999.00
+V-01020 2026-07-17 16:34:00.0000000 Verónica Luna Maldonado Jorge Castillo Mora TecnoStore Satélite Monitor Dell 27" 4K Monitores 1 7499.00
+V-01021 2026-07-21 13:49:00.0000000 César Domínguez Paz Jorge Castillo Mora TecnoStore Satélite Cable USB-C a USB-C 1 m Accesorios 3 747.00
+V-01021 2026-07-21 13:49:00.0000000 César Domínguez Paz Jorge Castillo Mora TecnoStore Satélite Apple Watch Series 9 41 mm Relojes inteligentes 1 8999.00
+V-01021 2026-07-21 13:49:00.0000000 César Domínguez Paz Jorge Castillo Mora TecnoStore Satélite Pantalla iPhone 13 (refacción) Refacciones 1 2899.00
+V-01022 2026-07-25 15:42:00.0000000 Patricia Mendoza Cano María Torres Peña TecnoStore Polanco Batería iPhone 14 (refacción) Refacciones 3 3897.00
+V-01022 2026-07-25 15:42:00.0000000 Patricia Mendoza Cano María Torres Peña TecnoStore Polanco Redmi Note 13 256 GB Celulares 1 5499.00
+V-01022 2026-07-25 15:42:00.0000000 Patricia Mendoza Cano María Torres Peña TecnoStore Polanco Redmi Note 13 256 GB Celulares 1 5499.00
+V-01023 2026-07-29 13:20:00.0000000 Óscar Guzmán Tapia María Torres Peña TecnoStore Polanco iPhone 14 128 GB reacondicionado Celulares 1 11499.00
+V-01023 2026-07-29 13:20:00.0000000 Óscar Guzmán Tapia María Torres Peña TecnoStore Polanco MacBook Air M1 reacondicionada Laptops 1 13999.00
+V-01023 2026-07-29 13:20:00.0000000 Óscar Guzmán Tapia María Torres Peña TecnoStore Polanco iPhone 15 128 GB Celulares 1 17999.00
+V-01024 2026-08-02 14:55:00.0000000 Yahir Rosales Vera Luis Hernández Ríos TecnoStore Centro Sony WH-1000XM5 Audífonos 2 13998.00
+V-01024 2026-08-02 14:55:00.0000000 Yahir Rosales Vera Luis Hernández Ríos TecnoStore Centro iPhone 14 128 GB reacondicionado Celulares 1 11499.00
+V-01025 2026-08-06 14:04:00.0000000 Gerardo Medina Ochoa Paola Ruiz Campos TecnoStore Polanco Apple Watch Series 9 41 mm Relojes inteligentes 1 8999.00
+V-01025 2026-08-06 14:04:00.0000000 Gerardo Medina Ochoa Paola Ruiz Campos TecnoStore Polanco MacBook Air 13" M3 Laptops 1 24999.00
+V-01026 2026-08-10 17:05:00.0000000 Laura Jiménez Arce Jorge Castillo Mora TecnoStore Satélite HP All-in-One 24 Computadoras de escritorio 1 15999.00
+V-01026 2026-08-10 17:05:00.0000000 Laura Jiménez Arce Jorge Castillo Mora TecnoStore Satélite Monitor Dell 27" 4K Monitores 1 7499.00
+V-01026 2026-08-10 17:05:00.0000000 Laura Jiménez Arce Jorge Castillo Mora TecnoStore Satélite iPhone 14 128 GB reacondicionado Celulares 1 11499.00
+V-01027 2026-08-14 12:54:00.0000000 Beatriz Navarro León Paola Ruiz Campos TecnoStore Polanco Teclado MacBook Air (refacción) Refacciones 3 5997.00
+V-01027 2026-08-14 12:54:00.0000000 Beatriz Navarro León Paola Ruiz Campos TecnoStore Polanco HP Pavilion 15 Laptops 1 14999.00
+V-01027 2026-08-14 12:54:00.0000000 Beatriz Navarro León Paola Ruiz Campos TecnoStore Polanco AirPods Pro 2 Audífonos 2 9998.00
+V-01027 2026-08-14 12:54:00.0000000 Beatriz Navarro León Paola Ruiz Campos TecnoStore Polanco iMac 24" M3 Computadoras de escritorio 1 32999.00
+V-01028 2026-08-18 15:08:00.0000000 Ulises Peña Rivas Luis Hernández Ríos TecnoStore Centro Redmi Note 13 256 GB Celulares 1 5499.00
+V-01029 2026-08-22 13:45:00.0000000 Samuel Delgado Rosas María Torres Peña TecnoStore Polanco Sony WH-1000XM5 Audífonos 3 20997.00
+V-01029 2026-08-22 13:45:00.0000000 Samuel Delgado Rosas María Torres Peña TecnoStore Polanco Mac mini M2 Computadoras de escritorio 1 12999.00
+V-01029 2026-08-22 13:45:00.0000000 Samuel Delgado Rosas María Torres Peña TecnoStore Polanco Dell Inspiron 14 (open box) Laptops 1 12999.00
+V-01030 2026-08-26 12:12:00.0000000 Rocío Silva Ponce Paola Ruiz Campos TecnoStore Polanco MacBook Air 13" M3 Laptops 1 24999.00
+V-01030 2026-08-26 12:12:00.0000000 Rocío Silva Ponce Paola Ruiz Campos TecnoStore Polanco Mouse Logitech MX Master 3S Accesorios 1 2199.00
+V-01030 2026-08-26 12:12:00.0000000 Rocío Silva Ponce Paola Ruiz Campos TecnoStore Polanco MacBook Air 13" M3 Laptops 1 24999.00
+V-01030 2026-08-26 12:12:00.0000000 Rocío Silva Ponce Paola Ruiz Campos TecnoStore Polanco Galaxy Tab S9 FE Tabletas 1 9999.00
+V-01031 2026-08-30 13:13:00.0000000 Samuel Delgado Rosas Carlos Ramírez Soto TecnoStore Centro Funda de silicón iPhone 15 Accesorios 3 1197.00
+V-01031 2026-08-30 13:13:00.0000000 Samuel Delgado Rosas Carlos Ramírez Soto TecnoStore Centro HP Pavilion 15 Laptops 1 14999.00
+V-01031 2026-08-30 13:13:00.0000000 Samuel Delgado Rosas Carlos Ramírez Soto TecnoStore Centro Mouse Logitech MX Master 3S Accesorios 3 6597.00
+V-01031 2026-08-30 13:13:00.0000000 Samuel Delgado Rosas Carlos Ramírez Soto TecnoStore Centro MacBook Air 13" M3 Laptops 1 24999.00
+V-01032 2026-09-03 10:53:00.0000000 Beatriz Navarro León Carlos Ramírez Soto TecnoStore Centro Batería iPhone 14 (refacción) Refacciones 1 1299.00
+V-01032 2026-09-03 10:53:00.0000000 Beatriz Navarro León Carlos Ramírez Soto TecnoStore Centro Sony WH-1000XM5 Audífonos 1 6999.00
+V-01033 2026-09-07 17:14:00.0000000 Beatriz Navarro León Luis Hernández Ríos TecnoStore Centro Teclado MacBook Air (refacción) Refacciones 3 5997.00
+V-01033 2026-09-07 17:14:00.0000000 Beatriz Navarro León Luis Hernández Ríos TecnoStore Centro Pantalla iPhone 13 (refacción) Refacciones 3 8697.00
+V-01033 2026-09-07 17:14:00.0000000 Beatriz Navarro León Luis Hernández Ríos TecnoStore Centro iPhone 15 128 GB Celulares 1 17999.00
+V-01033 2026-09-07 17:14:00.0000000 Beatriz Navarro León Luis Hernández Ríos TecnoStore Centro iPhone 14 128 GB reacondicionado Celulares 1 11499.00
+V-01034 2026-09-11 12:28:00.0000000 Fabiola Ríos Cárdenas María Torres Peña TecnoStore Polanco HP Pavilion 15 Laptops 1 14999.00
+V-01034 2026-09-11 12:28:00.0000000 Fabiola Ríos Cárdenas María Torres Peña TecnoStore Polanco Mouse Logitech MX Master 3S Accesorios 2 4398.00
+V-01034 2026-09-11 12:28:00.0000000 Fabiola Ríos Cárdenas María Torres Peña TecnoStore Polanco Teclado Logitech K380 Accesorios 3 2697.00
+V-01035 2026-09-15 11:36:00.0000000 Laura Jiménez Arce Jorge Castillo Mora TecnoStore Satélite Galaxy Watch6 40 mm Relojes inteligentes 1 5999.00
+V-01036 2026-09-19 13:26:00.0000000 Yahir Rosales Vera Luis Hernández Ríos TecnoStore Centro Funda de silicón iPhone 15 Accesorios 1 399.00
+V-01036 2026-09-19 13:26:00.0000000 Yahir Rosales Vera Luis Hernández Ríos TecnoStore Centro Dell Inspiron 14 (open box) Laptops 1 12999.00
+V-01037 2026-09-23 14:26:00.0000000 Jimena Castro Bravo Carlos Ramírez Soto TecnoStore Centro Sony WH-1000XM5 Audífonos 2 13998.00
+V-01037 2026-09-23 14:26:00.0000000 Jimena Castro Bravo Carlos Ramírez Soto TecnoStore Centro Teclado Logitech K380 Accesorios 3 2697.00
+V-01037 2026-09-23 14:26:00.0000000 Jimena Castro Bravo Carlos Ramírez Soto TecnoStore Centro Mac mini M2 Computadoras de escritorio 1 12999.00
+V-01037 2026-09-23 14:26:00.0000000 Jimena Castro Bravo Carlos Ramírez Soto TecnoStore Centro Lenovo ThinkPad E14 Laptops 1 18499.00
+V-01038 2026-09-27 11:59:00.0000000 Beatriz Navarro León Luis Hernández Ríos TecnoStore Centro Galaxy Watch6 40 mm Relojes inteligentes 1 5999.00
+V-01038 2026-09-27 11:59:00.0000000 Beatriz Navarro León Luis Hernández Ríos TecnoStore Centro SSD Kingston NV2 1 TB Almacenamiento 1 1199.00
+V-01038 2026-09-27 11:59:00.0000000 Beatriz Navarro León Luis Hernández Ríos TecnoStore Centro Galaxy Tab S9 FE Tabletas 1 9999.00
+V-01039 2026-10-01 16:54:00.0000000 Ximena Campos Toledo Luis Hernández Ríos TecnoStore Centro Cable USB-C a USB-C 1 m Accesorios 3 747.00
+V-01039 2026-10-01 16:54:00.0000000 Ximena Campos Toledo Luis Hernández Ríos TecnoStore Centro AirPods Pro 2 Audífonos 1 4999.00
+V-01039 2026-10-01 16:54:00.0000000 Ximena Campos Toledo Luis Hernández Ríos TecnoStore Centro Redmi Note 13 256 GB Celulares 1 5499.00
+V-01039 2026-10-01 16:54:00.0000000 Ximena Campos Toledo Luis Hernández Ríos TecnoStore Centro Redmi Buds 5 Audífonos 3 2097.00
+V-01040 2026-10-05 11:12:00.0000000 Rocío Silva Ponce María Torres Peña TecnoStore Polanco Power bank Anker 10000 mAh Accesorios 3 1797.00
+V-01040 2026-10-05 11:12:00.0000000 Rocío Silva Ponce María Torres Peña TecnoStore Polanco Cargador USB-C 20 W Accesorios 2 898.00
+V-01041 2026-10-09 10:59:00.0000000 Daniela Herrera Villa Luis Hernández Ríos TecnoStore Centro Funda de silicón iPhone 15 Accesorios 2 798.00
+V-01041 2026-10-09 10:59:00.0000000 Daniela Herrera Villa Luis Hernández Ríos TecnoStore Centro Galaxy Tab S9 FE Tabletas 1 9999.00
+V-01041 2026-10-09 10:59:00.0000000 Daniela Herrera Villa Luis Hernández Ríos TecnoStore Centro Redmi Note 13 256 GB Celulares 1 5499.00
+V-01042 2026-10-13 14:05:00.0000000 Eduardo Sánchez Mejía Luis Hernández Ríos TecnoStore Centro Pantalla iPhone 13 (refacción) Refacciones 1 2899.00
+V-01042 2026-10-13 14:05:00.0000000 Eduardo Sánchez Mejía Luis Hernández Ríos TecnoStore Centro Funda de silicón iPhone 15 Accesorios 2 798.00
+V-01043 2026-10-17 12:32:00.0000000 Eduardo Sánchez Mejía Jorge Castillo Mora TecnoStore Satélite MacBook Air M1 reacondicionada Laptops 1 13999.00
+V-01043 2026-10-17 12:32:00.0000000 Eduardo Sánchez Mejía Jorge Castillo Mora TecnoStore Satélite MacBook Air M1 reacondicionada Laptops 1 13999.00
+V-01043 2026-10-17 12:32:00.0000000 Eduardo Sánchez Mejía Jorge Castillo Mora TecnoStore Satélite iPad 10a generación 64 GB Tabletas 1 8499.00
+V-01044 2026-10-21 13:57:00.0000000 Tania Cortés Ávila María Torres Peña TecnoStore Polanco Galaxy Tab S9 FE Tabletas 1 9999.00
+V-01044 2026-10-21 13:57:00.0000000 Tania Cortés Ávila María Torres Peña TecnoStore Polanco Power bank Anker 10000 mAh Accesorios 1 599.00
+V-01045 2026-10-25 10:18:00.0000000 Quetzal Ortega Nava María Torres Peña TecnoStore Polanco AirPods Pro 2 Audífonos 3 14997.00
+V-01045 2026-10-25 10:18:00.0000000 Quetzal Ortega Nava María Torres Peña TecnoStore Polanco Monitor Dell 27" 4K Monitores 1 7499.00
+V-01045 2026-10-25 10:18:00.0000000 Quetzal Ortega Nava María Torres Peña TecnoStore Polanco SSD Kingston NV2 1 TB Almacenamiento 1 1199.00
+V-01045 2026-10-25 10:18:00.0000000 Quetzal Ortega Nava María Torres Peña TecnoStore Polanco Power bank Anker 10000 mAh Accesorios 3 1797.00
+
+(122 rows affected)
+cliente producto numero_serie fecha_fin folio
+------- -------- ------------ --------- -----
+Fabiola Ríos Cárdenas iPhone 15 128 GB IPH-15-128-001 2027-05-02 V-01001
+Fabiola Ríos Cárdenas MacBook Air 13" M3 MBA-M3-13-001 2027-05-02 V-01001
+Fabiola Ríos Cárdenas Galaxy S24 256 GB SGS-24-256-001 2027-05-02 V-01001
+Fabiola Ríos Cárdenas Apple Watch Series 9 41 mm APW-S9-41-001 2027-05-02 V-01001
+Fabiola Ríos Cárdenas MacBook Pro 14" M3 MBP-M3-14-001 2027-05-06 V-01002
+Kevin Romero Lugo HP Pavilion 15 HP-PAV-15-001 2027-05-10 V-01003
+Kevin Romero Lugo HP All-in-One 24 HP-AIO-24-001 2027-05-10 V-01003
+Jimena Castro Bravo Galaxy A55 128 GB SGA-55-128-001 2027-05-14 V-01004
+Jimena Castro Bravo iPhone 14 128 GB reacondicionado IPH-14-128-R-001 2026-11-14 V-01004
+Patricia Mendoza Cano iPhone 14 128 GB reacondicionado IPH-14-128-R-002 2026-11-18 V-01005
+Iván Morales Rangel Monitor Dell 27" 4K MON-DEL-27-001 2027-05-22 V-01006
+Iván Morales Rangel iPhone 15 128 GB IPH-15-128-002 2027-05-22 V-01006
+Patricia Mendoza Cano HP All-in-One 24 HP-AIO-24-002 2027-05-26 V-01007
+Mario Vargas Peralta iPhone 14 128 GB reacondicionado IPH-14-128-R-003 2026-12-07 V-01010
+Beatriz Navarro León Galaxy Tab S9 FE SGT-S9FE-001 2027-06-11 V-01011
+Beatriz Navarro León Apple Watch Series 9 41 mm APW-S9-41-002 2027-06-11 V-01011
+Daniela Herrera Villa Galaxy Tab S9 FE SGT-S9FE-002 2027-06-15 V-01012
+Daniela Herrera Villa iMac 24" M3 IMC-M3-24-001 2027-06-15 V-01012
+Rocío Silva Ponce iPhone 15 128 GB IPH-15-128-003 2027-06-19 V-01013
+Rocío Silva Ponce MacBook Air M1 reacondicionada MBA-M1-R-001 2026-12-19 V-01013
+Rocío Silva Ponce iPad 10a generación 64 GB IPD-10-64-001 2027-06-19 V-01013
+Mario Vargas Peralta MacBook Air M1 reacondicionada MBA-M1-R-002 2026-12-23 V-01014
+Mario Vargas Peralta MacBook Pro 14" M3 MBP-M3-14-002 2027-06-23 V-01014
+Jimena Castro Bravo HP Pavilion 15 HP-PAV-15-002 2027-06-27 V-01015
+Jimena Castro Bravo Monitor Dell 27" 4K MON-DEL-27-002 2027-06-27 V-01015
+Jimena Castro Bravo HP All-in-One 24 HP-AIO-24-003 2027-06-27 V-01015
+Hilda Aguilar Fuentes MacBook Air M1 reacondicionada MBA-M1-R-003 2027-01-05 V-01017
+Eduardo Sánchez Mejía MacBook Air 13" M3 MBA-M3-13-002 2027-07-13 V-01019
+Eduardo Sánchez Mejía MacBook Air M1 reacondicionada MBA-M1-R-004 2027-01-13 V-01019
+Verónica Luna Maldonado Galaxy A55 128 GB SGA-55-128-002 2027-07-17 V-01020
+Verónica Luna Maldonado Monitor Dell 27" 4K MON-DEL-27-003 2027-07-17 V-01020
+César Domínguez Paz Apple Watch Series 9 41 mm APW-S9-41-003 2027-07-21 V-01021
+Patricia Mendoza Cano Redmi Note 13 256 GB XRN-13-256-001 2027-07-25 V-01022
+Patricia Mendoza Cano Redmi Note 13 256 GB XRN-13-256-002 2027-07-25 V-01022
+Óscar Guzmán Tapia iPhone 14 128 GB reacondicionado IPH-14-128-R-004 2027-01-29 V-01023
+Óscar Guzmán Tapia MacBook Air M1 reacondicionada MBA-M1-R-005 2027-01-29 V-01023
+Óscar Guzmán Tapia iPhone 15 128 GB IPH-15-128-004 2027-07-29 V-01023
+Yahir Rosales Vera iPhone 14 128 GB reacondicionado IPH-14-128-R-005 2027-02-02 V-01024
+Gerardo Medina Ochoa Apple Watch Series 9 41 mm APW-S9-41-004 2027-08-06 V-01025
+Gerardo Medina Ochoa MacBook Air 13" M3 MBA-M3-13-003 2027-08-06 V-01025
+Laura Jiménez Arce HP All-in-One 24 HP-AIO-24-004 2027-08-10 V-01026
+Laura Jiménez Arce Monitor Dell 27" 4K MON-DEL-27-004 2027-08-10 V-01026
+Laura Jiménez Arce iPhone 14 128 GB reacondicionado IPH-14-128-R-006 2027-02-10 V-01026
+Ulises Peña Rivas Redmi Note 13 256 GB XRN-13-256-003 2027-08-18 V-01028
+Samuel Delgado Rosas Mac mini M2 MMN-M2-001 2027-08-22 V-01029
+Samuel Delgado Rosas Dell Inspiron 14 (open box) DEL-INS-14-001 2027-08-22 V-01029
+Rocío Silva Ponce MacBook Air 13" M3 MBA-M3-13-004 2027-08-26 V-01030
+Rocío Silva Ponce MacBook Air 13" M3 MBA-M3-13-005 2027-08-26 V-01030
+Rocío Silva Ponce Galaxy Tab S9 FE SGT-S9FE-003 2027-08-26 V-01030
+Samuel Delgado Rosas HP Pavilion 15 HP-PAV-15-004 2027-08-30 V-01031
+Samuel Delgado Rosas MacBook Air 13" M3 MBA-M3-13-006 2027-08-30 V-01031
+Beatriz Navarro León iPhone 15 128 GB IPH-15-128-005 2027-09-07 V-01033
+Beatriz Navarro León iPhone 14 128 GB reacondicionado IPH-14-128-R-007 2027-03-07 V-01033
+Fabiola Ríos Cárdenas HP Pavilion 15 HP-PAV-15-005 2027-09-11 V-01034
+Laura Jiménez Arce Galaxy Watch6 40 mm SGW-6-40-001 2027-09-15 V-01035
+Yahir Rosales Vera Dell Inspiron 14 (open box) DEL-INS-14-002 2027-09-19 V-01036
+Jimena Castro Bravo Mac mini M2 MMN-M2-002 2027-09-23 V-01037
+Jimena Castro Bravo Lenovo ThinkPad E14 LEN-TP-E14-001 2027-09-23 V-01037
+Beatriz Navarro León Galaxy Watch6 40 mm SGW-6-40-002 2027-09-27 V-01038
+Beatriz Navarro León Galaxy Tab S9 FE SGT-S9FE-004 2027-09-27 V-01038
+Ximena Campos Toledo Redmi Note 13 256 GB XRN-13-256-004 2027-10-01 V-01039
+Daniela Herrera Villa Galaxy Tab S9 FE SGT-S9FE-005 2027-10-09 V-01041
+Daniela Herrera Villa Redmi Note 13 256 GB XRN-13-256-005 2027-10-09 V-01041
+Eduardo Sánchez Mejía MacBook Air M1 reacondicionada MBA-M1-R-006 2027-04-17 V-01043
+Eduardo Sánchez Mejía MacBook Air M1 reacondicionada MBA-M1-R-007 2027-04-17 V-01043
+Eduardo Sánchez Mejía iPad 10a generación 64 GB IPD-10-64-002 2027-10-17 V-01043
+Tania Cortés Ávila Galaxy Tab S9 FE SGT-S9FE-006 2027-10-21 V-01044
+Quetzal Ortega Nava Monitor Dell 27" 4K MON-DEL-27-005 2027-10-25 V-01045
+
+(68 rows affected)
+sku nombre precio_venta
+--- ------ ------------
+MBP-M3-14 MacBook Pro 14" M3 37999.00
+IMC-M3-24 iMac 24" M3 32999.00
+MBA-M3-13 MacBook Air 13" M3 24999.00
+LEN-TP-E14 Lenovo ThinkPad E14 18499.00
+IPH-15-128 iPhone 15 128 GB 17999.00
+SGS-24-256 Galaxy S24 256 GB 16999.00
+HP-AIO-24 HP All-in-One 24 15999.00
+HP-PAV-15 HP Pavilion 15 14999.00
+MBA-M1-R MacBook Air M1 reacondicionada 13999.00
+DEL-INS-14 Dell Inspiron 14 (open box) 12999.00
+MMN-M2 Mac mini M2 12999.00
+IPH-14-128-R iPhone 14 128 GB reacondicionado 11499.00
+SGT-S9FE Galaxy Tab S9 FE 9999.00
+IPH-12-64 iPhone 12 64 GB (descontinuado) 9999.00
+
+(14 rows affected)
+nombre apellidos
+------ ---------
+Beatriz Navarro León
+Eduardo Sánchez Mejía
+Fabiola Ríos Cárdenas
+Gerardo Medina Ochoa
+Hilda Aguilar Fuentes
+Jimena Castro Bravo
+Kevin Romero Lugo
+Mario Vargas Peralta
+Óscar Guzmán Tapia
+Rocío Silva Ponce
+Samuel Delgado Rosas
+Yahir Rosales Vera
+
+(12 rows affected)
+id_cliente folio total
+---------- ----- -----
+25 V-01024 25497.00
+24 V-01039 13342.00
+22 V-01020 15498.00
+21 V-01028 5224.05
+20 V-01044 10598.00
+19 V-01031 47792.00
+18 V-01030 62196.00
+17 V-01045 25492.00
+16 V-01007 15199.05
+15 V-01023 43497.00
+13 V-01014 51960.25
+12 V-01026 34997.00
+11 V-01003 34595.00
+10 V-01037 48193.00
+9 V-01006 25498.00
+8 V-01017 24195.00
+7 V-01025 33998.00
+6 V-01001 68996.00
+5 V-01019 40796.00
+4 V-01012 44942.00
+3 V-01021 12012.75
+2 V-01027 63993.00
+
+(22 rows affected)
+sku nombre precio_venta id_categoria
+--- ------ ------------ ------------
+IPH-15-128 iPhone 15 128 GB 17999.00 1
+SGS-24-256 Galaxy S24 256 GB 16999.00 1
+MBA-M3-13 MacBook Air 13" M3 24999.00 2
+MBP-M3-14 MacBook Pro 14" M3 37999.00 2
+IMC-M3-24 iMac 24" M3 32999.00 3
+SGT-S9FE Galaxy Tab S9 FE 9999.00 4
+APW-S9-41 Apple Watch Series 9 41 mm 8999.00 5
+APP-PRO2 AirPods Pro 2 4999.00 6
+SNY-WH1000 Sony WH-1000XM5 6999.00 6
+LOG-MX3S Mouse Logitech MX Master 3S 2199.00 7
+LOG-K380 Teclado Logitech K380 899.00 7
+REF-PAN-IPH13 Pantalla iPhone 13 (refacción) 2899.00 8
+SSD-KNG-1TB SSD Kingston NV2 1 TB 1199.00 10
+
+(13 rows affected)
+contacto correo tipo
+-------- ------ ----
+Adrián Salazar Gil adrian.salazar@correo.mx Cliente
+Alejandro Gómez Ruiz alejandro.gomez@correo.mx Cliente
+Beatriz Navarro León beatriz.navarro@correo.mx Cliente
+Brenda Figueroa Luna brenda.figueroa@correo.mx Cliente
+César Domínguez Paz cesar.dominguez@correo.mx Cliente
+Cristian Esquivel Mora cristian.esquivel@correo.mx Cliente
+Daniela Herrera Villa daniela.herrera@correo.mx Cliente
+Diana Valencia Ruiz diana.valencia@correo.mx Cliente
+Eduardo Sánchez Mejía eduardo.sanchez@correo.mx Cliente
+Fabiola Ríos Cárdenas fabiola.rios@correo.mx Cliente
+Gerardo Medina Ochoa gerardo.medina@correo.mx Cliente
+Hilda Aguilar Fuentes hilda.aguilar@correo.mx Cliente
+Iván Morales Rangel ivan.morales@correo.mx Cliente
+Jimena Castro Bravo jimena.castro@correo.mx Cliente
+Kevin Romero Lugo kevin.romero@correo.mx Cliente
+Laura Jiménez Arce laura.jimenez@correo.mx Cliente
+Mario Vargas Peralta mario.vargas@correo.mx Cliente
+Natalia Reyes Solís natalia.reyes@correo.mx Cliente
+Óscar Guzmán Tapia oscar.guzman@correo.mx Cliente
+Patricia Mendoza Cano patricia.mendoza@correo.mx Cliente
+Quetzal Ortega Nava quetzal.ortega@correo.mx Cliente
+Rocío Silva Ponce rocio.silva@correo.mx Cliente
+Samuel Delgado Rosas samuel.delgado@correo.mx Cliente
+Tania Cortés Ávila tania.cortes@correo.mx Cliente
+Ulises Peña Rivas ulises.pena@correo.mx Cliente
+Verónica Luna Maldonado veronica.luna@correo.mx Cliente
+Wilfrido Ibarra Soto wilfrido.ibarra@correo.mx Cliente
+Ximena Campos Toledo ximena.campos@correo.mx Cliente
+Yahir Rosales Vera yahir.rosales@correo.mx Cliente
+Zaira Montes Olvera zaira.montes@correo.mx Cliente
+CT Internacional del Noroeste compras@ct.example.mx Proveedor
+CVA Comercializadora pedidos@cva.example.mx Proveedor
+Distribuidora Ingram Micro México ventas@ingram.example.mx Proveedor
+Exel del Norte ventas@exel.example.mx Proveedor
+Grupo Daisytek ventas@daisytek.example.mx Proveedor
+Importadora Pacífico Tech import@pacificotech.example.mx Proveedor
+Mayoreo Digital Bajío ventas@mdbajio.example.mx Proveedor
+PCH Mayoreo contacto@pch.example.mx Proveedor
+Refacciones Móviles del Centro ventas@refmoviles.example.mx Proveedor
+Tecnosinergia pedidos@tecnosinergia.example.mx Proveedor
+
+(40 rows affected)
+tipo fecha id_producto cantidad
+---- ----- ----------- --------
+Entrada 2026-04-01 10:00:00.0000000 12 8
+Entrada 2026-04-01 10:00:00.0000000 24 30
+Entrada 2026-04-06 10:00:00.0000000 1 8
+Entrada 2026-04-06 10:00:00.0000000 13 8
+Entrada 2026-04-06 10:00:00.0000000 25 30
+Entrada 2026-04-11 10:00:00.0000000 2 8
+Entrada 2026-04-11 10:00:00.0000000 14 8
+Entrada 2026-04-11 10:00:00.0000000 26 30
+Entrada 2026-04-16 10:00:00.0000000 3 8
+Entrada 2026-04-16 10:00:00.0000000 15 8
+Entrada 2026-04-16 10:00:00.0000000 27 30
+Entrada 2026-04-21 10:00:00.0000000 4 8
+Entrada 2026-04-21 10:00:00.0000000 16 8
+Entrada 2026-04-21 10:00:00.0000000 28 12
+Entrada 2026-04-26 10:00:00.0000000 5 8
+Entrada 2026-04-26 10:00:00.0000000 17 8
+Entrada 2026-04-26 10:00:00.0000000 29 12
+Entrada 2026-05-01 10:00:00.0000000 6 8
+Entrada 2026-05-01 10:00:00.0000000 18 8
+Entrada 2026-05-01 10:00:00.0000000 30 12
+Salida 2026-05-02 10:04:00.0000000 1 -1
+Salida 2026-05-02 10:04:00.0000000 6 -1
+Salida 2026-05-02 10:04:00.0000000 3 -1
+Salida 2026-05-02 10:04:00.0000000 17 -1
+Entrada 2026-05-06 10:00:00.0000000 7 8
+Entrada 2026-05-06 10:00:00.0000000 19 30
+Entrada 2026-05-06 10:00:00.0000000 31 8
+Salida 2026-05-06 16:32:00.0000000 7 -1
+Salida 2026-05-10 14:14:00.0000000 10 -1
+Salida 2026-05-10 14:14:00.0000000 32 -2
+Salida 2026-05-10 14:14:00.0000000 14 -1
+Salida 2026-05-10 14:14:00.0000000 32 -1
+Entrada 2026-05-11 10:00:00.0000000 8 8
+Entrada 2026-05-11 10:00:00.0000000 20 30
+Entrada 2026-05-11 10:00:00.0000000 32 30
+Salida 2026-05-14 10:23:00.0000000 4 -1
+Salida 2026-05-14 10:23:00.0000000 2 -1
+Entrada 2026-05-16 10:00:00.0000000 9 8
+Entrada 2026-05-16 10:00:00.0000000 21 30
+Entrada 2026-05-16 10:00:00.0000000 33 30
+Salida 2026-05-18 13:12:00.0000000 23 -1
+Salida 2026-05-18 13:12:00.0000000 2 -1
+Entrada 2026-05-21 10:00:00.0000000 10 8
+Entrada 2026-05-21 10:00:00.0000000 22 30
+Salida 2026-05-22 15:25:00.0000000 31 -1
+Salida 2026-05-22 15:25:00.0000000 1 -1
+Entrada 2026-05-26 10:00:00.0000000 11 8
+Entrada 2026-05-26 10:00:00.0000000 23 30
+Salida 2026-05-26 15:54:00.0000000 14 -1
+Salida 2026-05-30 10:40:00.0000000 26 -1
+Salida 2026-06-07 12:35:00.0000000 2 -1
+Salida 2026-06-07 12:35:00.0000000 28 -3
+Salida 2026-06-11 17:41:00.0000000 16 -1
+Salida 2026-06-11 17:41:00.0000000 17 -1
+Salida 2026-06-11 17:41:00.0000000 25 -1
+Salida 2026-06-15 10:51:00.0000000 16 -1
+Salida 2026-06-15 10:51:00.0000000 12 -1
+Salida 2026-06-15 10:51:00.0000000 26 -3
+Salida 2026-06-15 10:51:00.0000000 27 -3
+Salida 2026-06-19 11:04:00.0000000 1 -1
+Salida 2026-06-19 11:04:00.0000000 8 -1
+Salida 2026-06-19 11:04:00.0000000 15 -1
+Salida 2026-06-19 11:04:00.0000000 24 -3
+Salida 2026-06-23 16:37:00.0000000 8 -1
+Salida 2026-06-23 16:37:00.0000000 7 -1
+Salida 2026-06-23 16:37:00.0000000 25 -3
+Salida 2026-06-27 10:37:00.0000000 10 -1
+Salida 2026-06-27 10:37:00.0000000 31 -1
+Salida 2026-06-27 10:37:00.0000000 14 -1
+Salida 2026-07-01 17:04:00.0000000 32 -1
+Salida 2026-07-01 17:04:00.0000000 25 -2
+Salida 2026-07-05 10:28:00.0000000 20 -1
+Salida 2026-07-05 10:28:00.0000000 8 -1
+Salida 2026-07-05 10:28:00.0000000 30 -1
+Salida 2026-07-05 10:28:00.0000000 23 -2
+Salida 2026-07-09 13:30:00.0000000 30 -2
+Salida 2026-07-09 13:30:00.0000000 25 -1
+Salida 2026-07-09 13:30:00.0000000 19 -2
+Salida 2026-07-13 14:23:00.0000000 6 -1
+Salida 2026-07-13 14:23:00.0000000 25 -2
+Salida 2026-07-13 14:23:00.0000000 8 -1
+Salida 2026-07-17 16:34:00.0000000 4 -1
+Salida 2026-07-17 16:34:00.0000000 31 -1
+Salida 2026-07-21 13:49:00.0000000 26 -3
+Salida 2026-07-21 13:49:00.0000000 17 -1
+Salida 2026-07-21 13:49:00.0000000 29 -1
+Salida 2026-07-25 15:42:00.0000000 28 -3
+Salida 2026-07-25 15:42:00.0000000 5 -1
+Salida 2026-07-25 15:42:00.0000000 5 -1
+Salida 2026-07-29 13:20:00.0000000 2 -1
+Salida 2026-07-29 13:20:00.0000000 8 -1
+Salida 2026-07-29 13:20:00.0000000 1 -1
+Salida 2026-08-02 14:55:00.0000000 20 -2
+Salida 2026-08-02 14:55:00.0000000 2 -1
+Salida 2026-08-06 14:04:00.0000000 17 -1
+Salida 2026-08-06 14:04:00.0000000 6 -1
+Salida 2026-08-10 17:05:00.0000000 14 -1
+Salida 2026-08-10 17:05:00.0000000 31 -1
+Salida 2026-08-10 17:05:00.0000000 2 -1
+Salida 2026-08-18 15:08:00.0000000 5 -1
+Salida 2026-08-22 13:45:00.0000000 20 -3
+Salida 2026-08-22 13:45:00.0000000 13 -1
+Salida 2026-08-22 13:45:00.0000000 11 -1
+Salida 2026-08-26 12:12:00.0000000 6 -1
+Salida 2026-08-26 12:12:00.0000000 24 -1
+Salida 2026-08-26 12:12:00.0000000 6 -1
+Salida 2026-08-26 12:12:00.0000000 16 -1
+Salida 2026-08-30 13:13:00.0000000 27 -3
+Salida 2026-08-30 13:13:00.0000000 10 -1
+Salida 2026-08-30 13:13:00.0000000 24 -3
+Salida 2026-08-30 13:13:00.0000000 6 -1
+Salida 2026-09-03 10:53:00.0000000 28 -1
+Salida 2026-09-03 10:53:00.0000000 20 -1
+Salida 2026-09-07 17:14:00.0000000 30 -3
+Salida 2026-09-07 17:14:00.0000000 29 -3
+Salida 2026-09-07 17:14:00.0000000 1 -1
+Salida 2026-09-07 17:14:00.0000000 2 -1
+Salida 2026-09-11 12:28:00.0000000 10 -1
+Salida 2026-09-11 12:28:00.0000000 24 -2
+Salida 2026-09-11 12:28:00.0000000 25 -3
+Salida 2026-09-15 11:36:00.0000000 18 -1
+Salida 2026-09-19 13:26:00.0000000 27 -1
+Salida 2026-09-19 13:26:00.0000000 11 -1
+Salida 2026-09-23 14:26:00.0000000 20 -2
+Salida 2026-09-23 14:26:00.0000000 25 -3
+Salida 2026-09-23 14:26:00.0000000 13 -1
+Salida 2026-09-23 14:26:00.0000000 9 -1
+Salida 2026-09-27 11:59:00.0000000 18 -1
+Salida 2026-09-27 11:59:00.0000000 32 -1
+Salida 2026-09-27 11:59:00.0000000 16 -1
+Salida 2026-10-01 16:54:00.0000000 26 -3
+Salida 2026-10-01 16:54:00.0000000 19 -1
+Salida 2026-10-01 16:54:00.0000000 5 -1
+Salida 2026-10-01 16:54:00.0000000 21 -3
+Salida 2026-10-05 11:12:00.0000000 23 -3
+Salida 2026-10-05 11:12:00.0000000 22 -2
+Salida 2026-10-09 10:59:00.0000000 27 -2
+Salida 2026-10-09 10:59:00.0000000 16 -1
+Salida 2026-10-09 10:59:00.0000000 5 -1
+Salida 2026-10-13 14:05:00.0000000 29 -1
+Salida 2026-10-13 14:05:00.0000000 27 -2
+Salida 2026-10-17 12:32:00.0000000 8 -1
+Salida 2026-10-17 12:32:00.0000000 8 -1
+Salida 2026-10-17 12:32:00.0000000 15 -1
+Salida 2026-10-21 13:57:00.0000000 16 -1
+Salida 2026-10-21 13:57:00.0000000 23 -1
+Salida 2026-10-25 10:18:00.0000000 19 -3
+Salida 2026-10-25 10:18:00.0000000 31 -1
+Salida 2026-10-25 10:18:00.0000000 32 -1
+Salida 2026-10-25 10:18:00.0000000 23 -3
+
+(150 rows affected)
+id_cliente
+----------
+3
+7
+8
+9
+10
+12
+15
+16
+17
+19
+20
+21
+24
+
+(13 rows affected)
+id_producto
+-----------
+33
+
+(1 rows affected)
+folio fecha total
+----- ----- -----
+V-01035 2026-09-15 11:36:00.0000000 5699.05
+V-01034 2026-09-11 12:28:00.0000000 22094.00
+V-01033 2026-09-07 17:14:00.0000000 44192.00
+V-01032 2026-09-03 10:53:00.0000000 8298.00
+V-01031 2026-08-30 13:13:00.0000000 47792.00
+V-01030 2026-08-26 12:12:00.0000000 62196.00
+V-01029 2026-08-22 13:45:00.0000000 46995.00
+V-01028 2026-08-18 15:08:00.0000000 5224.05
+V-01027 2026-08-14 12:54:00.0000000 63993.00
+V-01026 2026-08-10 17:05:00.0000000 34997.00
+
+(10 rows affected)

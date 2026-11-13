@@ -121,10 +121,17 @@ const MODULOS = {
   inicio: ['Inicio', renderInicio],
   productos: ['Productos', renderProductos],
   clientes: ['Clientes', renderClientes],
+  proveedores: ['Proveedores', renderProveedores],
+  categorias: ['Categorías', (c) => renderCatalogo(c, 'categorias')],
+  marcas: ['Marcas', (c) => renderCatalogo(c, 'marcas')],
+  tipos: ['Tipos de servicio', (c) => renderCatalogo(c, 'tipos')],
   venta: ['Nueva venta', renderVenta],
-  ventas: ['Historial de ventas', renderVentas],
   ordenes: ['Órdenes de servicio', renderOrdenes],
+  compras: ['Compras a proveedor', renderCompras],
+  ventas: ['Historial de ventas', renderVentas],
   reportes: ['Reportes', renderReportes],
+  usuarios: ['Usuarios y roles', renderUsuarios],
+  ajustes: ['Ajustes de inventario', renderAjustes],
   auditoria: ['Auditoría', renderAuditoria],
 };
 
@@ -169,7 +176,7 @@ function renderMain() {
   document.onclick = cerrarMenus;
   document.onkeydown = (ev) => {
     if (ev.key === 'Escape') cerrarMenus();
-    const tecla = { F2: 'productos', F3: 'clientes', F5: 'venta', F6: 'ordenes' }[ev.key];
+    const tecla = { F2: 'productos', F3: 'clientes', F4: 'proveedores', F5: 'venta', F6: 'ordenes', F7: 'compras' }[ev.key];
     if (tecla && state.user?.modulos.includes(tecla) && !document.querySelector('.overlay')) { ev.preventDefault(); abrir(tecla); }
   };
   $app.appendChild(el);
@@ -181,10 +188,10 @@ function menuHtml(u) {
   const item = (m, atajo) => (tiene(m) ? `<button data-m="${m}">${MODULOS[m][0]}${atajo ? `<kbd>${atajo}</kbd>` : ''}</button>` : '');
   const grupos = [
     ['Archivo', `<button data-accion="cerrar">Cerrar sesión</button><button data-accion="salir">Salir</button>`],
-    ['Catálogos', item('productos', 'F2') + item('clientes', 'F3')],
-    ['Procesos', item('venta', 'F5') + item('ordenes', 'F6')],
+    ['Catálogos', item('productos', 'F2') + item('clientes', 'F3') + item('proveedores', 'F4') + '<hr>' + item('categorias') + item('marcas') + item('tipos')],
+    ['Procesos', item('venta', 'F5') + item('ordenes', 'F6') + item('compras', 'F7')],
     ['Consultas', item('ventas') + item('reportes')],
-    ['Administración', item('auditoria')],
+    ['Administración', item('usuarios') + item('ajustes') + item('auditoria')],
     ['Ayuda', `<button data-accion="atajos">Atajos de teclado</button><button data-accion="acerca">Acerca de TecnoStore</button>`],
   ];
   return grupos.filter(([, html]) => html)
@@ -194,7 +201,7 @@ function menuHtml(u) {
 function cerrarMenus() { document.querySelectorAll('.menu.open').forEach((m) => m.classList.remove('open')); }
 
 const acercaDe = () => messageBox('TecnoStore — Sistema Integral de Gestión\nProyecto final de Taller de Bases de Datos\n\nVista previa conectada a SQL Server. La aplicación real es la solución de Windows Forms en 03_WindowsForms.', { title: 'Acerca de' });
-const atajos = () => messageBox('F2  Productos\nF3  Clientes\nF5  Nueva venta\nF6  Órdenes de servicio\nEnter  Buscar en los filtros\nEsc  Cerrar menús', { title: 'Atajos de teclado' });
+const atajos = () => messageBox('F2  Productos\nF3  Clientes\nF4  Proveedores\nF5  Nueva venta\nF6  Órdenes de servicio\nF7  Compras\nEnter  Buscar en los filtros\nEsc  Cerrar menús', { title: 'Atajos de teclado' });
 
 async function abrir(m) {
   state.modulo = m;
@@ -383,8 +390,11 @@ async function renderVentas(c) {
   c.querySelector('[data-buscar]').onclick = () => cargar().catch(showError);
   c.querySelector('[data-cancelar]').onclick = async () => {
     if (!sel) return messageBox('Selecciona una venta.', { icon: 'info' });
-    if (await messageBox(`¿Cancelar la venta ${sel.folio} por ${money(sel.total)}?\nSe reintegrará el stock.`, { icon: 'question', buttons: ['Sí', 'No'] }) !== 'Sí') return;
-    try { await api('/api/ventas/cancelar', { id_venta: sel.id_venta }); await messageBox(`Venta ${sel.folio} cancelada.`, { icon: 'ok' }); await cargar(); }
+    if (sel.estado === 'Cancelada') return messageBox(`La venta ${sel.folio} ya está cancelada.`, { icon: 'info' });
+    const motivo = await inputBox(`Motivo de la cancelación de ${sel.folio}:`, 'Cancelar venta');
+    if (!motivo) return;
+    if (await messageBox(`¿Cancelar la venta ${sel.folio} por ${money(sel.total)}?\nSe reintegrará el stock y se liberarán las piezas con número de serie.`, { icon: 'question', buttons: ['Sí', 'No'] }) !== 'Sí') return;
+    try { await api('/api/ventas/cancelar', { id_venta: sel.id_venta, motivo }); await messageBox(`Venta ${sel.folio} cancelada.`, { icon: 'ok' }); await cargar(); }
     catch (e) { showError(e); }
   };
   await cargar();
@@ -491,9 +501,318 @@ async function renderAuditoria(c) {
     ${rows.length ? '' : '<div class="banner">Aún no hay cambios auditados: registra o cancela una venta y vuelve aquí.</div>'}
     <div class="slot" style="flex:1;display:flex;min-height:0"></div>`;
   c.querySelector('.slot').appendChild(grid([
-    { t: 'Fecha', k: 'fecha', f: datetime }, { t: 'Usuario SQL', k: 'usuario' }, { t: 'Tabla', k: 'tabla' }, { t: 'Operación', k: 'operacion' },
-    { t: 'Id', k: 'id_registro', num: 1 }, { t: 'Valor anterior', k: 'valor_anterior' }, { t: 'Valor nuevo', k: 'valor_nuevo' },
+    { t: 'Fecha', k: 'fecha', f: datetime }, { t: 'Usuario app', k: 'usuario_app' }, { t: 'Login SQL', k: 'usuario' }, { t: 'Tabla', k: 'tabla' },
+    { t: 'Operación', k: 'operacion' }, { t: 'Id', k: 'id_registro', num: 1 }, { t: 'Valor anterior', k: 'valor_anterior' },
+    { t: 'Valor nuevo', k: 'valor_nuevo' }, { t: 'Motivo', k: 'motivo' },
   ], rows));
 }
 
-renderLogin();
+// InputBox (Microsoft.VisualBasic.Interaction.InputBox en la app de C#)
+function inputBox(text, title = 'TecnoStore') {
+  return new Promise((resolve) => {
+    const el = h(`<div class="overlay"><div class="msgbox">
+      <div class="titlebar"><span class="title" style="padding-left:12px">${esc(title)}</span><div class="caption"><span class="close">✕</span></div></div>
+      <div class="msg" style="flex-direction:column;align-items:stretch;gap:8px"><div>${esc(text)}</div><input maxlength="200"></div>
+      <div class="buttons"><button class="primary" data-ok>Aceptar</button><button data-no>Cancelar</button></div>
+    </div></div>`);
+    const input = el.querySelector('input');
+    const close = (v) => { el.remove(); resolve(v); };
+    el.querySelector('[data-ok]').onclick = () => close(input.value.trim() || null);
+    el.querySelector('[data-no]').onclick = () => close(null);
+    el.querySelector('.close').onclick = () => close(null);
+    input.onkeydown = (e) => { if (e.key === 'Enter') close(input.value.trim() || null); if (e.key === 'Escape') close(null); };
+    document.body.appendChild(el);
+    input.focus();
+  });
+}
+
+// Pantalla de alta/edición con estados lectura → edición (patrón de los CRUD en C#)
+function crud(c, { campos, puede, alGuardar, alEliminar }) {
+  const panel = c.querySelector('.crud');
+  panel.innerHTML = `<fieldset class="groupbox"><legend>Datos (lectura)</legend><div class="campos">${campos.map((f) =>
+    f.tipo === 'check' ? `<label><input type="checkbox" name="${f.k}"> ${esc(f.t)}</label>`
+      : f.tipo === 'select' ? `<div class="field"><span>${esc(f.t)}</span><select name="${f.k}">${options(f.opciones, '')}</select></div>`
+      : `<div class="field"><span>${esc(f.t)}</span><input name="${f.k}" ${f.tipo === 'number' ? 'type="number" step="0.01" min="0"' : ''}
+          ${f.tipo === 'password' ? 'type="password"' : ''} maxlength="${f.max || 120}" ${f.mayus ? 'style="text-transform:uppercase"' : ''}></div>`).join('')}
+      <div class="sub ayuda"></div></div></fieldset>
+    <div class="row"><button data-nuevo>Nuevo</button><button data-editar>Editar</button>${alEliminar ? '<button data-eliminar>Eliminar</button>' : ''}</div>
+    <div class="row"><span class="spacer"></span><button class="primary" data-guardar>Guardar</button><button data-cancelar-ed>Cancelar</button></div>`;
+  const f = (k) => panel.querySelector(`[name=${k}]`);
+  const st = { id: null, edicion: false, fila: null };
+  const pintar = () => {
+    panel.querySelector('fieldset').disabled = !st.edicion;
+    panel.querySelector('legend').textContent = !st.edicion ? 'Datos (lectura)' : st.id ? 'Editando' : 'Nuevo registro';
+    panel.querySelector('[data-nuevo]').disabled = st.edicion || !puede;
+    panel.querySelector('[data-editar]').disabled = st.edicion || !puede || !st.id;
+    if (alEliminar) panel.querySelector('[data-eliminar]').disabled = st.edicion || !puede || !st.id;
+    panel.querySelector('[data-guardar]').disabled = !st.edicion;
+    panel.querySelector('[data-cancelar-ed]').disabled = !st.edicion;
+    c.querySelector('.slot').style.pointerEvents = st.edicion ? 'none' : '';
+    c.querySelector('.slot').style.opacity = st.edicion ? 0.6 : 1;
+  };
+  const llenar = (r) => campos.forEach((x) => {
+    const el = f(x.k); el.classList.remove('invalid');
+    if (x.tipo === 'check') el.checked = r ? !!r[x.k] : (x.defecto ?? true);
+    else el.value = r ? (r[x.k] ?? '') : (x.defecto ?? '');
+  });
+  const api_ = {
+    seleccionar(r) { if (st.edicion) return; st.id = r[campos.idKey || 'id']; st.fila = r; llenar(r); pintar(); },
+    ayuda(t) { panel.querySelector('.ayuda').textContent = t || ''; },
+    get id() { return st.id; },
+  };
+  panel.querySelector('[data-nuevo]').onclick = () => { st.id = null; llenar(null); st.edicion = true; pintar(); api_.onModo?.(true); panel.querySelector('input,select').focus(); };
+  panel.querySelector('[data-editar]').onclick = () => { st.edicion = true; pintar(); api_.onModo?.(false); };
+  panel.querySelector('[data-cancelar-ed]').onclick = () => { st.edicion = false; if (st.fila) llenar(st.fila); pintar(); };
+  panel.querySelector('[data-guardar]').onclick = async () => {
+    const datos = { id: st.id };
+    let ok = true;
+    campos.forEach((x) => {
+      const el = f(x.k);
+      datos[x.k] = x.tipo === 'check' ? el.checked : el.value.trim();
+      const falta = x.req && !datos[x.k] && !(x.reqSoloNuevo && st.id);
+      el.classList.toggle('invalid', !!falta);
+      if (falta) ok = false;
+    });
+    if (!ok) return messageBox('Llena los campos obligatorios (*).', { icon: 'error' });
+    const btn = panel.querySelector('[data-guardar]');
+    btn.disabled = true;
+    try {
+      await alGuardar(datos);
+      await messageBox(st.id ? 'Cambios guardados.' : 'Registro agregado.', { icon: 'ok' });
+      st.edicion = false; pintar();
+    } catch (e) { btn.disabled = false; showError(e); }
+  };
+  if (alEliminar) panel.querySelector('[data-eliminar]').onclick = async () => {
+    if (await messageBox('¿Eliminar el registro seleccionado?\nSi está en uso, SQL Server no lo permitirá.', { icon: 'question', buttons: ['Sí', 'No'] }) !== 'Sí') return;
+    try { await alEliminar(st.id); st.id = null; llenar(null); pintar(); } catch (e) { showError(e); }
+  };
+  llenar(null); pintar();
+  return api_;
+}
+
+/* ---------- FrmCatalogo (Categorías, Marcas, Tipos de servicio) ---------- */
+async function renderCatalogo(c, tipo) {
+  const cfg = {
+    categorias: { titulo: 'Categorías', c2: 'Descripción', max: 200 },
+    marcas: { titulo: 'Marcas', c2: 'País de origen', max: 60 },
+    tipos: { titulo: 'Tipos de servicio', c2: 'Precio base', num: true },
+  }[tipo];
+  const admin = state.user.rol === 'Administrador';
+  c.innerHTML = `<h1>${cfg.titulo}</h1><div class="sub">Catálogo con INSERT, UPDATE y DELETE parametrizados. Borrar algo en uso lo impide la llave foránea.
+      ${admin ? '' : '<b>Solo lectura:</b> únicamente el Administrador modifica catálogos.'}</div>
+    <fieldset class="groupbox"><legend>Búsqueda</legend><div class="row">
+      <div class="field"><span>Nombre:</span><input name="texto"></div><button class="primary" data-buscar style="margin-top:14px">Buscar</button>
+      <span class="sub count" style="margin:14px 0 0"></span></div></fieldset>
+    <div class="split"><div class="slot" style="flex:1;display:flex;min-height:0"></div><div class="crud"></div></div>`;
+  const form = crud(c, {
+    campos: [{ k: 'nombre', t: 'Nombre: *', req: true, max: 80 }, { k: 'campo2', t: cfg.c2 + ':', tipo: cfg.num ? 'number' : 'text', max: cfg.max }],
+    puede: admin,
+    alGuardar: async (d) => { await api('/api/catalogo', { tipo, id: d.id, nombre: d.nombre, campo2: d.campo2 }); await cargar(); },
+    alEliminar: async (id) => { await api('/api/catalogo/eliminar', { tipo, id }); await cargar(); },
+  });
+  const cargar = async () => {
+    const rows = await api('/api/catalogo?' + new URLSearchParams({ tipo, texto: c.querySelector('[name=texto]').value }));
+    c.querySelector('.slot').replaceChildren(grid([
+      { t: 'Nombre', k: 'nombre' }, { t: cfg.c2, k: 'campo2', num: cfg.num, f: cfg.num ? M() : N },
+      { t: tipo === 'tipos' ? 'Usado en órdenes' : 'Productos', k: 'en_uso', num: 1 },
+      ...(tipo === 'tipos' ? [{ t: 'Técnicos habilitados', k: 'tecnicos', num: 1 }] : []),
+    ], rows, { onSelect: (r) => form.seleccionar(r) }));
+    c.querySelector('.count').textContent = `${rows.length} registro(s)`;
+  };
+  c.querySelector('[data-buscar]').onclick = () => cargar().catch(showError);
+  c.querySelector('[name=texto]').onkeydown = (e) => { if (e.key === 'Enter') cargar().catch(showError); };
+  await cargar();
+}
+
+/* ---------- FrmProveedores ---------- */
+async function renderProveedores(c) {
+  const puede = ['Administrador', 'Supervisor'].includes(state.user.rol);
+  c.innerHTML = `<h1>Proveedores</h1><div class="sub">Guardado con <b>usp_ProveedorGuardar</b> · productos que surte desde la tabla N:M <b>ProductoProveedor</b></div>
+    <fieldset class="groupbox"><legend>Búsqueda</legend><div class="row">
+      <div class="field"><span>Razón social o RFC:</span><input name="texto" style="width:240px"></div>
+      <button class="primary" data-buscar style="margin-top:14px">Buscar</button><span class="sub count" style="margin:14px 0 0"></span></div></fieldset>
+    <div class="split"><div class="slot" style="flex:1;display:flex;min-height:0"></div><div class="crud"></div></div>
+    <fieldset class="groupbox"><legend>Productos que surte</legend><div class="det"><div class="sub">Selecciona un proveedor.</div></div></fieldset>`;
+  const form = crud(c, {
+    campos: Object.assign([
+      { k: 'razon_social', t: 'Razón social: *', req: true, max: 120 },
+      { k: 'rfc', t: 'RFC: *', req: true, max: 13, mayus: true },
+      { k: 'correo', t: 'Correo:', max: 100 }, { k: 'telefono', t: 'Teléfono:', max: 20 },
+      { k: 'activo', t: 'Activo', tipo: 'check' },
+    ], { idKey: 'id_proveedor' }),
+    puede,
+    alGuardar: async (d) => { await api('/api/proveedores', d); await cargar(); },
+  });
+  const cargar = async () => {
+    const rows = await api('/api/proveedores?' + new URLSearchParams({ texto: c.querySelector('[name=texto]').value }));
+    c.querySelector('.slot').replaceChildren(grid([
+      { t: 'Razón social', k: 'razon_social' }, { t: 'RFC', k: 'rfc' }, { t: 'Correo', k: 'correo' }, { t: 'Teléfono', k: 'telefono' },
+      { t: 'Productos', k: 'productos', num: 1 }, { t: 'Compras', k: 'compras', num: 1 }, { t: 'Total comprado', k: 'total_comprado', num: 1, f: M() },
+      { t: 'Activo', k: 'activo', f: (v) => (v ? 'Sí' : 'No') },
+    ], rows, {
+      rowClass: (r) => (r.activo ? '' : 'danger'),
+      onSelect: async (r) => {
+        form.seleccionar(r);
+        const det = await api('/api/proveedores/productos?id=' + r.id_proveedor);
+        c.querySelector('.det').replaceChildren(grid([
+          { t: 'SKU', k: 'sku' }, { t: 'Producto', k: 'nombre' }, { t: 'Costo del proveedor', k: 'costo_proveedor', num: 1, f: M() },
+          { t: 'Costo actual', k: 'costo_actual', num: 1, f: M() }, { t: 'Stock', k: 'stock_actual', num: 1 },
+        ], det, { cls: 'short' }));
+      },
+    }));
+    c.querySelector('.count').textContent = `${rows.length} proveedor(es)`;
+  };
+  c.querySelector('[data-buscar]').onclick = () => cargar().catch(showError);
+  await cargar();
+}
+
+/* ---------- FrmCompra (maestro-detalle) ---------- */
+async function renderCompras(c) {
+  const d = await api('/api/compras');
+  const lineas = [];
+  c.innerHTML = `<h1>Compras a proveedor</h1><div class="sub">Se guarda con <b>usp_RegistrarCompra</b>: encabezado, detalle, entrada al stock, piezas con número de serie y relación ProductoProveedor en una transacción.</div>
+    <fieldset class="groupbox"><legend>Encabezado</legend><div class="row">
+      <div class="field"><span>Proveedor: *</span><select name="proveedor" style="width:320px">${options(d.proveedores, '', '(Selecciona)')}</select></div>
+      <div class="field"><span>Recibe:</span><input value="${esc(state.user.nombre)}" disabled style="width:200px"></div></div></fieldset>
+    <fieldset class="groupbox"><legend>Agregar producto</legend><div class="row" style="align-items:flex-start">
+      <div class="field"><span>Producto:</span><select name="producto" style="width:360px">${d.productos.map((p) =>
+        `<option value="${p.id}">${esc(p.sku)} — ${esc(p.nombre)}${p.requiere_serie ? '  [con número de serie]' : ''}</option>`).join('')}</select>
+        <div class="row" style="margin-top:6px"><div class="field"><span>Cantidad:</span><input name="cant" type="number" min="1" value="1" style="width:70px"></div>
+        <div class="field"><span>Costo unitario:</span><input name="costo" type="number" min="1" step="0.01" style="width:110px"></div></div></div>
+      <div class="field"><span class="lbl-series">Números de serie (uno por renglón):</span><textarea name="series" rows="4" style="width:220px;font:inherit;border:1px solid #7a7a7a"></textarea></div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:14px"><button data-agregar>Agregar ↓</button><button data-quitar>Quitar línea</button></div>
+    </div></fieldset>
+    <div class="slot" style="flex:1;display:flex;min-height:110px"></div>
+    <div class="row"><b class="total" style="font-size:15px"></b><span class="spacer"></span><button data-limpiar>Limpiar</button><button class="primary" data-guardar>Guardar compra</button></div>
+    <fieldset class="groupbox"><legend>Compras recientes</legend><div class="recientes"></div></fieldset>`;
+  const f = (n) => c.querySelector(`[name=${n}]`);
+  const prod = () => d.productos.find((p) => p.id === +f('producto').value);
+  let sel = null;
+  const alCambiarProducto = () => {
+    const p = prod();
+    f('costo').value = p.costo;
+    f('series').disabled = !p.requiere_serie;
+    if (!p.requiere_serie) f('series').value = '';
+    c.querySelector('.lbl-series').textContent = p.requiere_serie ? 'Números de serie (uno por renglón): *' : 'Números de serie (no aplica):';
+  };
+  const pintar = () => {
+    sel = null;
+    c.querySelector('.slot').replaceChildren(grid([
+      { t: 'SKU', k: 'sku' }, { t: 'Producto', k: 'nombre' }, { t: 'Cantidad', k: 'cantidad', num: 1 },
+      { t: 'Costo', k: 'costo_unitario', num: 1, f: M() }, { t: 'Importe', k: 'importe', num: 1, f: M() }, { t: 'Series', k: 'series_txt' },
+    ], lineas.map((l) => ({ ...l, importe: l.cantidad * l.costo_unitario, series_txt: (l.series || []).join(', ') })), { onSelect: (r) => sel = r }));
+    c.querySelector('.total').textContent = 'Total: ' + money(lineas.reduce((a, l) => a + l.cantidad * l.costo_unitario, 0));
+  };
+  const recientes = (rows) => c.querySelector('.recientes').replaceChildren(grid([
+    { t: 'Folio', k: 'folio' }, { t: 'Fecha', k: 'fecha', f: datetime }, { t: 'Proveedor', k: 'proveedor' }, { t: 'Recibió', k: 'recibio' },
+    { t: 'Líneas', k: 'lineas', num: 1 }, { t: 'Total', k: 'total', num: 1, f: M() }, { t: 'Estado', k: 'estado' },
+  ], rows, { cls: 'short' }));
+  f('producto').onchange = alCambiarProducto;
+  c.querySelector('[data-agregar]').onclick = () => {
+    const p = prod(), cantidad = parseInt(f('cant').value, 10), costo = +f('costo').value;
+    if (!(cantidad > 0) || !(costo > 0)) return messageBox('Cantidad y costo deben ser mayores a cero.', { icon: 'error' });
+    if (lineas.some((l) => l.id_producto === p.id)) return messageBox('Ese producto ya está en la compra; quítalo y agrégalo con la cantidad total.', { icon: 'info' });
+    const series = f('series').value.split('\n').map((x) => x.trim().toUpperCase()).filter(Boolean);
+    if (p.requiere_serie && series.length !== cantidad) return messageBox(`Captura ${cantidad} número(s) de serie, uno por renglón (llevas ${series.length}).`, { icon: 'info' });
+    if (new Set(series).size !== series.length) return messageBox('Hay números de serie repetidos.', { icon: 'info' });
+    lineas.push({ id_producto: p.id, sku: p.sku, nombre: p.nombre, cantidad, costo_unitario: costo, ...(p.requiere_serie ? { series } : {}) });
+    f('cant').value = 1; f('series').value = '';
+    pintar();
+  };
+  c.querySelector('[data-quitar]').onclick = () => { if (sel) { lineas.splice(lineas.findIndex((l) => l.id_producto === sel.id_producto), 1); pintar(); } };
+  c.querySelector('[data-limpiar]').onclick = () => renderCompras(c).catch(showError);
+  const guardar = c.querySelector('[data-guardar]');
+  guardar.onclick = async () => {
+    f('proveedor').classList.toggle('invalid', !f('proveedor').value);
+    if (!f('proveedor').value) return messageBox('Selecciona el proveedor.', { icon: 'error' });
+    if (!lineas.length) return messageBox('Agrega al menos un producto.', { icon: 'error' });
+    if (await messageBox(`¿Registrar la compra por ${c.querySelector('.total').textContent.replace('Total: ', '')}?\nEl stock entra al guardar.`, { icon: 'question', buttons: ['Sí', 'No'], title: 'Confirmar compra' }) !== 'Sí') return;
+    guardar.disabled = true;
+    try {
+      const r = await api('/api/compras', { id_proveedor: f('proveedor').value, lineas: lineas.map(({ sku, nombre, ...l }) => l) });
+      await messageBox(`Compra ${r.folio} registrada; el inventario ya se actualizó.`, { icon: 'ok', title: 'Compra registrada' });
+      await renderCompras(c);
+    } catch (e) {
+      guardar.disabled = false;
+      showError(new Error(`SQL Server rechazó la compra y no se guardó nada (ROLLBACK):\n\n${e.message}`));
+    }
+  };
+  alCambiarProducto(); pintar(); recientes(d.recientes);
+}
+
+/* ---------- FrmUsuarios ---------- */
+async function renderUsuarios(c) {
+  const d = await api('/api/usuarios');
+  c.innerHTML = `<h1>Usuarios y roles</h1><div class="sub">Guardado con <b>usp_UsuarioGuardar</b> (Usuario + UsuarioRol en una transacción). La contraseña se guarda como hash SHA2_256 y nunca se muestra.</div>
+    <div class="split"><div class="slot" style="flex:1;display:flex;min-height:0"></div><div class="crud"></div></div>`;
+  const form = crud(c, {
+    campos: Object.assign([
+      { k: 'id_empleado', t: 'Empleado: *', tipo: 'select', opciones: d.empleados, req: true },
+      { k: 'usuario', t: 'Usuario: *', req: true, max: 40 },
+      { k: 'id_rol', t: 'Rol: *', tipo: 'select', opciones: d.roles, req: true },
+      { k: 'contrasena', t: 'Contraseña:', tipo: 'password', req: true, reqSoloNuevo: true, max: 100 },
+      { k: 'activo', t: 'Activo (desmarcar = bloquear)', tipo: 'check' },
+    ], { idKey: 'id_usuario' }),
+    puede: true,
+    alGuardar: async (x) => { await api('/api/usuarios', x); await renderUsuarios(c); },
+  });
+  form.ayuda('Contraseña nueva: 8+ caracteres y un número. Al editar, déjala vacía para conservar la actual.');
+  c.querySelector('.slot').replaceChildren(grid([
+    { t: 'Usuario', k: 'usuario' }, { t: 'Empleado', k: 'empleado' }, { t: 'Puesto', k: 'puesto' }, { t: 'Rol', k: 'rol' },
+    { t: 'Activo', k: 'activo', f: (v) => (v ? 'Sí' : 'Bloqueado') }, { t: 'Último acceso', k: 'ultimo_acceso', f: datetime },
+    { t: 'Intentos fallidos', k: 'intentos_fallidos', num: 1 },
+  ], d.usuarios, { rowClass: (r) => (r.activo ? '' : 'danger'), onSelect: (r) => form.seleccionar({ ...r, contrasena: '' }) }));
+}
+
+/* ---------- FrmAjusteStock ---------- */
+async function renderAjustes(c) {
+  const d = await api('/api/ajustes');
+  c.innerHTML = `<h1>Ajustes de inventario y precios</h1><div class="sub">Solo Supervisor y Administrador. Las reglas las valida SQL Server y cada cambio queda en la auditoría con su motivo.</div>
+    <fieldset class="groupbox"><legend>Ajuste de inventario (usp_AjustarStock · máximo ±20 piezas)</legend>
+      <div class="row"><div class="field"><span>Producto (sin número de serie):</span><select name="producto" style="width:420px">${options(d.productos)}</select></div>
+      <div class="field"><span>Cantidad (+ entra, − sale):</span><input name="cant" type="number" min="-20" max="20" value="0" style="width:90px"></div></div>
+      <div class="row" style="margin-top:6px"><div class="field" style="flex:1"><span>Motivo: *</span><input name="motivo" maxlength="200"></div>
+      <button class="primary" data-stock style="margin-top:14px">Aplicar ajuste</button></div></fieldset>
+    <fieldset class="groupbox"><legend>Cambio de precios por categoría (usp_AjustarPrecio · máximo ±30 %)</legend>
+      <div class="row"><div class="field"><span>Categoría:</span><select name="categoria" style="width:260px">${options(d.categorias)}</select></div>
+      <div class="field"><span>Porcentaje:</span><input name="pct" type="number" min="-30" max="30" step="0.5" value="0" style="width:90px"></div>
+      <button class="primary" data-precio style="margin-top:14px">Aplicar precios</button></div>
+      <div class="sub" style="margin-top:6px">Si algún precio quedara por debajo del costo, la restricción CK_Producto_precio_vs_costo detiene todo y no se cambia ninguno.</div></fieldset>`;
+  const f = (n) => c.querySelector(`[name=${n}]`);
+  c.querySelector('[data-stock]').onclick = async () => {
+    const cant = parseInt(f('cant').value, 10);
+    f('motivo').classList.toggle('invalid', !f('motivo').value.trim());
+    if (!cant) return messageBox('La cantidad no puede ser cero.', { icon: 'error' });
+    if (!f('motivo').value.trim()) return messageBox('El motivo es obligatorio.', { icon: 'error' });
+    const nombre = f('producto').selectedOptions[0].textContent;
+    if (await messageBox(`¿Ajustar ${cant > 0 ? '+' : ''}${cant} pieza(s) de\n${nombre}?`, { icon: 'question', buttons: ['Sí', 'No'] }) !== 'Sí') return;
+    try { await api('/api/ajustes/stock', { id_producto: f('producto').value, cantidad: cant, motivo: f('motivo').value.trim() });
+      await messageBox('Ajuste aplicado y registrado en la auditoría.', { icon: 'ok' }); await renderAjustes(c); }
+    catch (e) { showError(e); }
+  };
+  c.querySelector('[data-precio]').onclick = async () => {
+    const pct = +f('pct').value;
+    if (!pct) return messageBox('El porcentaje no puede ser cero.', { icon: 'error' });
+    const cat = f('categoria').selectedOptions[0].textContent;
+    if (await messageBox(`¿Cambiar ${pct > 0 ? '+' : ''}${pct} % el precio de todos los productos activos de ${cat}?`, { icon: 'question', buttons: ['Sí', 'No'] }) !== 'Sí') return;
+    try { await api('/api/ajustes/precio', { porcentaje: pct, id_categoria: f('categoria').value });
+      await messageBox('Precios actualizados; cada cambio quedó en la auditoría.', { icon: 'ok' }); f('pct').value = 0; }
+    catch (e) { showError(new Error(`No se cambiaron los precios (ROLLBACK):\n\n${e.message}`)); }
+  };
+}
+
+// Captura automática para la documentación: ?usuario=admin&modulo=productos
+// entra con un usuario demo y abre esa pantalla (solo usuarios demo con su contraseña conocida).
+async function inicio() {
+  const p = new URLSearchParams(location.search);
+  const demo = ['admin', 'csupervisor', 'loperador', 'fconsulta'];
+  if (!demo.includes(p.get('usuario'))) return renderLogin();
+  try {
+    const r = await api('/api/login', { usuario: p.get('usuario'), contrasena: 'Tecno123!' });
+    state.token = r.token; state.user = r.user;
+    state.cat = await api('/api/catalogos');
+    state.modulo = r.user.modulos.includes(p.get('modulo')) ? p.get('modulo') : 'inicio';
+    renderMain();
+  } catch (e) { renderLogin(); }
+}
+inicio();

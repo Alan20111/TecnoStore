@@ -56,5 +56,18 @@ namespace TecnoStore.Models
             return "[" + string.Join(",", lineas.Select(l =>
                 "{\"id_producto\":" + l.IdProducto + ",\"cantidad\":" + l.Cantidad + "}")) + "]";
         }
+
+        /// <summary>Texto escapado como cadena JSON (para números de serie).</summary>
+        public static string Texto(string s)
+        {
+            var sb = new System.Text.StringBuilder("\"");
+            foreach (char c in s)
+            {
+                if (c == '"' || c == '\\') sb.Append('\\').Append(c);
+                else if (c < ' ') sb.Append("\\u").Append(((int)c).ToString("x4"));
+                else sb.Append(c);
+            }
+            return sb.Append('"').ToString();
+        }
     }
 }

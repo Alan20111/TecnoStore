@@ -30,6 +30,8 @@ namespace TecnoStore.Forms
             mnuAuditoria.Visible = s.EsSupervisorOMas;
             mnuAjusteStock.Visible = s.EsSupervisorOMas;
             mnuAdministracion.Visible = s.EsSupervisorOMas;
+            mnuCompras.Visible = s.EsSupervisorOMas;
+            mnuUsuarios.Visible = s.EsAdministrador;
         }
 
         /// <summary>Abre el formulario hijo o lo trae al frente si ya estaba abierto.</summary>
@@ -49,6 +51,20 @@ namespace TecnoStore.Forms
         private void mnuReportes_Click(object sender, EventArgs e) => Abrir<FrmReportes>();
         private void mnuAuditoria_Click(object sender, EventArgs e) => Abrir<FrmAuditoria>();
         private void mnuAjusteStock_Click(object sender, EventArgs e) => Abrir<FrmAjusteStock>();
+        private void mnuProveedores_Click(object sender, EventArgs e) => Abrir<FrmProveedores>();
+        private void mnuCompras_Click(object sender, EventArgs e) => Abrir<FrmCompra>();
+        private void mnuUsuarios_Click(object sender, EventArgs e) => Abrir<FrmUsuarios>();
+        private void mnuCategorias_Click(object sender, EventArgs e) => AbrirCatalogo(TipoCatalogo.Categoria);
+        private void mnuMarcas_Click(object sender, EventArgs e) => AbrirCatalogo(TipoCatalogo.Marca);
+        private void mnuTiposServicio_Click(object sender, EventArgs e) => AbrirCatalogo(TipoCatalogo.TipoServicio);
+
+        /// <summary>Los tres catálogos usan la misma pantalla con distinto tipo.</summary>
+        private void AbrirCatalogo(TipoCatalogo tipo)
+        {
+            var abierto = MdiChildren.OfType<FrmCatalogo>().FirstOrDefault(f => f.Tipo == tipo);
+            if (abierto != null) { abierto.Activate(); return; }
+            new FrmCatalogo(tipo) { MdiParent = this, WindowState = FormWindowState.Maximized }.Show();
+        }
 
         private void mnuCerrarSesion_Click(object sender, EventArgs e)
         {

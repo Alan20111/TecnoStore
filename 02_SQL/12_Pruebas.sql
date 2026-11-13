@@ -1,14 +1,14 @@
 ﻿/* =============================================================
    TecnoStore · 12_Pruebas.sql
-   26 casos de prueba automáticos (sección 17). Cada caso guarda
+   32 casos de prueba automáticos (sección 17). Cada caso guarda
    entrada, resultado esperado, resultado obtenido y si pasó.
    Ejecutar sobre una base recién creada (01 → 10, 07); modifica datos.
 
    Tipo                   Casos
-   Operación correcta     P01–P10
-   Validación             P11–P17
+   Operación correcta     P01–P10, P27, P29
+   Validación             P11–P17, P28, P30, P32
    Transacción fallida    P18–P20
-   Seguridad              P21–P22
+   Seguridad              P21–P22, P31
    Trigger / auditoría    P23–P26
    ============================================================= */
 USE TecnoStore;
@@ -265,6 +265,56 @@ BEGIN TRY
     INSERT INTO #Prueba VALUES ('P26','Trigger','Borrar la auditoría (como sa)','DELETE FROM Auditoria','Rechazo','Se borró',0);
 END TRY BEGIN CATCH
     INSERT INTO #Prueba VALUES ('P26','Trigger','Borrar la auditoría (como sa)','DELETE FROM Auditoria','Solo lectura',ERROR_MESSAGE(),IIF(ERROR_NUMBER() = 50041, 1, 0));
+END CATCH
+GO
+
+/* ==================== Catálogos, proveedores y usuarios ==================== */
+DECLARE @id INT;
+BEGIN TRY
+    EXEC usp_ProveedorGuardar @id_proveedor = @id OUTPUT, @razon_social = 'Mayorista Nuevo SA de CV', @rfc = 'mns2001019z9', @correo = 'Ventas@MNS.example.mx';
+    INSERT INTO #Prueba SELECT 'P27','Correcta','Alta de proveedor','RFC y correo en minúsculas/mayúsculas',
+        'RFC en mayúsculas, correo en minúsculas', CONCAT(rfc, ' ', correo), IIF(rfc = 'MNS2001019Z9' AND correo = 'ventas@mns.example.mx', 1, 0)
+    FROM Proveedor WHERE id_proveedor = @id;
+END TRY BEGIN CATCH INSERT INTO #Prueba VALUES ('P27','Correcta','Alta de proveedor','','Se crea',ERROR_MESSAGE(),0); END CATCH
+GO
+BEGIN TRY
+    EXEC usp_ProveedorGuardar @razon_social = 'Duplicado', @rfc = 'IMM9501018A1';
+    INSERT INTO #Prueba VALUES ('P28','Validación','RFC de proveedor duplicado','IMM9501018A1','Rechazo','Se guardó',0);
+END TRY BEGIN CATCH
+    INSERT INTO #Prueba VALUES ('P28','Validación','RFC de proveedor duplicado','IMM9501018A1','Ya existe un proveedor con ese RFC',ERROR_MESSAGE(),IIF(ERROR_NUMBER() = 50133, 1, 0));
+END CATCH
+GO
+DECLARE @id INT;
+BEGIN TRY
+    EXEC usp_UsuarioGuardar @id_usuario = @id OUTPUT, @id_empleado = 4, @nombre_usuario = 'MTorres', @id_rol = 3,
+         @contrasena = 'Tienda2026', @id_admin = 1;
+    INSERT INTO #Prueba SELECT 'P29','Correcta','Alta de usuario con rol (Usuario + UsuarioRol)','mtorres, Operador',
+        'Usuario en minúsculas, rol Operador y la contraseña sirve para entrar',
+        CONCAT(u.nombre_usuario, ' rol=', r.nombre), IIF(u.nombre_usuario = 'mtorres' AND r.nombre = 'Operador'
+            AND u.hash_contrasena = HASHBYTES('SHA2_256', 'Tienda2026'), 1, 0)
+    FROM Usuario u JOIN UsuarioRol ur ON ur.id_usuario = u.id_usuario JOIN Rol r ON r.id_rol = ur.id_rol
+    WHERE u.id_usuario = @id;
+END TRY BEGIN CATCH INSERT INTO #Prueba VALUES ('P29','Correcta','Alta de usuario','','Se crea',ERROR_MESSAGE(),0); END CATCH
+GO
+BEGIN TRY
+    EXEC usp_UsuarioGuardar @id_empleado = 5, @nombre_usuario = 'jcastillo', @id_rol = 3, @contrasena = 'corta', @id_admin = 1;
+    INSERT INTO #Prueba VALUES ('P30','Validación','Contraseña débil','"corta"','Rechazo','Se guardó',0);
+END TRY BEGIN CATCH
+    INSERT INTO #Prueba VALUES ('P30','Validación','Contraseña débil','"corta"','Mínimo 8 caracteres y un número',ERROR_MESSAGE(),IIF(ERROR_NUMBER() = 50143, 1, 0));
+END CATCH
+GO
+BEGIN TRY
+    EXEC usp_UsuarioGuardar @id_empleado = 5, @nombre_usuario = 'jcastillo', @id_rol = 1, @contrasena = 'Tienda2026', @id_admin = 2;
+    INSERT INTO #Prueba VALUES ('P31','Seguridad','Supervisor intenta crear un Administrador','id_admin = csupervisor','Rechazo','Se guardó',0);
+END TRY BEGIN CATCH
+    INSERT INTO #Prueba VALUES ('P31','Seguridad','Supervisor intenta crear un Administrador','id_admin = csupervisor','Solo un Administrador',ERROR_MESSAGE(),IIF(ERROR_NUMBER() = 50140, 1, 0));
+END CATCH
+GO
+BEGIN TRY
+    DELETE FROM Categoria WHERE nombre = 'Celulares';
+    INSERT INTO #Prueba VALUES ('P32','Validación','Borrar categoría con productos','DELETE Categoria Celulares','La FK lo impide','Se borró',0);
+END TRY BEGIN CATCH
+    INSERT INTO #Prueba VALUES ('P32','Validación','Borrar categoría con productos','DELETE Categoria Celulares','Conflicto con FK_Producto_Categoria',LEFT(ERROR_MESSAGE(),400),IIF(ERROR_NUMBER() = 547, 1, 0));
 END CATCH
 GO
 

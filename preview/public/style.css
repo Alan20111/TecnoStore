@@ -33,8 +33,8 @@ body {
   border: 1px solid #6f6f6f;
   box-shadow: 0 20px 60px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.04);
   display: flex; flex-direction: column;
-  width: min(1280px, 100%);
-  height: min(800px, 100%);
+  width: min(1320px, calc(100vw - 48px));
+  height: min(820px, calc(100vh - 48px));
 }
 .form.dialog { width: 380px; height: auto; }
 .titlebar {
@@ -188,3 +188,14 @@ fieldset.groupbox legend { padding: 0 4px; color: #0046a8; }
 tr.sel .badge { color: #fff; border-color: #fff; background: transparent; }
 
 .banner { background: #fff4ce; border: 1px solid #f2d27a; padding: 5px 10px; color: #4a3b00; }
+
+/* Pantallas CRUD: lista a la izquierda, datos a la derecha */
+.split { display: flex; gap: 8px; flex: 1; min-height: 0; }
+.crud { width: 320px; flex: none; display: flex; flex-direction: column; gap: 6px; }
+.crud .campos { display: flex; flex-direction: column; gap: 6px; }
+.crud .campos input:not([type=checkbox]), .crud .campos select { width: 100%; }
+.crud fieldset:disabled input, .crud fieldset:disabled select { background: #f4f4f4; color: #555; }
+.crud .row button { min-width: 90px; }
+.menustrip .dropdown hr { border: 0; border-top: 1px solid #ccc; margin: 3px 4px; }
+.nav { overflow-y: auto; }
+.nav button { padding: 5px 10px; }

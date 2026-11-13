@@ -1,0 +1,158 @@
+erDiagram
+  Auditoria {
+    INT id_auditoria PK
+  }
+  Categoria {
+    INT id_categoria PK
+  }
+  Cliente {
+    INT id_cliente PK
+  }
+  Compra {
+    INT id_compra PK
+    INT id_proveedor FK
+    INT id_empleado FK
+  }
+  Condicion {
+    INT id_condicion PK
+  }
+  Configuracion {
+    VARCHAR clave PK
+  }
+  DetalleCompra {
+    INT id_detalle_compra PK
+    INT id_compra FK
+    INT id_producto FK
+  }
+  DetalleOrdenServicio {
+    INT id_detalle_orden PK
+    INT id_orden FK
+    INT id_tipo_servicio FK
+    INT id_producto FK
+  }
+  DetalleVenta {
+    INT id_detalle_venta PK
+    INT id_venta FK
+    INT id_producto FK
+    INT id_unidad FK
+  }
+  Empleado {
+    INT id_empleado PK
+    INT id_sucursal FK
+  }
+  EmpleadoTipoServicio {
+    INT id_empleado PK,FK
+    INT id_tipo_servicio PK,FK
+  }
+  EstadoOrden {
+    INT id_estado_orden PK
+  }
+  Garantia {
+    INT id_garantia PK
+    INT id_detalle_venta FK
+  }
+  HistorialEstadoOrden {
+    INT id_historial PK
+    INT id_orden FK
+    INT id_estado_anterior FK
+    INT id_estado_nuevo FK
+    INT id_usuario FK
+  }
+  Marca {
+    INT id_marca PK
+  }
+  MetodoPago {
+    INT id_metodo_pago PK
+  }
+  OrdenServicio {
+    INT id_orden PK
+    INT id_cliente FK
+    INT id_empleado_tecnico FK
+    INT id_estado_orden FK
+    INT id_sucursal FK
+  }
+  Producto {
+    INT id_producto PK
+    INT id_categoria FK
+    INT id_marca FK
+    INT id_condicion FK
+  }
+  ProductoProveedor {
+    INT id_producto PK,FK
+    INT id_proveedor PK,FK
+  }
+  Proveedor {
+    INT id_proveedor PK
+  }
+  Reacondicionado {
+    INT id_reacondicionado PK
+    INT id_unidad FK
+    INT id_empleado_tecnico FK
+  }
+  Rol {
+    INT id_rol PK
+  }
+  Sucursal {
+    INT id_sucursal PK
+  }
+  TipoServicio {
+    INT id_tipo_servicio PK
+  }
+  UnidadSerie {
+    INT id_unidad PK
+    INT id_producto FK
+    INT id_detalle_compra FK
+  }
+  Usuario {
+    INT id_usuario PK
+    INT id_empleado FK
+  }
+  UsuarioRol {
+    INT id_usuario PK,FK
+    INT id_rol PK,FK
+  }
+  Venta {
+    INT id_venta PK
+    INT id_cliente FK
+    INT id_empleado FK
+    INT id_sucursal FK
+    INT id_metodo_pago FK
+  }
+  Empleado ||--o{ Compra : "id_empleado"
+  Proveedor ||--o{ Compra : "id_proveedor"
+  Compra ||--o{ DetalleCompra : "id_compra"
+  Producto ||--o{ DetalleCompra : "id_producto"
+  OrdenServicio ||--o{ DetalleOrdenServicio : "id_orden"
+  Producto |o--o{ DetalleOrdenServicio : "id_producto"
+  TipoServicio |o--o{ DetalleOrdenServicio : "id_tipo_servicio"
+  Producto ||--o{ DetalleVenta : "id_producto"
+  UnidadSerie |o--o{ DetalleVenta : "id_unidad"
+  Venta ||--o{ DetalleVenta : "id_venta"
+  Sucursal ||--o{ Empleado : "id_sucursal"
+  Empleado ||--o{ EmpleadoTipoServicio : "id_empleado"
+  TipoServicio ||--o{ EmpleadoTipoServicio : "id_tipo_servicio"
+  DetalleVenta ||--o{ Garantia : "id_detalle_venta"
+  EstadoOrden |o--o{ HistorialEstadoOrden : "id_estado_anterior"
+  EstadoOrden ||--o{ HistorialEstadoOrden : "id_estado_nuevo"
+  OrdenServicio ||--o{ HistorialEstadoOrden : "id_orden"
+  Usuario |o--o{ HistorialEstadoOrden : "id_usuario"
+  Cliente ||--o{ OrdenServicio : "id_cliente"
+  Empleado ||--o{ OrdenServicio : "id_empleado_tecnico"
+  EstadoOrden ||--o{ OrdenServicio : "id_estado_orden"
+  Sucursal ||--o{ OrdenServicio : "id_sucursal"
+  Categoria ||--o{ Producto : "id_categoria"
+  Condicion ||--o{ Producto : "id_condicion"
+  Marca ||--o{ Producto : "id_marca"
+  Producto ||--o{ ProductoProveedor : "id_producto"
+  Proveedor ||--o{ ProductoProveedor : "id_proveedor"
+  Empleado ||--o{ Reacondicionado : "id_empleado_tecnico"
+  UnidadSerie ||--o{ Reacondicionado : "id_unidad"
+  DetalleCompra |o--o{ UnidadSerie : "id_detalle_compra"
+  Producto ||--o{ UnidadSerie : "id_producto"
+  Empleado ||--o{ Usuario : "id_empleado"
+  Rol ||--o{ UsuarioRol : "id_rol"
+  Usuario ||--o{ UsuarioRol : "id_usuario"
+  Cliente ||--o{ Venta : "id_cliente"
+  Empleado ||--o{ Venta : "id_empleado"
+  MetodoPago ||--o{ Venta : "id_metodo_pago"
+  Sucursal ||--o{ Venta : "id_sucursal"
