@@ -3,6 +3,8 @@
 Proyecto final de Taller de Bases de Datos: sistema de gestión para una tienda de tecnología con taller de reparación.
 Tecnología obligatoria: **SQL Server + C# Windows Forms + Visual Studio** (ver `Contexto/ProyectoFinal8Semanas (1).docx`).
 
+> 📋 **[REQUISITOS.md](REQUISITOS.md)**: cada requisito del profesor con enlace directo al archivo y línea donde se cumple.
+
 ## Estructura (igual a la entrega final)
 
 | Carpeta | Contenido |
