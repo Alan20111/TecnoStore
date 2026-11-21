@@ -8,41 +8,34 @@ namespace TecnoStore.Utils
     /// <summary>Panel blanco con esquinas redondeadas y borde suave (tarjetas del Dashboard).</summary>
     public class Tarjeta : Panel
     {
-        [DefaultValue(12)]
-        public int Radio { get; set; } = 12;
+        [DefaultValue(16)]
+        public int Radio { get; set; } = Tema.RadioTarjeta;
 
         public Tarjeta()
         {
             DoubleBuffered = true;
-            BackColor = Color.White;
+            BackColor = Tema.Tarjeta;
             Padding = new Padding(16, 12, 16, 12);
             SetStyle(ControlStyles.ResizeRedraw, true);
         }
 
         protected override void OnPaintBackground(PaintEventArgs e)
         {
-            e.Graphics.Clear(Parent?.BackColor ?? Tema.Fondo);
-            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            var r = new Rectangle(0, 0, Width - 1, Height - 1);
-            using (var path = Redondo(r, Radio))
+            var g = e.Graphics;
+            g.Clear(Parent?.BackColor ?? Tema.Fondo);
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            var r = new RectangleF(0.5f, 0.5f, Width - 1.5f, Height - 2.5f);
+            // Única sombra del sistema: 1 px suave bajo la tarjeta (0 1px 2px rgba(0,0,0,.08))
+            using (var sombra = Forma.Continua(new RectangleF(r.X, r.Y + 1.5f, r.Width, r.Height), Radio))
+            using (var bs = new SolidBrush(Color.FromArgb(18, 0, 0, 0)))
+                g.FillPath(bs, sombra);
+            using (var path = Forma.Continua(r, Radio))
             using (var fondo = new SolidBrush(BackColor))
-            using (var borde = new Pen(Tema.Borde))
+            using (var borde = new Pen(Tema.LineaSuave))
             {
-                e.Graphics.FillPath(fondo, path);
-                e.Graphics.DrawPath(borde, path);
+                g.FillPath(fondo, path);
+                g.DrawPath(borde, path);
             }
-        }
-
-        private static GraphicsPath Redondo(Rectangle r, int radio)
-        {
-            int d = radio * 2;
-            var p = new GraphicsPath();
-            p.AddArc(r.X, r.Y, d, d, 180, 90);
-            p.AddArc(r.Right - d, r.Y, d, d, 270, 90);
-            p.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
-            p.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
-            p.CloseFigure();
-            return p;
         }
     }
 }

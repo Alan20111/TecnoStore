@@ -20,12 +20,14 @@ namespace TecnoStore.Forms
     public partial class FrmDashboard : Form
     {
         private static readonly CultureInfo Mx = new CultureInfo("es-MX");
+        // Un solo acento: escala del verde azulado y de la tinta (sin arcoíris)
         private static readonly Color[] Paleta =
         {
-            Color.FromArgb(0, 113, 227), Color.FromArgb(52, 199, 89), Color.FromArgb(255, 149, 0), Color.FromArgb(175, 82, 222),
-            Color.FromArgb(255, 59, 48), Color.FromArgb(90, 200, 250), Color.FromArgb(255, 204, 0), Color.FromArgb(142, 142, 147),
-            Color.FromArgb(48, 176, 199), Color.FromArgb(88, 86, 214),
+            Color.FromArgb(1, 106, 113), Color.FromArgb(46, 138, 144), Color.FromArgb(94, 167, 172), Color.FromArgb(144, 195, 198),
+            Color.FromArgb(192, 220, 222), Color.FromArgb(39, 37, 30), Color.FromArgb(85, 83, 77), Color.FromArgb(130, 128, 122),
+            Color.FromArgb(174, 172, 166), Color.FromArgb(214, 211, 205),
         };
+        private static readonly Color ColumnaClara = Color.FromArgb(201, 223, 225);
 
         private Chart chtIngresos, chtCategorias;
         private DataGridView dgvRecientes, dgvMasVendidos, dgvAlertas, dgvOrdenes;
@@ -63,7 +65,7 @@ namespace TecnoStore.Forms
             area.AxisY.LabelStyle.Format = "$#,##0,K";
             var serie = chtIngresos.Series.Add("Ingresos");
             serie.ChartType = SeriesChartType.Column;
-            serie.Color = Tema.Acento;
+            serie.Color = ColumnaClara;
             serie["PointWidth"] = "0.55";
             serie.IsValueShownAsLabel = true;
             serie.LabelFormat = "$#,##0,K";
@@ -110,16 +112,16 @@ namespace TecnoStore.Forms
 
         private static Chart NuevaGrafica()
         {
-            var c = new Chart { BackColor = Color.White, Palette = ChartColorPalette.None, PaletteCustomColors = Paleta };
-            var a = new ChartArea("principal") { BackColor = Color.White };
+            var c = new Chart { BackColor = Tema.Tarjeta, Palette = ChartColorPalette.None, PaletteCustomColors = Paleta };
+            var a = new ChartArea("principal") { BackColor = Tema.Tarjeta };
             a.AxisX.MajorGrid.Enabled = false;
             a.AxisX.LineColor = Tema.Borde;
             a.AxisX.MajorTickMark.Enabled = false;
             a.AxisX.LabelStyle.Font = new Font("Segoe UI", 8.5F);
             a.AxisX.LabelStyle.ForeColor = Tema.TextoSuave;
             a.AxisX.Interval = 1;
-            a.AxisY.MajorGrid.LineColor = Color.FromArgb(240, 240, 243);
-            a.AxisY.LineColor = Color.White;
+            a.AxisY.MajorGrid.LineColor = Color.FromArgb(239, 236, 230);
+            a.AxisY.LineColor = Tema.Tarjeta;
             a.AxisY.MajorTickMark.Enabled = false;
             a.AxisY.LabelStyle.Font = new Font("Segoe UI", 8F);
             a.AxisY.LabelStyle.ForeColor = Tema.TextoSuave;
@@ -149,15 +151,16 @@ namespace TecnoStore.Forms
                 var k = DashboardRepository.Indicadores();
                 decimal ingresos = (decimal)k["ingresos_mes"], ingresosAnt = (decimal)k["ingresos_ant"];
                 int ventas = (int)k["ventas_mes"], ventasAnt = (int)k["ventas_ant"];
-                Kpi(0, ingresos.ToString("C0", Mx), Variacion(ingresos, ingresosAnt));
-                Kpi(1, ventas.ToString("N0", Mx), Variacion(ventas, ventasAnt));
-                Kpi(2, (ventas == 0 ? 0 : ingresos / ventas).ToString("C0", Mx), "por venta completada", Tema.TextoSuave);
-                Kpi(3, Convert.ToInt32(k["unidades_mes"]).ToString("N0", Mx), "piezas en 90 días", Tema.TextoSuave);
-                Kpi(4, k["ordenes_abiertas"].ToString(), k["ordenes_listas"] + " listas para entregar", Tema.TextoSuave);
+                Func<decimal, string> dinero = v => v.ToString("C0", Mx), entero = v => v.ToString("N0", Mx);
+                Kpi(0, ingresos, dinero, Variacion(ingresos, ingresosAnt));
+                Kpi(1, ventas, entero, Variacion(ventas, ventasAnt));
+                Kpi(2, ventas == 0 ? 0 : ingresos / ventas, dinero, "por venta completada", Tema.TextoSuave);
+                Kpi(3, Convert.ToInt32(k["unidades_mes"]), entero, "piezas en 90 días", Tema.TextoSuave);
+                Kpi(4, (int)k["ordenes_abiertas"], entero, k["ordenes_listas"] + " listas para entregar", Tema.TextoSuave);
                 int alertas = (int)k["alertas_stock"], agotados = (int)k["agotados"];
-                Kpi(5, alertas.ToString(), agotados > 0 ? agotados + " agotado(s)" : "ninguno agotado", agotados > 0 ? Tema.Rojo : Tema.Verde);
-                Kpi(6, Convert.ToInt32(k["clientes_activos"]).ToString("N0", Mx), "+" + k["clientes_nuevos"] + " nuevos en 90 días", Tema.TextoSuave);
-                Kpi(7, ((decimal)k["valor_inventario"]).ToString("C0", Mx), k["garantias_vigentes"] + " garantías vigentes", Tema.TextoSuave);
+                Kpi(5, alertas, entero, agotados > 0 ? agotados + " agotado(s)" : "ninguno agotado", agotados > 0 ? Tema.Rojo : Tema.Verde);
+                Kpi(6, Convert.ToInt32(k["clientes_activos"]), entero, "+" + k["clientes_nuevos"] + " nuevos en 90 días", Tema.TextoSuave);
+                Kpi(7, (decimal)k["valor_inventario"], dinero, k["garantias_vigentes"] + " garantías vigentes", Tema.TextoSuave);
 
                 // Ingresos por mes: se completan los meses sin ventas con 0
                 var meses = DashboardRepository.IngresosPorMes().Rows.Cast<DataRow>()
@@ -171,7 +174,15 @@ namespace TecnoStore.Forms
                     meses.TryGetValue(m.ToString("yyyy-MM"), out v);
                     pts.AddXY(Mx.TextInfo.ToTitleCase(m.ToString("MMM", Mx).TrimEnd('.')), v);
                 }
-                if (pts.Count > 0) pts[pts.Count - 1].Color = Tema.Acento; // mes actual
+                if (pts.Count > 0) pts[pts.Count - 1].Color = Tema.Navegacion; // mes actual
+                // Las columnas crecen desde cero (eje fijo para que no "salte")
+                var finales = pts.Select(x => x.YValues[0]).ToArray();
+                chtIngresos.ChartAreas[0].AxisY.Maximum = Math.Max(1, finales.Max() * 1.18);
+                Animacion.Ejecutar(650, Animacion.Salida, p =>
+                {
+                    for (int i = 0; i < pts.Count; i++) pts[i].YValues[0] = finales[i] * p;
+                    chtIngresos.Invalidate();
+                });
 
                 var dona = chtCategorias.Series[0].Points;
                 dona.Clear();
@@ -191,13 +202,15 @@ namespace TecnoStore.Forms
             finally { Cursor = Cursors.Default; }
         }
 
-        private void Kpi(int i, string valor, Tuple<string, Color> nota) => Kpi(i, valor, nota.Item1, nota.Item2);
+        private void Kpi(int i, decimal valor, Func<decimal, string> formato, Tuple<string, Color> nota) => Kpi(i, valor, formato, nota.Item1, nota.Item2);
 
-        private void Kpi(int i, string valor, string nota, Color color)
+        /// <summary>El número cuenta desde 0 hasta su valor (como los widgets de Apple).</summary>
+        private void Kpi(int i, decimal valor, Func<decimal, string> formato, string nota, Color color)
         {
-            kpiValor[i].Text = valor;
             kpiNota[i].Text = nota;
             kpiNota[i].ForeColor = color;
+            var etiqueta = kpiValor[i];
+            Animacion.Ejecutar(700, Animacion.Salida, p => etiqueta.Text = formato(Math.Round(valor * (decimal)p, 0)));
         }
 
         private static Tuple<string, Color> Variacion(decimal actual, decimal anterior)

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 using TecnoStore.Data;
 using TecnoStore.Utils;
@@ -25,11 +26,12 @@ namespace TecnoStore.Forms
 
         private readonly List<Modulo> modulos = new List<Modulo>();
         private readonly Dictionary<string, Form> abiertos = new Dictionary<string, Form>();
-        private readonly Dictionary<string, Button> botones = new Dictionary<string, Button>();
 
         public FrmPrincipal()
         {
             InitializeComponent();
+            Animacion.Fundido(this);
+            Forma.VentanaModerna(this, Tema.Carbon, Color.FromArgb(201, 199, 193));
             var s = Db.Sesion;
             // Matriz de permisos aplicada al menú (SQL Server la vuelve a validar)
             Func<bool> todos = () => true;
@@ -55,6 +57,17 @@ namespace TecnoStore.Forms
             modulos.Add(new Modulo { Clave = clave, Titulo = titulo, Grupo = grupo, Atajo = atajo, Crear = crear, Visible = visible });
         }
 
+        private MenuLateral menu;
+
+        // Íconos de la fuente de íconos de Windows (Segoe Fluent Icons / MDL2 Assets)
+        private static readonly Dictionary<string, char> Iconos = new Dictionary<string, char>
+        {
+            ["dashboard"] = '\uE80F', ["venta"] = '\uE7BF', ["historial"] = '\uE81C', ["clientes"] = '\uE716',
+            ["ordenes"] = '\uE90F', ["productos"] = '\uE7B8', ["compras"] = '\uE719', ["proveedores"] = '\uE804',
+            ["ajustes"] = '\uE9E9', ["categorias"] = '\uE8A9', ["marcas"] = '\uE8EC', ["tipos"] = '\uE15E',
+            ["reportes"] = '\uE9D2', ["usuarios"] = '\uE77B', ["auditoria"] = '\uE72E',
+        };
+
         private void FrmPrincipal_Load(object sender, EventArgs e)
         {
             var s = Db.Sesion;
@@ -63,50 +76,28 @@ namespace TecnoStore.Forms
             lblRol.Text = s.Rol + " · " + s.Sucursal;
             lblIniciales.Text = Iniciales(s.Nombre);
             Tema.Boton(btnCerrarSesion, false);
+            pnlEncabezado.Paint += (o, ev) =>   // línea de lápiz bajo el encabezado
+            {
+                using (var linea = new Pen(Tema.LineaSuave)) ev.Graphics.DrawLine(linea, 0, pnlEncabezado.Height - 1, pnlEncabezado.Width, pnlEncabezado.Height - 1);
+            };
             ConstruirMenu();
             Abrir(s.Rol == "Operador" ? "venta" : "dashboard");
         }
 
         private void ConstruirMenu()
         {
-            pnlMenu.SuspendLayout();
+            menu = new MenuLateral { Dock = DockStyle.Fill };
+            foreach (var m in modulos.Where(x => x.Visible()))
+                menu.Agregar(m.Clave, m.Titulo, m.Grupo, Iconos.TryGetValue(m.Clave, out var ic) ? ic : ' ');
+            menu.Seleccionado += Abrir;
             pnlMenu.Controls.Clear();
-            string grupoActual = null;
-            int y = 8;
-            foreach (var m in modulos)
-            {
-                if (!m.Visible()) continue;
-                if (m.Grupo != grupoActual)
-                {
-                    grupoActual = m.Grupo;
-                    var lbl = new Label
-                    {
-                        Text = m.Grupo.ToUpperInvariant(), AutoSize = false, Width = pnlMenu.Width - 24, Height = 26,
-                        Location = new Point(20, y + 6), ForeColor = Color.FromArgb(142, 142, 147),
-                        Font = new Font("Segoe UI Semibold", 8F), TextAlign = ContentAlignment.BottomLeft,
-                    };
-                    pnlMenu.Controls.Add(lbl);
-                    y += 34;
-                }
-                var b = new Button
-                {
-                    Text = "   " + m.Titulo + (m.Atajo != null ? "" : ""), Tag = m.Clave, Width = pnlMenu.Width - 24, Height = 34,
-                    Location = new Point(12, y), FlatStyle = FlatStyle.Flat, TextAlign = ContentAlignment.MiddleLeft,
-                    ForeColor = Color.FromArgb(235, 235, 240), BackColor = Tema.Lateral, Cursor = Cursors.Hand,
-                    Font = Tema.Fuente, Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right,
-                };
-                b.FlatAppearance.BorderSize = 0;
-                b.FlatAppearance.MouseOverBackColor = Tema.LateralHover;
-                b.FlatAppearance.MouseDownBackColor = Tema.LateralHover;
-                b.Click += (s, e) => Abrir((string)((Button)s).Tag);
-                pnlMenu.Controls.Add(b);
-                botones[m.Clave] = b;
-                y += 36;
-            }
-            pnlMenu.ResumeLayout();
+            pnlMenu.Controls.Add(menu);
         }
 
-        /// <summary>Muestra el módulo en el área central (lo crea la primera vez).</summary>
+        /// <summary>
+        /// Muestra el módulo en el área central (lo crea la primera vez). Entra
+        /// deslizándose 14 px hacia arriba con salida suave, como las vistas de iOS.
+        /// </summary>
         private void Abrir(string clave)
         {
             var m = modulos.Find(x => x.Clave == clave);
@@ -121,7 +112,6 @@ namespace TecnoStore.Forms
                     f = m.Crear();
                     f.TopLevel = false;
                     f.FormBorderStyle = FormBorderStyle.None;
-                    f.Dock = DockStyle.Fill;
                     Tema.Aplicar(f);
                     pnlContenido.Controls.Add(f);
                     abiertos[clave] = f;
@@ -129,18 +119,19 @@ namespace TecnoStore.Forms
                 catch (Exception ex) { Ui.Error(ex); return; }
                 finally { Cursor = Cursors.Default; }
             }
-            f.Show();
-            f.BringToFront();
             lblTitulo.Text = m.Titulo;
             lblAtajo.Text = m.Atajo == null ? "" : "Atajo: " + m.Atajo;
-            foreach (var kv in botones)
-            {
-                bool activo = kv.Key == clave;
-                kv.Value.BackColor = activo ? Tema.LateralActivo : Tema.Lateral;
-                kv.Value.ForeColor = activo ? Color.White : Color.FromArgb(235, 235, 240);
-                kv.Value.Font = activo ? Tema.FuenteNegrita : Tema.Fuente;
-                kv.Value.FlatAppearance.MouseOverBackColor = activo ? Tema.LateralActivo : Tema.LateralHover;
-            }
+            lblAtajo.Left = lblTitulo.Right + 10;
+            menu.Activar(clave);
+
+            var destino = pnlContenido.DisplayRectangle;
+            f.Dock = DockStyle.None;
+            f.Bounds = new Rectangle(destino.X, destino.Y + 14, destino.Width, destino.Height);
+            f.Show();
+            f.BringToFront();
+            Animacion.Ejecutar(260, Animacion.Salida,
+                p => { if (!f.IsDisposed) f.Top = destino.Y + (int)Math.Round(14 * (1 - p)); },
+                () => { if (!f.IsDisposed) f.Dock = DockStyle.Fill; });
         }
 
         // Atajos de teclado (los mismos que tenía el menú)
@@ -180,8 +171,8 @@ namespace TecnoStore.Forms
             var l = (Label)sender;
             e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
             e.Graphics.Clear(pnlEncabezado.BackColor);
-            using (var b = new SolidBrush(Tema.Acento)) e.Graphics.FillEllipse(b, 0, 0, l.Width - 1, l.Height - 1);
-            TextRenderer.DrawText(e.Graphics, l.Text, Tema.FuenteNegrita, l.ClientRectangle, Color.White,
+            using (var b = new SolidBrush(Tema.Texto)) e.Graphics.FillEllipse(b, 0, 0, l.Width - 1, l.Height - 1);
+            TextRenderer.DrawText(e.Graphics, l.Text, Tema.FuenteNegrita, l.ClientRectangle, Tema.Fondo,
                                   TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
         }
     }

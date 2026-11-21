@@ -229,7 +229,7 @@ PANTALLAS = [
 ]
 if hay_preview:
     for archivo, usuario, modulo, _ in PANTALLAS:
-        url = PREVIEW + ('/?usuario=%s&modulo=%s' % (usuario, modulo) if usuario else '/')
+        url = PREVIEW + ('/?usuario=%s&modulo=%s' % (usuario, modulo) if usuario else '/?captura')
         captura(url, os.path.join(CAPTURAS, archivo + '.png'))
     print('   %d capturas' % len(PANTALLAS))
 

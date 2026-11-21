@@ -30,13 +30,13 @@ function messageBox(text, { title = 'TecnoStore', icon = 'info', buttons = ['Ace
     const el = h(`<div class="overlay"><div class="msgbox">
       <div class="titlebar"><span class="title" style="padding-left:12px">${esc(title)}</span><div class="caption"><span class="close">✕</span></div></div>
       <div class="msg"><div class="ico ${icon}">${glyph}</div><div>${esc(text).replace(/\n/g, '<br>')}</div></div>
-      <div class="buttons">${buttons.map((b, i) => `<button data-i="${i}" ${i === 0 ? 'class="primary"' : ''}>${esc(b)}</button>`).join('')}</div>
+      <div class="buttons">${buttons.map((b, i) => `<button data-i="${i}" ${i === 0 ? 'class="primary"' : ''}>${esc(b)}</button>`).reverse().join('')}</div>
     </div></div>`);
     const close = (v) => { el.remove(); resolve(v); };
     el.querySelectorAll('button').forEach((b) => b.onclick = () => close(buttons[+b.dataset.i]));
     el.querySelector('.close').onclick = () => close(null);
     document.body.appendChild(el);
-    el.querySelector('button').focus();
+    (el.querySelector('.buttons button.primary') || el.querySelector('button')).focus();
   });
 }
 const showError = (e) => messageBox(e.message || e, { icon: 'error', title: 'Error' });
@@ -136,6 +136,55 @@ const MODULOS_LISTA = [
   ['usuarios', 'Usuarios y roles', 'Administración', null, renderUsuarios],
   ['auditoria', 'Auditoría', 'Administración', null, renderAuditoria],
 ];
+const ICONOS = {
+  dashboard: '<rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/>',
+  venta: '<path d="M6 7h12l-1 13H7z"/><path d="M9 7a3 3 0 0 1 6 0"/>',
+  ventas: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  clientes: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 20a6.5 6.5 0 0 0-3-5.5"/>',
+  ordenes: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3 17.8V21h3.2l6.3-6.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>',
+  productos: '<path d="M21 8 12 3 3 8l9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
+  compras: '<path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6"/><circle cx="10" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/>',
+  proveedores: '<path d="M3 17V7h11v10"/><path d="M14 10h4l3 3v4h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
+  ajustes: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+  categorias: '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',
+  marcas: '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
+  tipos: '<path d="M9 4h6M10 4v4l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V4"/>',
+  reportes: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  usuarios: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  auditoria: '<path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
+};
+const icono = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONOS[k] || ''}</svg>`;
+
+// Material: "vidrio" (Liquid Glass aproximado) u "opaco" (iOS 16); se recuerda en este navegador
+function leerMaterial() { try { return localStorage.getItem('material') || 'vidrio'; } catch (e) { return 'vidrio'; } }
+function ponerMaterial(m) {
+  document.documentElement.dataset.material = m;
+  try { localStorage.setItem('material', m); } catch (e) { /* sin almacenamiento */ }
+}
+ponerMaterial(leerMaterial());
+
+// Control segmentado con "pulgar" que se desliza (segmented control de Apple)
+function segmentado(contenedor, selector, activo) {
+  let pulgar = contenedor.querySelector('.pulgar');
+  if (!pulgar) { pulgar = document.createElement('span'); pulgar.className = 'pulgar'; contenedor.prepend(pulgar); }
+  const b = contenedor.querySelector(selector + '.' + activo) || contenedor.querySelector(selector);
+  if (!b) return;
+  pulgar.style.left = b.offsetLeft + 'px';
+  pulgar.style.width = b.offsetWidth + 'px';
+}
+
+// Números que cuentan hasta su valor (como los widgets de Apple)
+function contar(el, final, formato, ms = 700) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('sin-animacion')) { el.textContent = formato(final); return; }
+  const t0 = performance.now();
+  const paso = (t) => {
+    const p = Math.min(1, (t - t0) / ms), e = 1 - Math.pow(1 - p, 3);
+    el.textContent = formato(final * e);
+    if (p < 1) requestAnimationFrame(paso);
+  };
+  requestAnimationFrame(paso);
+}
+
 const MODULOS = Object.fromEntries(MODULOS_LISTA.map(([k, t, g, a, r]) => [k, [t, r, g, a]]));
 const iniciales = (n) => (n || '?').split(' ').filter(Boolean).slice(0, 2).map((x) => x[0]).join('').toUpperCase();
 
@@ -146,18 +195,19 @@ function renderMain() {
   for (const [k, t, g] of MODULOS_LISTA) {
     if (!u.modulos.includes(k)) continue;
     if (g !== grupo) { grupo = g; nav += `<div class="grupo">${esc(g)}</div>`; }
-    nav += `<button data-m="${k}">${esc(t)}</button>`;
+    nav += `<button data-m="${k}">${icono(k)}<span>${esc(t)}</span></button>`;
   }
   const el = h(`<div class="form app">
     ${titlebar('TecnoStore — Panel de administración')}
     <div class="body">
       <aside class="lateral">
-        <div class="marca"><b>TecnoStore</b><small>Panel de administración</small></div>
-        <nav>${nav}</nav>
+        <div class="marca"><div class="sello">T</div><div><b>TecnoStore</b><small>Panel de administración</small></div></div>
+        <nav><span class="indicador"></span>${nav}</nav>
       </aside>
       <div class="principal">
         <header class="encabezado">
           <h2 class="titulo"></h2><span class="atajo"></span><span class="spacer"></span>
+          <div class="segmentado material" title="Material de la interfaz"><button data-mat="vidrio">Vidrio líquido</button><button data-mat="opaco">Opaco</button></div>
           <div class="avatar">${esc(iniciales(u.nombre))}</div>
           <div class="quien"><b>${esc(u.nombre)}</b><small>${esc(u.rol)} · ${esc(u.sucursal)}</small></div>
           <button data-salir>Cerrar sesión</button>
@@ -171,6 +221,14 @@ function renderMain() {
   el.querySelectorAll('[data-m]').forEach((b) => b.onclick = () => abrir(b.dataset.m));
   el.querySelector('[data-salir]').onclick = cerrarSesion;
   ventana(el, cerrarSesion);
+  const seg = el.querySelector('.material');
+  const pintarMaterial = () => {
+    const m = leerMaterial();
+    seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.mat === m));
+    segmentado(seg, 'button', 'on');
+  };
+  seg.querySelectorAll('button').forEach((b) => b.onclick = () => { ponerMaterial(b.dataset.mat); pintarMaterial(); });
+  requestAnimationFrame(pintarMaterial);
   document.onkeydown = (ev) => {
     const tecla = { F2: 'productos', F3: 'clientes', F4: 'proveedores', F5: 'venta', F6: 'ordenes', F7: 'compras' }[ev.key];
     if (tecla && state.user?.modulos.includes(tecla) && !document.querySelector('.overlay')) { ev.preventDefault(); abrir(tecla); }
@@ -181,9 +239,18 @@ function renderMain() {
 
 const acercaDe = () => messageBox('TecnoStore — Panel de administración\nProyecto final de Taller de Bases de Datos\n\nVista previa conectada a SQL Server. La aplicación real es la solución de Windows Forms en 03_WindowsForms.', { title: 'Acerca de' });
 
+// La pastilla verde azulado se desliza hasta el módulo activo
+function moverIndicador() {
+  const ind = document.querySelector('.lateral .indicador'), b = document.querySelector('.lateral [data-m].active');
+  if (!ind || !b) return;
+  ind.style.top = b.offsetTop + 'px';
+  ind.style.height = b.offsetHeight + 'px';
+}
+
 async function abrir(m) {
   state.modulo = m;
   document.querySelectorAll('.lateral [data-m]').forEach((b) => b.classList.toggle('active', b.dataset.m === m));
+  moverIndicador();
   document.querySelector('.encabezado .titulo').textContent = MODULOS[m][0];
   document.querySelector('.encabezado .atajo').textContent = MODULOS[m][3] ? 'Atajo: ' + MODULOS[m][3] : '';
   const content = document.querySelector('.content');
@@ -193,7 +260,8 @@ async function abrir(m) {
 }
 
 /* ---------- FrmDashboard ---------- */
-const PALETA = ['#0071e3', '#34c759', '#ff9500', '#af52de', '#ff3b30', '#5ac8fa', '#ffcc00', '#8e8e93', '#30b0c7', '#5856d6'];
+// Un solo acento: escala del verde azulado y de la tinta (sin arcoíris)
+const PALETA = ['#016a71', '#2e8a90', '#5ea7ac', '#90c3c6', '#c0dcde', '#27251e', '#55534d', '#82807a', '#aeaca6', '#d6d3cd'];
 const mx = (v, d = 0) => Number(v).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: d, minimumFractionDigits: d });
 
 function variacion(actual, anterior) {
@@ -267,7 +335,7 @@ async function renderDashboard(c) {
       <div class="sub">${esc(fecha[0].toUpperCase() + fecha.slice(1))} · ${esc(u.sucursal)}</div></div>
       <span class="spacer"></span><span class="sub">Actualizado a las ${new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>
       <button data-actualizar>Actualizar</button></div>
-    <div class="kpis">${tarjetas.map(([t, v, n, cls]) => `<div class="card kpi"><span>${esc(t)}</span><b>${esc(v)}</b><small class="${cls}">${esc(n)}</small></div>`).join('')}</div>
+    <div class="kpis">${tarjetas.map(([t, v, n, cls], i) => `<div class="card kpi"><span>${esc(t)}</span><b data-kpi="${i}">${esc(v)}</b><small class="${cls}">${esc(n)}</small></div>`).join('')}</div>
     <div class="fila2">
       <div class="card"><h3>Ingresos por mes · últimos 6 meses</h3>${columnas(meses)}</div>
       <div class="card"><h3>Ventas por categoría · últimos 90 días</h3>${dona(d.categorias.map((x) => ({ t: x.categoria, v: x.ingresos })))}</div>
@@ -288,6 +356,13 @@ async function renderDashboard(c) {
   poner('alertas', grid([{ t: 'SKU', k: 'sku' }, { t: 'Producto', k: 'producto' }, { t: 'Stock', k: 'stock', num: 1, f: (v) => `<span class="${v === 0 ? 'texto-rojo' : ''}">${v}</span>` }, { t: 'Mínimo', k: 'minimo', num: 1 }], d.alertas, { cls: 'compacta' }));
   poner('taller', grid([{ t: 'Folio', k: 'folio' }, { t: 'Equipo', k: 'equipo' }, { t: 'Técnico', k: 'tecnico' }, { t: 'Estado', k: 'estado', f: (v) => `<span class="pill azul">${esc(v)}</span>` }, { t: 'Días', k: 'dias', num: 1 }], d.taller, { cls: 'compacta' }));
   c.querySelector('[data-actualizar]').onclick = () => renderDashboard(c).catch(showError);
+  const numeros = [k.ingresos_mes, k.ventas_mes, k.ventas_mes ? k.ingresos_mes / k.ventas_mes : 0, k.unidades_mes,
+                   k.ordenes_abiertas, k.alertas_stock, k.clientes_activos, k.valor_inventario];
+  const dinero = [0, 2, 7];
+  c.querySelectorAll('[data-kpi]').forEach((el) => {
+    const i = +el.dataset.kpi;
+    contar(el, Number(numeros[i]) || 0, dinero.includes(i) ? (v) => mx(v) : (v) => Math.round(v).toLocaleString('es-MX'));
+  });
 }
 
 /* ---------- FrmProductos ---------- */
@@ -526,8 +601,13 @@ async function renderReportes(c) {
   ];
   let data = null, tab = 'resumen';
   const pintar = () => {
-    c.querySelector('.tabs').innerHTML = TABS.map(([k, t]) => `<button data-t="${k}" class="${k === tab ? 'active' : ''}">${t}</button>`).join('');
-    c.querySelectorAll('[data-t]').forEach((b) => b.onclick = () => { tab = b.dataset.t; pintar(); });
+    const tabsEl = c.querySelector('.tabs');
+    if (!tabsEl.querySelector('[data-t]')) {   // se arman una vez para que el pulgar se deslice
+      tabsEl.innerHTML = TABS.map(([k, t]) => `<button data-t="${k}">${t}</button>`).join('');
+      tabsEl.querySelectorAll('[data-t]').forEach((b) => b.onclick = () => { tab = b.dataset.t; pintar(); });
+    }
+    tabsEl.querySelectorAll('[data-t]').forEach((b) => b.classList.toggle('active', b.dataset.t === tab));
+    requestAnimationFrame(() => segmentado(tabsEl, 'button', 'active'));
     const [, , cols] = TABS.find((t) => t[0] === tab);
     const page = c.querySelector('.tabpage');
     page.replaceChildren();
@@ -864,6 +944,8 @@ async function renderAjustes(c) {
 // entra con un usuario demo y abre esa pantalla (solo usuarios demo con su contraseña conocida).
 async function inicio() {
   const p = new URLSearchParams(location.search);
+  // Modo captura (?usuario=… o ?captura): sin animaciones, para que Chrome sin ventana fotografíe el estado final
+  if (p.has('usuario') || p.has('captura')) document.documentElement.classList.add('sin-animacion');
   const demo = ['admin', 'csupervisor', 'loperador', 'fconsulta'];
   if (!demo.includes(p.get('usuario'))) return renderLogin();
   try {

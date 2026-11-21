@@ -34,12 +34,12 @@ namespace TecnoStore.Forms
             //
             // pnlLateral (barra lateral oscura)
             //
-            this.pnlLateral.BackColor = System.Drawing.Color.FromArgb(29, 29, 31);
+            this.pnlLateral.BackColor = System.Drawing.Color.FromArgb(243, 240, 234);
             this.pnlLateral.Controls.Add(this.pnlMenu);
             this.pnlLateral.Controls.Add(this.pnlMarca);
             this.pnlLateral.Dock = System.Windows.Forms.DockStyle.Left;
             this.pnlLateral.Name = "pnlLateral";
-            this.pnlLateral.Size = new System.Drawing.Size(240, 800);
+            this.pnlLateral.Size = new System.Drawing.Size(248, 800);
             //
             // pnlMenu (los botones se agregan según el perfil)
             //
@@ -57,20 +57,20 @@ namespace TecnoStore.Forms
             this.pnlMarca.Size = new System.Drawing.Size(240, 80);
             this.lblMarca.AutoSize = true;
             this.lblMarca.Font = new System.Drawing.Font("Segoe UI Semibold", 17F);
-            this.lblMarca.ForeColor = System.Drawing.Color.White;
+            this.lblMarca.ForeColor = System.Drawing.Color.FromArgb(39, 37, 30);
             this.lblMarca.Location = new System.Drawing.Point(18, 16);
             this.lblMarca.Name = "lblMarca";
             this.lblMarca.Text = "TecnoStore";
             this.lblSubmarca.AutoSize = true;
             this.lblSubmarca.Font = new System.Drawing.Font("Segoe UI", 8.5F);
-            this.lblSubmarca.ForeColor = System.Drawing.Color.FromArgb(142, 142, 147);
+            this.lblSubmarca.ForeColor = System.Drawing.Color.FromArgb(114, 112, 107);
             this.lblSubmarca.Location = new System.Drawing.Point(21, 50);
             this.lblSubmarca.Name = "lblSubmarca";
             this.lblSubmarca.Text = "Panel de administración";
             //
             // pnlEncabezado
             //
-            this.pnlEncabezado.BackColor = System.Drawing.Color.White;
+            this.pnlEncabezado.BackColor = System.Drawing.Color.FromArgb(253, 251, 250);
             this.pnlEncabezado.Controls.Add(this.lblTitulo);
             this.pnlEncabezado.Controls.Add(this.lblAtajo);
             this.pnlEncabezado.Controls.Add(this.lblIniciales);
@@ -82,13 +82,13 @@ namespace TecnoStore.Forms
             this.pnlEncabezado.Size = new System.Drawing.Size(1040, 64);
             this.lblTitulo.AutoSize = true;
             this.lblTitulo.Font = new System.Drawing.Font("Segoe UI Semibold", 16F);
-            this.lblTitulo.ForeColor = System.Drawing.Color.FromArgb(29, 29, 31);
+            this.lblTitulo.ForeColor = System.Drawing.Color.FromArgb(39, 37, 30);
             this.lblTitulo.Location = new System.Drawing.Point(24, 15);
             this.lblTitulo.Name = "lblTitulo";
             this.lblTitulo.Text = "Dashboard";
             this.lblAtajo.AutoSize = true;
             this.lblAtajo.Font = new System.Drawing.Font("Segoe UI", 8.5F);
-            this.lblAtajo.ForeColor = System.Drawing.Color.FromArgb(142, 142, 147);
+            this.lblAtajo.ForeColor = System.Drawing.Color.FromArgb(146, 145, 139);
             this.lblAtajo.Location = new System.Drawing.Point(300, 26);
             this.lblAtajo.Name = "lblAtajo";
             this.lblIniciales.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
@@ -105,7 +105,7 @@ namespace TecnoStore.Forms
             this.lblRol.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
             this.lblRol.AutoSize = true;
             this.lblRol.Font = new System.Drawing.Font("Segoe UI", 8.5F);
-            this.lblRol.ForeColor = System.Drawing.Color.FromArgb(110, 110, 115);
+            this.lblRol.ForeColor = System.Drawing.Color.FromArgb(114, 112, 107);
             this.lblRol.Location = new System.Drawing.Point(751, 33);
             this.lblRol.Name = "lblRol";
             this.lblRol.Text = "Rol";
@@ -118,16 +118,16 @@ namespace TecnoStore.Forms
             //
             // pnlContenido (aquí se abre cada pantalla)
             //
-            this.pnlContenido.BackColor = System.Drawing.Color.FromArgb(245, 245, 247);
+            this.pnlContenido.BackColor = System.Drawing.Color.FromArgb(250, 248, 245);
             this.pnlContenido.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlContenido.Name = "pnlContenido";
-            this.pnlContenido.Padding = new System.Windows.Forms.Padding(16);
+            this.pnlContenido.Padding = new System.Windows.Forms.Padding(20, 18, 20, 18);
             //
             // FrmPrincipal
             //
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.BackColor = System.Drawing.Color.FromArgb(245, 245, 247);
+            this.BackColor = System.Drawing.Color.FromArgb(250, 248, 245);
             this.ClientSize = new System.Drawing.Size(1280, 800);
             this.Controls.Add(this.pnlContenido);
             this.Controls.Add(this.pnlEncabezado);

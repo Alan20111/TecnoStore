@@ -10,7 +10,7 @@ Tecnología obligatoria: **SQL Server + C# Windows Forms + Visual Studio** (ver 
 | Carpeta | Contenido |
 |---|---|
 | `Contexto/` | Requerimientos del profesor y modelo de datos / diccionario |
-| `01_Documentacion/` | [Documento técnico](01_Documentacion/DocumentoTecnico.pdf), [manual de usuario](01_Documentacion/ManualUsuario.pdf), [DER](01_Documentacion/DER.png), [diccionario de datos](01_Documentacion/DiccionarioDatos.pdf), [matriz de permisos](01_Documentacion/MatrizPermisos.pdf) y [casos de prueba](01_Documentacion/CasosPrueba.pdf) |
+| `01_Documentacion/` | [Documento técnico](01_Documentacion/DocumentoTecnico.pdf), [manual de usuario](01_Documentacion/ManualUsuario.pdf), [DER](01_Documentacion/DER.png), [diccionario de datos](01_Documentacion/DiccionarioDatos.pdf), [matriz de permisos](01_Documentacion/MatrizPermisos.pdf) y [casos de prueba](01_Documentacion/CasosPrueba.pdf) y [guía de diseño](01_Documentacion/GuiaDiseno.md) (investigación de patrones de Apple y cómo se aplicaron) |
 | `02_SQL/` | Scripts de la base (01 a 12) |
 | `03_WindowsForms/` | **La aplicación**: solución de Visual Studio `TecnoStore.sln` (C# Windows Forms, .NET Framework 4.8) |
 | `04_Evidencias/` | Salida real de los scripts en SQL Server, capturas de la vista previa y carpeta para las capturas de la app en Windows |

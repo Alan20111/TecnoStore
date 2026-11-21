@@ -1,5 +1,6 @@
 using System;
 using System.Data.SqlClient;
+using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 using TecnoStore.Data;
@@ -22,6 +23,8 @@ namespace TecnoStore.Forms
             InitializeComponent();
             Tema.Aplicar(this);
             BackColor = Tema.Tarjeta;
+            Animacion.Fundido(this);
+            Forma.VentanaModerna(this, Tema.Carbon, Color.FromArgb(201, 199, 193));
         }
 
         private void FrmLogin_Load(object sender, EventArgs e)
