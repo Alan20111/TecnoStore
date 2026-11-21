@@ -37,13 +37,13 @@ Opcionales, para demostrar: `05_Consultas.sql` (40 consultas), `11_Transacciones
 
 ### 2. Abrir y ejecutar la aplicación
 
-**Sin Visual Studio:** descarguen `TecnoStore-vX.Y-win.zip` del [último release](https://github.com/Alan20111/TecnoStore/releases/latest), descompriman y abran `TecnoStore.exe` (ajustando `Server=` en `TecnoStore.exe.config` si hace falta). Cada cambio al proyecto publica un release nuevo.
+**Sin Visual Studio:** descarguen `TecnoStore-vX.Y-win.zip` del [último release](https://github.com/Alan20111/TecnoStore/releases/latest), descompriman y abran `TecnoStore.exe`. En la pantalla de inicio de sesión escriban su servidor (`localhost`, `.\SQLEXPRESS` o `NOMBRE-PC\INSTANCIA`); se recuerda para la próxima vez. Cada cambio al proyecto publica un release nuevo.
 
 **Con Visual Studio:**
 
 
 1. Abrir `03_WindowsForms/TecnoStore.sln` con **Visual Studio 2022** (o 2019) que tenga la carga de trabajo **"Desarrollo de escritorio de .NET"**.
-2. Revisar `App.config`: en `connectionStrings`, la cadena `Unica` usa `Server=localhost` con autenticación de Windows. Si su instancia es SQL Express cambien a `Server=.\SQLEXPRESS`.
+2. Al abrir la app, escribir su servidor en el inicio de sesión (`localhost`, `.\SQLEXPRESS`…). Usa autenticación de Windows. `App.config` solo define el servidor por defecto y el modo de conexión por roles.
 3. **F5**. Entrar con un usuario demo (contraseña de todos: `1234`):
 
 | Usuario | Rol | Qué puede hacer |

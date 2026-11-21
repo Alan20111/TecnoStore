@@ -49,11 +49,12 @@ Requisitos
   - SQL Server con la base TecnoStore creada: ejecutar en SSMS los scripts de
     la carpeta 02_SQL del repositorio, en el orden que indica el README.
 
-Configuracion
-  - Abrir TecnoStore.exe.config con el Bloc de notas.
-  - En la cadena "Unica" cambiar Server=localhost por su instancia
-    (por ejemplo Server=.\SQLEXPRESS). Usa autenticacion de Windows.
-  - TecnoStore.exe y TecnoStore.exe.config deben estar en la misma carpeta.
+Servidor
+  - En la pantalla de inicio de sesion escriban su servidor de SQL Server:
+    localhost, .\SQLEXPRESS o NOMBRE-PC\INSTANCIA. Se recuerda para la
+    proxima vez. Usa autenticacion de Windows.
+  - TecnoStore.exe.config es opcional: sirve para cambiar el servidor por
+    defecto o usar un login de SQL Server por rol (ModoConexion=Roles).
 
 Usuarios demo (contrasena 1234)
   admin (Administrador), csupervisor (Supervisor),
@@ -72,12 +73,12 @@ $CAMBIOS
 ## Descarga
 
 - **$ZIP** (recomendado): \`TecnoStore.exe\`, su configuración \`TecnoStore.exe.config\` y \`LEEME.txt\`.
-- **TecnoStore.exe**: solo el ejecutable; necesita \`TecnoStore.exe.config\` en la misma carpeta (viene en el zip).
+- **TecnoStore.exe**: solo el ejecutable; funciona sin el \`.config\`.
 
 ## Antes de abrirlo
 
 1. Crear la base en SQL Server con los scripts de \`02_SQL\` en el orden del [README](https://github.com/$REPO#en-windows-paso-a-paso).
-2. Si su instancia no es \`localhost\`, editar \`Server=\` en \`TecnoStore.exe.config\` (por ejemplo \`.\\SQLEXPRESS\`).
+2. En la pantalla de inicio de sesión escribir su servidor (\`localhost\`, \`.\\SQLEXPRESS\` o \`NOMBRE-PC\\INSTANCIA\`).
 3. Entrar con \`admin\` y contraseña \`1234\` (también \`csupervisor\`, \`loperador\`, \`fconsulta\`).
 
 > Compilado con el SDK de .NET desde macOS (commit $(git rev-parse --short HEAD)).

@@ -16,8 +16,27 @@ namespace TecnoStore.Data
         /// <summary>Usuario que inició sesión (null antes del login).</summary>
         public static UsuarioSesion Sesion { get; set; }
 
+        /// <summary>
+        /// Servidor de SQL Server elegido en la pantalla de inicio de sesión
+        /// (localhost, .\SQLEXPRESS, NOMBRE-PC\INSTANCIA...). Si está vacío se usa
+        /// el de App.config.
+        /// </summary>
+        public static string Servidor { get; set; }
+
         private static bool ModoRoles =>
             string.Equals(ConfigurationManager.AppSettings["ModoConexion"], "Roles", StringComparison.OrdinalIgnoreCase);
+
+        // Cadenas por defecto: la app funciona aunque falte TecnoStore.exe.config
+        // (por ejemplo si se descargó solo el .exe o el navegador lo renombró).
+        private static string CadenaPorDefecto(string nombre)
+        {
+            if (nombre == "Unica")
+                return "Server=localhost;Database=TecnoStore;Integrated Security=True";
+            string login = nombre == "Login" ? "tecno_login"
+                         : nombre == "Administrador" ? "tecno_admin"
+                         : "tecno_" + nombre.ToLowerInvariant();
+            return "Server=localhost;Database=TecnoStore;User Id=" + login + ";Password=Tecno#2026sql";
+        }
 
         private static string CadenaConexion()
         {
@@ -26,9 +45,17 @@ namespace TecnoStore.Data
             else nombre = Sesion == null ? "Login" : Sesion.Rol;
 
             var cs = ConfigurationManager.ConnectionStrings[nombre];
-            if (cs == null)
-                throw new InvalidOperationException("Falta la cadena de conexión '" + nombre + "' en App.config.");
-            return cs.ConnectionString;
+            var builder = new SqlConnectionStringBuilder(cs != null ? cs.ConnectionString : CadenaPorDefecto(nombre));
+            if (!string.IsNullOrWhiteSpace(Servidor)) builder.DataSource = Servidor.Trim();
+            if (builder.ConnectTimeout > 8) builder.ConnectTimeout = 8;   // no dejar la pantalla congelada 15 s
+            return builder.ConnectionString;
+        }
+
+        /// <summary>Servidor configurado en App.config (o localhost) para precargarlo en el login.</summary>
+        public static string ServidorConfigurado()
+        {
+            var cs = ConfigurationManager.ConnectionStrings["Unica"];
+            return new SqlConnectionStringBuilder(cs != null ? cs.ConnectionString : CadenaPorDefecto("Unica")).DataSource;
         }
 
         /// <summary>
