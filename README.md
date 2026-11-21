@@ -37,7 +37,7 @@ Opcionales, para demostrar: `05_Consultas.sql` (40 consultas), `11_Transacciones
 
 ### 2. Abrir y ejecutar la aplicación
 
-**Sin Visual Studio:** descarguen `TecnoStore-vX.Y-win.zip` del [último release](https://github.com/Alan20111/TecnoStore/releases/latest), descompriman y abran `TecnoStore.exe`. En la pantalla de inicio de sesión escriban su servidor (`localhost`, `.\SQLEXPRESS` o `NOMBRE-PC\INSTANCIA`); se recuerda para la próxima vez. Cada cambio al proyecto publica un release nuevo.
+**Sin Visual Studio:** descarguen `TecnoStore-vX.Y-win.zip` del [último release](https://github.com/Alan20111/TecnoStore/releases/latest), descompriman y abran `TecnoStore.exe`. En la pantalla de inicio de sesión escriban su servidor (`localhost`, `.\SQLEXPRESS` o `NOMBRE-PC\INSTANCIA`); se recuerda para la próxima vez. Si en ese servidor no existe la base `TecnoStore`, la app ofrece crearla con los datos demo (los scripts de `02_SQL` vienen dentro del `.exe`), así que no es obligatorio usar SSMS. Cada cambio al proyecto publica un release nuevo.
 
 **Con Visual Studio:**
 

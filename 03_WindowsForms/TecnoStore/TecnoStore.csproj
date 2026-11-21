@@ -20,4 +20,10 @@
     <Reference Include="Microsoft.VisualBasic" />
   </ItemGroup>
 
+  <!-- Los scripts de 02_SQL viajan dentro del .exe para poder crear la base
+       desde la pantalla de inicio de sesión (Data/InstaladorBase.cs). -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\02_SQL\*.sql" LogicalName="Scripts.%(Filename)%(Extension)" Link="Scripts\%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

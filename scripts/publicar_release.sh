@@ -46,8 +46,8 @@ TecnoStore $VERSION - Sistema Integral de Gestion (Windows Forms, .NET Framework
 
 Requisitos
   - Windows 10 u 11 (trae .NET Framework 4.8).
-  - SQL Server con la base TecnoStore creada: ejecutar en SSMS los scripts de
-    la carpeta 02_SQL del repositorio, en el orden que indica el README.
+  - SQL Server (Express sirve). Si la base TecnoStore no existe en el
+    servidor que escriban, la app ofrece crearla con los datos demo.
 
 Servidor
   - En la pantalla de inicio de sesion escriban su servidor de SQL Server:
@@ -77,7 +77,7 @@ $CAMBIOS
 
 ## Antes de abrirlo
 
-1. Crear la base en SQL Server con los scripts de \`02_SQL\` en el orden del [README](https://github.com/$REPO#en-windows-paso-a-paso).
+1. Tener SQL Server instalado (Express sirve). Si la base \`TecnoStore\` no existe, la app ofrece crearla al iniciar sesión; también se puede crear con los scripts de \`02_SQL\` en SSMS ([README](https://github.com/$REPO#en-windows-paso-a-paso)).
 2. En la pantalla de inicio de sesión escribir su servidor (\`localhost\`, \`.\\SQLEXPRESS\` o \`NOMBRE-PC\\INSTANCIA\`).
 3. Entrar con \`admin\` y contraseña \`1234\` (también \`csupervisor\`, \`loperador\`, \`fconsulta\`).
 
