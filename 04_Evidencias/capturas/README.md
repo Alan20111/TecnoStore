@@ -5,7 +5,7 @@ Aquí van las capturas de la **aplicación real** ejecutándose en Windows (lo q
 Sugerencia de capturas (mismos nombres que `../capturas_vista_previa/` para encontrarlas fácil):
 
 1. `01_login.png` · inicio de sesión
-2. `02_inicio_admin.png` · menú del Administrador
+2. `02_dashboard.png` · Dashboard del Administrador
 3. `09_nueva_venta.png` · venta con productos agregados y el mensaje del folio
 4. `09b_venta_rollback.png` · mensaje de "Stock insuficiente" (venta que hace ROLLBACK)
 5. `10_ordenes.png`, `11_compras.png`, `13_reportes.png`, `14_usuarios.png`, `16_auditoria.png`

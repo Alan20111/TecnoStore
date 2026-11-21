@@ -55,7 +55,7 @@ POR_QUE_TRIGGER = {
 
 MODULOS = [
     (1, 'Acceso / sesión', 'FrmLogin', 'usp_Login'),
-    (2, 'Menú principal por perfil', 'FrmPrincipal (MDI)', 'Matriz de permisos'),
+    (2, 'Panel principal por perfil (barra lateral) y Dashboard', 'FrmPrincipal, FrmDashboard', 'Matriz de permisos; vw_ResumenMensual, fn_VentasPorCategoria, vw_StockBajo, vw_VentaCompleta, vw_OrdenServicioCompleta'),
     (3, 'Catálogo 1: Categorías', 'FrmCatalogo', 'INSERT/UPDATE/DELETE parametrizados'),
     (4, 'Catálogo 2: Marcas', 'FrmCatalogo', 'INSERT/UPDATE/DELETE parametrizados'),
     (5, 'Catálogo 3: Tipos de servicio', 'FrmCatalogo', 'INSERT/UPDATE/DELETE parametrizados'),
@@ -303,14 +303,14 @@ gráficas en la aplicación; y uso de async/await en las consultas largas para q
         ['<code>Forms/</code>', 'Un formulario por módulo con su archivo .Designer.cs (editable en el diseñador de Visual Studio).'],
         ['<code>Models/</code>', 'Clases de entidades y de sesión (UsuarioSesion, LineaVenta, Opcion para ComboBox…).'],
         ['<code>Data/</code>', '<code>Db</code> (conexión centralizada y parámetros) y repositorios por módulo con todo el SQL.'],
-        ['<code>Utils/</code>', '<code>Ui</code>: mensajes, validación visual y formato de DataGridView.'],
+        ['<code>Utils/</code>', '<code>Ui</code>: mensajes, validación visual y formato de DataGridView. <code>Tema</code>: colores, fuentes y estilo de botones y tablas, aplicado a todas las pantallas en un solo lugar. <code>Tarjeta</code>: panel con esquinas redondeadas del Dashboard.'],
         ['<code>App.config</code>', 'Cadenas de conexión (única o una por rol) y modo de conexión.'],
     ])
     resumen_pruebas = tabla(['Caso', 'Tipo', 'Descripción', 'Resultado'], [
         [e(p['caso']), e(p['tipo']), e(p['descripcion']),
          '<span class="%s">%s</span>' % ('ok' if p['resultado'] == 'PASA' else 'no', e(p['resultado']))] for p in d['PRUEBAS']])
     capturas = ''.join(figura(a, p) for a, p in [
-        ('01_login', 'Inicio de sesión'), ('02_inicio_admin', 'Inicio del Administrador'), ('09_nueva_venta', 'Nueva venta'),
+        ('01_login', 'Inicio de sesión'), ('02_dashboard', 'Dashboard del Administrador'), ('09_nueva_venta', 'Nueva venta'),
         ('10_ordenes', 'Órdenes de servicio'), ('11_compras', 'Compras a proveedor'), ('13_reportes', 'Reportes'),
         ('16_auditoria', 'Auditoría'), ('18_inicio_consulta', 'Menú del perfil Consulta')])
     sp_app = ['usp_Login', 'usp_ProductoBuscar', 'usp_ProductoGuardar', 'usp_ClienteGuardar', 'usp_ProveedorGuardar', 'usp_UsuarioGuardar',
@@ -369,10 +369,13 @@ formulario; <b>Editar</b> habilita los campos; <b>Guardar</b> confirma; <b>Cance
     h += seccion('4. Iniciar sesión', '01_login', 'Inicio de sesión', [
         'Escribir usuario y contraseña y presionar <b>Ingresar</b> (o Enter).',
         'Si la contraseña es incorrecta 5 veces seguidas, el usuario se bloquea; un Administrador lo reactiva en Usuarios.',
-        'El menú muestra solo las opciones de su perfil. <b>Archivo → Cerrar sesión</b> vuelve a esta pantalla.'])
-    h += seccion('5. Inicio', '02_inicio_admin', 'Inicio', [
-        'Muestra ventas e ingresos de los últimos 30 días, alertas de stock y órdenes abiertas.',
-        'Las filas amarillas o rojas son productos en o por debajo del mínimo.'])
+        'La barra lateral izquierda muestra solo los módulos de su perfil, agrupados por área. <b>Cerrar sesión</b> (arriba a la derecha) vuelve a esta pantalla.'])
+    h += seccion('5. Dashboard', '02_dashboard', 'Dashboard', [
+        'Es la primera pantalla del Administrador, el Supervisor y Consulta (el Operador entra directo a Nueva venta).',
+        'Las tarjetas de arriba muestran ingresos, ventas, ticket promedio y unidades de los <b>últimos 90 días</b> comparados con los 90 anteriores (▲ verde sube, ▼ rojo baja), más órdenes en taller, alertas de stock, clientes activos y valor del inventario.',
+        'La gráfica de columnas muestra los ingresos de los últimos 6 meses (el mes actual en azul) y la dona reparte las ventas de los últimos 90 días por categoría.',
+        'Abajo: ventas recientes, productos más vendidos, productos por resurtir (en rojo los agotados) y equipos que siguen en el taller.',
+        '<b>Actualizar</b> vuelve a leer los datos de SQL Server.'])
     h += seccion('6. Productos', '03_productos', 'Productos', [
         'Buscar por nombre o SKU, filtrar por categoría o marcar <b>Solo con alerta de stock</b> y presionar <b>Buscar</b>.',
         'Supervisor o Administrador: <b>Nuevo</b> o <b>Editar</b>, llenar los datos y <b>Guardar</b>. El precio no puede ser menor al costo.',
@@ -387,7 +390,7 @@ formulario; <b>Editar</b> habilita los campos; <b>Guardar</b> confirma; <b>Cance
         'Al seleccionar un proveedor se ven los productos que surte y a qué costo.',
         'Supervisor o Administrador pueden dar de alta o editar; el RFC no se puede repetir.'])
     h += seccion('9. Catálogos: categorías, marcas y tipos de servicio', '06_categorias', 'Categorías', [
-        'Las tres pantallas funcionan igual (menú <b>Catálogos</b>). Solo el Administrador modifica; los demás consultan.',
+        'Las tres pantallas funcionan igual (sección <b>Catálogos</b> de la barra lateral). Solo el Administrador modifica; los demás consultan.',
         'En <b>Tipos de servicio</b> se captura el precio base de la mano de obra.',
         '<b>Eliminar</b> solo funciona si nadie lo usa; si hay productos u órdenes con ese registro, el sistema lo impide.'])
     h += seccion('10. Nueva venta', '09_nueva_venta', 'Nueva venta', [

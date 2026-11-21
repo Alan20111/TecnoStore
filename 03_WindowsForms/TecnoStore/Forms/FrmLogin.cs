@@ -20,6 +20,8 @@ namespace TecnoStore.Forms
         public FrmLogin()
         {
             InitializeComponent();
+            Tema.Aplicar(this);
+            BackColor = Tema.Tarjeta;
         }
 
         private void FrmLogin_Load(object sender, EventArgs e)

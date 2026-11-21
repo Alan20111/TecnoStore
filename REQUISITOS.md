@@ -177,7 +177,7 @@ Todos funcionan con varias filas (`inserted`/`deleted` como conjuntos).
 | # | Módulo | Formulario | |
 |---|---|---|---|
 | 1 | Acceso / sesión | [FrmLogin](03_WindowsForms/TecnoStore/Forms/FrmLogin.cs) | ✅ |
-| 2 | Menú principal por perfil | [FrmPrincipal](03_WindowsForms/TecnoStore/Forms/FrmPrincipal.cs) | ✅ |
+| 2 | Panel principal por perfil (barra lateral) y Dashboard | [FrmPrincipal](03_WindowsForms/TecnoStore/Forms/FrmPrincipal.cs), [FrmDashboard](03_WindowsForms/TecnoStore/Forms/FrmDashboard.cs) | ✅ |
 | 3–5 | Catálogos: Categorías, Marcas, Tipos de servicio (CRUD con INSERT/UPDATE/DELETE parametrizados) | [FrmCatalogo](03_WindowsForms/TecnoStore/Forms/FrmCatalogo.cs) · [CatalogoCrudRepository](03_WindowsForms/TecnoStore/Data/RepositoriosAdmin.cs#L18) | ✅ |
 | 6 | Clientes CRUD + historial | [FrmClientes](03_WindowsForms/TecnoStore/Forms/FrmClientes.cs) | ✅ |
 | 7 | Proveedores (CRUD + productos que surte) | [FrmProveedores](03_WindowsForms/TecnoStore/Forms/FrmProveedores.cs) | ✅ |

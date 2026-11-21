@@ -14,199 +14,154 @@ namespace TecnoStore.Forms
 
         private void InitializeComponent()
         {
-            this.menuStrip = new System.Windows.Forms.MenuStrip();
-            this.mnuArchivo = new System.Windows.Forms.ToolStripMenuItem();
-            this.mnuCerrarSesion = new System.Windows.Forms.ToolStripMenuItem();
-            this.mnuSalir = new System.Windows.Forms.ToolStripMenuItem();
-            this.mnuCatalogos = new System.Windows.Forms.ToolStripMenuItem();
-            this.mnuProductos = new System.Windows.Forms.ToolStripMenuItem();
-            this.mnuClientes = new System.Windows.Forms.ToolStripMenuItem();
-            this.mnuProcesos = new System.Windows.Forms.ToolStripMenuItem();
-            this.mnuNuevaVenta = new System.Windows.Forms.ToolStripMenuItem();
-            this.mnuOrdenes = new System.Windows.Forms.ToolStripMenuItem();
-            this.mnuConsultas = new System.Windows.Forms.ToolStripMenuItem();
-            this.mnuHistorial = new System.Windows.Forms.ToolStripMenuItem();
-            this.mnuReportes = new System.Windows.Forms.ToolStripMenuItem();
-            this.mnuAdministracion = new System.Windows.Forms.ToolStripMenuItem();
-            this.mnuAjusteStock = new System.Windows.Forms.ToolStripMenuItem();
-            this.mnuAuditoria = new System.Windows.Forms.ToolStripMenuItem();
-            this.mnuCategorias = new System.Windows.Forms.ToolStripMenuItem();
-            this.mnuMarcas = new System.Windows.Forms.ToolStripMenuItem();
-            this.mnuTiposServicio = new System.Windows.Forms.ToolStripMenuItem();
-            this.mnuProveedores = new System.Windows.Forms.ToolStripMenuItem();
-            this.mnuCompras = new System.Windows.Forms.ToolStripMenuItem();
-            this.mnuUsuarios = new System.Windows.Forms.ToolStripMenuItem();
-            this.sepCatalogos = new System.Windows.Forms.ToolStripSeparator();
-            this.statusStrip = new System.Windows.Forms.StatusStrip();
-            this.lblUsuario = new System.Windows.Forms.ToolStripStatusLabel();
-            this.lblRol = new System.Windows.Forms.ToolStripStatusLabel();
-            this.lblSucursal = new System.Windows.Forms.ToolStripStatusLabel();
-            this.menuStrip.SuspendLayout();
-            this.statusStrip.SuspendLayout();
+            this.pnlLateral = new System.Windows.Forms.Panel();
+            this.pnlMenu = new System.Windows.Forms.Panel();
+            this.pnlMarca = new System.Windows.Forms.Panel();
+            this.lblMarca = new System.Windows.Forms.Label();
+            this.lblSubmarca = new System.Windows.Forms.Label();
+            this.pnlEncabezado = new System.Windows.Forms.Panel();
+            this.lblTitulo = new System.Windows.Forms.Label();
+            this.lblAtajo = new System.Windows.Forms.Label();
+            this.lblIniciales = new System.Windows.Forms.Label();
+            this.lblUsuario = new System.Windows.Forms.Label();
+            this.lblRol = new System.Windows.Forms.Label();
+            this.btnCerrarSesion = new System.Windows.Forms.Button();
+            this.pnlContenido = new System.Windows.Forms.Panel();
+            this.pnlLateral.SuspendLayout();
+            this.pnlMarca.SuspendLayout();
+            this.pnlEncabezado.SuspendLayout();
             this.SuspendLayout();
             //
-            // menuStrip
+            // pnlLateral (barra lateral oscura)
             //
-            this.menuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-                this.mnuArchivo, this.mnuCatalogos, this.mnuProcesos, this.mnuConsultas, this.mnuAdministracion });
-            this.menuStrip.Location = new System.Drawing.Point(0, 0);
-            this.menuStrip.Name = "menuStrip";
-            this.menuStrip.Size = new System.Drawing.Size(1184, 24);
+            this.pnlLateral.BackColor = System.Drawing.Color.FromArgb(29, 29, 31);
+            this.pnlLateral.Controls.Add(this.pnlMenu);
+            this.pnlLateral.Controls.Add(this.pnlMarca);
+            this.pnlLateral.Dock = System.Windows.Forms.DockStyle.Left;
+            this.pnlLateral.Name = "pnlLateral";
+            this.pnlLateral.Size = new System.Drawing.Size(240, 800);
             //
-            // mnuArchivo
+            // pnlMenu (los botones se agregan según el perfil)
             //
-            this.mnuArchivo.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { this.mnuCerrarSesion, this.mnuSalir });
-            this.mnuArchivo.Name = "mnuArchivo";
-            this.mnuArchivo.Text = "&Archivo";
-            this.mnuCerrarSesion.Name = "mnuCerrarSesion";
-            this.mnuCerrarSesion.Text = "&Cerrar sesión";
-            this.mnuCerrarSesion.Click += new System.EventHandler(this.mnuCerrarSesion_Click);
-            this.mnuSalir.Name = "mnuSalir";
-            this.mnuSalir.Text = "&Salir";
-            this.mnuSalir.Click += new System.EventHandler(this.mnuSalir_Click);
+            this.pnlMenu.AutoScroll = true;
+            this.pnlMenu.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.pnlMenu.Name = "pnlMenu";
+            this.pnlMenu.Size = new System.Drawing.Size(240, 720);
             //
-            // mnuCatalogos
+            // pnlMarca
             //
-            this.mnuCatalogos.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { this.mnuProductos, this.mnuClientes, this.mnuProveedores, this.sepCatalogos, this.mnuCategorias, this.mnuMarcas, this.mnuTiposServicio });
-            this.mnuCatalogos.Name = "mnuCatalogos";
-            this.mnuCatalogos.Text = "&Catálogos";
-            this.mnuProductos.Name = "mnuProductos";
-            this.mnuProductos.ShortcutKeys = System.Windows.Forms.Keys.F2;
-            this.mnuProductos.Text = "&Productos";
-            this.mnuProductos.Click += new System.EventHandler(this.mnuProductos_Click);
-            this.mnuClientes.Name = "mnuClientes";
-            this.mnuClientes.ShortcutKeys = System.Windows.Forms.Keys.F3;
-            this.mnuClientes.Text = "C&lientes";
-            this.mnuClientes.Click += new System.EventHandler(this.mnuClientes_Click);
+            this.pnlMarca.Controls.Add(this.lblMarca);
+            this.pnlMarca.Controls.Add(this.lblSubmarca);
+            this.pnlMarca.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlMarca.Name = "pnlMarca";
+            this.pnlMarca.Size = new System.Drawing.Size(240, 80);
+            this.lblMarca.AutoSize = true;
+            this.lblMarca.Font = new System.Drawing.Font("Segoe UI Semibold", 17F);
+            this.lblMarca.ForeColor = System.Drawing.Color.White;
+            this.lblMarca.Location = new System.Drawing.Point(18, 16);
+            this.lblMarca.Name = "lblMarca";
+            this.lblMarca.Text = "TecnoStore";
+            this.lblSubmarca.AutoSize = true;
+            this.lblSubmarca.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this.lblSubmarca.ForeColor = System.Drawing.Color.FromArgb(142, 142, 147);
+            this.lblSubmarca.Location = new System.Drawing.Point(21, 50);
+            this.lblSubmarca.Name = "lblSubmarca";
+            this.lblSubmarca.Text = "Panel de administración";
             //
-            // mnuProcesos
+            // pnlEncabezado
             //
-            this.mnuProcesos.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { this.mnuNuevaVenta, this.mnuOrdenes, this.mnuCompras });
-            this.mnuProcesos.Name = "mnuProcesos";
-            this.mnuProcesos.Text = "&Procesos";
-            this.mnuNuevaVenta.Name = "mnuNuevaVenta";
-            this.mnuNuevaVenta.ShortcutKeys = System.Windows.Forms.Keys.F5;
-            this.mnuNuevaVenta.Text = "&Nueva venta";
-            this.mnuNuevaVenta.Click += new System.EventHandler(this.mnuNuevaVenta_Click);
-            this.mnuOrdenes.Name = "mnuOrdenes";
-            this.mnuOrdenes.ShortcutKeys = System.Windows.Forms.Keys.F6;
-            this.mnuOrdenes.Text = "Órdenes de &servicio";
-            this.mnuOrdenes.Click += new System.EventHandler(this.mnuOrdenes_Click);
-            //
-            // mnuConsultas
-            //
-            this.mnuConsultas.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { this.mnuHistorial, this.mnuReportes });
-            this.mnuConsultas.Name = "mnuConsultas";
-            this.mnuConsultas.Text = "C&onsultas";
-            this.mnuHistorial.Name = "mnuHistorial";
-            this.mnuHistorial.Text = "&Historial de ventas";
-            this.mnuHistorial.Click += new System.EventHandler(this.mnuHistorial_Click);
-            this.mnuReportes.Name = "mnuReportes";
-            this.mnuReportes.Text = "&Reportes";
-            this.mnuReportes.Click += new System.EventHandler(this.mnuReportes_Click);
-            //
-            // mnuAdministracion
-            //
-            this.mnuAdministracion.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { this.mnuUsuarios, this.mnuAjusteStock, this.mnuAuditoria });
-            this.mnuAdministracion.Name = "mnuAdministracion";
-            this.mnuAdministracion.Text = "A&dministración";
-            this.mnuAjusteStock.Name = "mnuAjusteStock";
-            this.mnuAjusteStock.Text = "&Ajuste de inventario";
-            this.mnuAjusteStock.Click += new System.EventHandler(this.mnuAjusteStock_Click);
-            this.mnuAuditoria.Name = "mnuAuditoria";
-            this.mnuAuditoria.Text = "A&uditoría";
-            this.mnuAuditoria.Click += new System.EventHandler(this.mnuAuditoria_Click);
-            //
-            // menús agregados: catálogos, proveedores, compras y usuarios
-            //
-            this.mnuCategorias.Name = "mnuCategorias";
-            this.mnuCategorias.Text = "&Categorías";
-            this.mnuCategorias.Click += new System.EventHandler(this.mnuCategorias_Click);
-            this.mnuMarcas.Name = "mnuMarcas";
-            this.mnuMarcas.Text = "&Marcas";
-            this.mnuMarcas.Click += new System.EventHandler(this.mnuMarcas_Click);
-            this.mnuTiposServicio.Name = "mnuTiposServicio";
-            this.mnuTiposServicio.Text = "&Tipos de servicio";
-            this.mnuTiposServicio.Click += new System.EventHandler(this.mnuTiposServicio_Click);
-            this.mnuProveedores.Name = "mnuProveedores";
-            this.mnuProveedores.Text = "Pro&veedores";
-            this.mnuProveedores.Click += new System.EventHandler(this.mnuProveedores_Click);
-            this.mnuCompras.Name = "mnuCompras";
-            this.mnuCompras.Text = "&Compras a proveedor";
-            this.mnuCompras.Click += new System.EventHandler(this.mnuCompras_Click);
-            this.mnuUsuarios.Name = "mnuUsuarios";
-            this.mnuUsuarios.Text = "&Usuarios y roles";
-            this.mnuUsuarios.Click += new System.EventHandler(this.mnuUsuarios_Click);
-            this.mnuProveedores.ShortcutKeys = System.Windows.Forms.Keys.F4;
-            this.mnuCompras.ShortcutKeys = System.Windows.Forms.Keys.F7;
-            this.sepCatalogos.Name = "sepCatalogos";
-            //
-            // statusStrip
-            //
-            this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] { this.lblUsuario, this.lblRol, this.lblSucursal });
-            this.statusStrip.Location = new System.Drawing.Point(0, 739);
-            this.statusStrip.Name = "statusStrip";
-            this.statusStrip.Size = new System.Drawing.Size(1184, 22);
+            this.pnlEncabezado.BackColor = System.Drawing.Color.White;
+            this.pnlEncabezado.Controls.Add(this.lblTitulo);
+            this.pnlEncabezado.Controls.Add(this.lblAtajo);
+            this.pnlEncabezado.Controls.Add(this.lblIniciales);
+            this.pnlEncabezado.Controls.Add(this.lblUsuario);
+            this.pnlEncabezado.Controls.Add(this.lblRol);
+            this.pnlEncabezado.Controls.Add(this.btnCerrarSesion);
+            this.pnlEncabezado.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlEncabezado.Name = "pnlEncabezado";
+            this.pnlEncabezado.Size = new System.Drawing.Size(1040, 64);
+            this.lblTitulo.AutoSize = true;
+            this.lblTitulo.Font = new System.Drawing.Font("Segoe UI Semibold", 16F);
+            this.lblTitulo.ForeColor = System.Drawing.Color.FromArgb(29, 29, 31);
+            this.lblTitulo.Location = new System.Drawing.Point(24, 15);
+            this.lblTitulo.Name = "lblTitulo";
+            this.lblTitulo.Text = "Dashboard";
+            this.lblAtajo.AutoSize = true;
+            this.lblAtajo.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this.lblAtajo.ForeColor = System.Drawing.Color.FromArgb(142, 142, 147);
+            this.lblAtajo.Location = new System.Drawing.Point(300, 26);
+            this.lblAtajo.Name = "lblAtajo";
+            this.lblIniciales.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
+            this.lblIniciales.Location = new System.Drawing.Point(706, 14);
+            this.lblIniciales.Name = "lblIniciales";
+            this.lblIniciales.Size = new System.Drawing.Size(36, 36);
+            this.lblIniciales.Paint += new System.Windows.Forms.PaintEventHandler(this.lblIniciales_Paint);
+            this.lblUsuario.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
+            this.lblUsuario.AutoSize = true;
+            this.lblUsuario.Font = new System.Drawing.Font("Segoe UI Semibold", 9.75F);
+            this.lblUsuario.Location = new System.Drawing.Point(750, 13);
             this.lblUsuario.Name = "lblUsuario";
-            this.lblUsuario.BorderSides = System.Windows.Forms.ToolStripStatusLabelBorderSides.Right;
             this.lblUsuario.Text = "Usuario";
+            this.lblRol.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
+            this.lblRol.AutoSize = true;
+            this.lblRol.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this.lblRol.ForeColor = System.Drawing.Color.FromArgb(110, 110, 115);
+            this.lblRol.Location = new System.Drawing.Point(751, 33);
             this.lblRol.Name = "lblRol";
-            this.lblRol.BorderSides = System.Windows.Forms.ToolStripStatusLabelBorderSides.Right;
             this.lblRol.Text = "Rol";
-            this.lblSucursal.Name = "lblSucursal";
-            this.lblSucursal.Text = "Sucursal";
+            this.btnCerrarSesion.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
+            this.btnCerrarSesion.Location = new System.Drawing.Point(916, 16);
+            this.btnCerrarSesion.Name = "btnCerrarSesion";
+            this.btnCerrarSesion.Size = new System.Drawing.Size(110, 32);
+            this.btnCerrarSesion.Text = "Cerrar sesión";
+            this.btnCerrarSesion.Click += new System.EventHandler(this.btnCerrarSesion_Click);
+            //
+            // pnlContenido (aquí se abre cada pantalla)
+            //
+            this.pnlContenido.BackColor = System.Drawing.Color.FromArgb(245, 245, 247);
+            this.pnlContenido.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.pnlContenido.Name = "pnlContenido";
+            this.pnlContenido.Padding = new System.Windows.Forms.Padding(16);
             //
             // FrmPrincipal
             //
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1184, 761);
-            this.Controls.Add(this.statusStrip);
-            this.Controls.Add(this.menuStrip);
+            this.BackColor = System.Drawing.Color.FromArgb(245, 245, 247);
+            this.ClientSize = new System.Drawing.Size(1280, 800);
+            this.Controls.Add(this.pnlContenido);
+            this.Controls.Add(this.pnlEncabezado);
+            this.Controls.Add(this.pnlLateral);
             this.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.IsMdiContainer = true;
-            this.MainMenuStrip = this.menuStrip;
+            this.KeyPreview = true;
+            this.MinimumSize = new System.Drawing.Size(1100, 680);
             this.Name = "FrmPrincipal";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "TecnoStore";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.Load += new System.EventHandler(this.FrmPrincipal_Load);
-            this.menuStrip.ResumeLayout(false);
-            this.menuStrip.PerformLayout();
-            this.statusStrip.ResumeLayout(false);
-            this.statusStrip.PerformLayout();
+            this.pnlLateral.ResumeLayout(false);
+            this.pnlMarca.ResumeLayout(false);
+            this.pnlMarca.PerformLayout();
+            this.pnlEncabezado.ResumeLayout(false);
+            this.pnlEncabezado.PerformLayout();
             this.ResumeLayout(false);
-            this.PerformLayout();
         }
 
         #endregion
 
-        private System.Windows.Forms.MenuStrip menuStrip;
-        private System.Windows.Forms.ToolStripMenuItem mnuArchivo;
-        private System.Windows.Forms.ToolStripMenuItem mnuCerrarSesion;
-        private System.Windows.Forms.ToolStripMenuItem mnuSalir;
-        private System.Windows.Forms.ToolStripMenuItem mnuCatalogos;
-        private System.Windows.Forms.ToolStripMenuItem mnuProductos;
-        private System.Windows.Forms.ToolStripMenuItem mnuClientes;
-        private System.Windows.Forms.ToolStripMenuItem mnuProcesos;
-        private System.Windows.Forms.ToolStripMenuItem mnuNuevaVenta;
-        private System.Windows.Forms.ToolStripMenuItem mnuOrdenes;
-        private System.Windows.Forms.ToolStripMenuItem mnuConsultas;
-        private System.Windows.Forms.ToolStripMenuItem mnuHistorial;
-        private System.Windows.Forms.ToolStripMenuItem mnuReportes;
-        private System.Windows.Forms.ToolStripMenuItem mnuAdministracion;
-        private System.Windows.Forms.ToolStripMenuItem mnuAjusteStock;
-        private System.Windows.Forms.ToolStripMenuItem mnuAuditoria;
-        private System.Windows.Forms.ToolStripMenuItem mnuCategorias;
-        private System.Windows.Forms.ToolStripMenuItem mnuMarcas;
-        private System.Windows.Forms.ToolStripMenuItem mnuTiposServicio;
-        private System.Windows.Forms.ToolStripMenuItem mnuProveedores;
-        private System.Windows.Forms.ToolStripMenuItem mnuCompras;
-        private System.Windows.Forms.ToolStripMenuItem mnuUsuarios;
-        private System.Windows.Forms.ToolStripSeparator sepCatalogos;
-        private System.Windows.Forms.StatusStrip statusStrip;
-        private System.Windows.Forms.ToolStripStatusLabel lblUsuario;
-        private System.Windows.Forms.ToolStripStatusLabel lblRol;
-        private System.Windows.Forms.ToolStripStatusLabel lblSucursal;
+        private System.Windows.Forms.Panel pnlLateral;
+        private System.Windows.Forms.Panel pnlMenu;
+        private System.Windows.Forms.Panel pnlMarca;
+        private System.Windows.Forms.Label lblMarca;
+        private System.Windows.Forms.Label lblSubmarca;
+        private System.Windows.Forms.Panel pnlEncabezado;
+        private System.Windows.Forms.Label lblTitulo;
+        private System.Windows.Forms.Label lblAtajo;
+        private System.Windows.Forms.Label lblIniciales;
+        private System.Windows.Forms.Label lblUsuario;
+        private System.Windows.Forms.Label lblRol;
+        private System.Windows.Forms.Button btnCerrarSesion;
+        private System.Windows.Forms.Panel pnlContenido;
     }
 }

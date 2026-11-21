@@ -65,7 +65,7 @@ Requiere habilitar en SSMS: clic derecho en el servidor → *Propiedades* → *S
 | # | Módulo | Formulario | Usa |
 |---|---|---|---|
 | 1 | Acceso / sesión | `FrmLogin` | `usp_Login` (hash, bloqueo tras 5 intentos) |
-| 2 | Menú principal por perfil | `FrmPrincipal` (MDI) | — |
+| 2 | Panel principal por perfil (barra lateral) y Dashboard | `FrmPrincipal`, `FrmDashboard` | Indicadores de 90 días, ingresos por mes, ventas por categoría, alertas y taller (vistas y funciones existentes) |
 | 3–5 | Catálogos: categorías, marcas, tipos de servicio | `FrmCatalogo` | INSERT/UPDATE/DELETE parametrizados; DELETE controlado por FK |
 | 6 | Clientes (CRUD + historial) | `FrmClientes` | `usp_ClienteGuardar`, `fn_TotalCompradoCliente`, `fn_ClasificacionCliente`, `vw_VentaCompleta` |
 | 7 | Proveedores (CRUD + productos que surte) | `FrmProveedores` | `usp_ProveedorGuardar`, `ProductoProveedor` |

@@ -85,6 +85,7 @@ function renderLogin() {
     ${titlebar('Iniciar sesión — TecnoStore')}
     <form class="login" autocomplete="off">
       <div class="logo"><div class="icon">T</div><div><b>TecnoStore</b><span style="color:#5f5f5f">Sistema Integral de Gestión</span></div></div>
+      <div class="field"><span>Servidor (localhost, .\\SQLEXPRESS…):</span><input value="localhost" disabled title="En la vista previa siempre es el SQL Server de Docker"></div>
       <div class="field"><span>Usuario:</span><input name="usuario" required></div>
       <div class="field"><span>Contraseña:</span><input name="contrasena" type="password" required></div>
       <div class="error-label"></div>
@@ -116,119 +117,177 @@ function renderLogin() {
   form.usuario.focus();
 }
 
-/* ---------- FrmPrincipal ---------- */
-const MODULOS = {
-  inicio: ['Inicio', renderInicio],
-  productos: ['Productos', renderProductos],
-  clientes: ['Clientes', renderClientes],
-  proveedores: ['Proveedores', renderProveedores],
-  categorias: ['Categorías', (c) => renderCatalogo(c, 'categorias')],
-  marcas: ['Marcas', (c) => renderCatalogo(c, 'marcas')],
-  tipos: ['Tipos de servicio', (c) => renderCatalogo(c, 'tipos')],
-  venta: ['Nueva venta', renderVenta],
-  ordenes: ['Órdenes de servicio', renderOrdenes],
-  compras: ['Compras a proveedor', renderCompras],
-  ventas: ['Historial de ventas', renderVentas],
-  reportes: ['Reportes', renderReportes],
-  usuarios: ['Usuarios y roles', renderUsuarios],
-  ajustes: ['Ajustes de inventario', renderAjustes],
-  auditoria: ['Auditoría', renderAuditoria],
-};
+/* ---------- FrmPrincipal: panel con barra lateral ---------- */
+// [clave, título, grupo, atajo, render] — mismo orden y grupos que FrmPrincipal en C#
+const MODULOS_LISTA = [
+  ['dashboard', 'Dashboard', 'General', null, renderDashboard],
+  ['venta', 'Nueva venta', 'Ventas', 'F5', renderVenta],
+  ['ventas', 'Historial de ventas', 'Ventas', null, renderVentas],
+  ['clientes', 'Clientes', 'Ventas', 'F3', renderClientes],
+  ['ordenes', 'Órdenes de servicio', 'Taller', 'F6', renderOrdenes],
+  ['productos', 'Productos', 'Inventario', 'F2', renderProductos],
+  ['compras', 'Compras a proveedor', 'Inventario', 'F7', renderCompras],
+  ['proveedores', 'Proveedores', 'Inventario', 'F4', renderProveedores],
+  ['ajustes', 'Ajustes de inventario', 'Inventario', null, renderAjustes],
+  ['categorias', 'Categorías', 'Catálogos', null, (c) => renderCatalogo(c, 'categorias')],
+  ['marcas', 'Marcas', 'Catálogos', null, (c) => renderCatalogo(c, 'marcas')],
+  ['tipos', 'Tipos de servicio', 'Catálogos', null, (c) => renderCatalogo(c, 'tipos')],
+  ['reportes', 'Reportes', 'Análisis', null, renderReportes],
+  ['usuarios', 'Usuarios y roles', 'Administración', null, renderUsuarios],
+  ['auditoria', 'Auditoría', 'Administración', null, renderAuditoria],
+];
+const MODULOS = Object.fromEntries(MODULOS_LISTA.map(([k, t, g, a, r]) => [k, [t, r, g, a]]));
+const iniciales = (n) => (n || '?').split(' ').filter(Boolean).slice(0, 2).map((x) => x[0]).join('').toUpperCase();
 
 function renderMain() {
   const u = state.user;
   $app.innerHTML = '';
-  const el = h(`<div class="form">
-    ${titlebar(`TecnoStore — Sistema Integral de Gestión  [${u.rol}]`)}
-    <div class="menustrip">${menuHtml(u)}</div>
+  let grupo = null, nav = '';
+  for (const [k, t, g] of MODULOS_LISTA) {
+    if (!u.modulos.includes(k)) continue;
+    if (g !== grupo) { grupo = g; nav += `<div class="grupo">${esc(g)}</div>`; }
+    nav += `<button data-m="${k}">${esc(t)}</button>`;
+  }
+  const el = h(`<div class="form app">
+    ${titlebar('TecnoStore — Panel de administración')}
     <div class="body">
-      <div class="nav">
-        <div class="brand"><b>TecnoStore</b><small>${esc(u.sucursal)}</small></div>
-        ${u.modulos.map((m) => `<button data-m="${m}">${MODULOS[m][0]}</button>`).join('')}
-        <div class="sep"></div>
-        <button data-salir>Cerrar sesión</button>
+      <aside class="lateral">
+        <div class="marca"><b>TecnoStore</b><small>Panel de administración</small></div>
+        <nav>${nav}</nav>
+      </aside>
+      <div class="principal">
+        <header class="encabezado">
+          <h2 class="titulo"></h2><span class="atajo"></span><span class="spacer"></span>
+          <div class="avatar">${esc(iniciales(u.nombre))}</div>
+          <div class="quien"><b>${esc(u.nombre)}</b><small>${esc(u.rol)} · ${esc(u.sucursal)}</small></div>
+          <button data-salir>Cerrar sesión</button>
+        </header>
+        <div class="content"></div>
       </div>
-      <div class="content"></div>
-    </div>
-    <div class="statusstrip">
-      <span>Usuario: <b>${esc(u.nombre_usuario)}</b> (${esc(u.nombre)})</span>
-      <span>Rol: ${esc(u.rol)}</span>
-      <span class="grow"></span>
-      <span><i class="dot"></i>SQL Server · localhost · TecnoStore</span>
     </div></div>`);
   const cerrarSesion = async () => {
     if (await messageBox('¿Deseas cerrar la sesión?', { icon: 'question', buttons: ['Sí', 'No'] }) === 'Sí') { state.token = null; renderLogin(); }
   };
-  el.querySelectorAll('[data-m]').forEach((b) => b.onclick = () => { cerrarMenus(); abrir(b.dataset.m); });
+  el.querySelectorAll('[data-m]').forEach((b) => b.onclick = () => abrir(b.dataset.m));
   el.querySelector('[data-salir]').onclick = cerrarSesion;
   ventana(el, cerrarSesion);
-
-  // Menús desplegables: clic abre; con uno abierto, pasar el mouse cambia de menú
-  const menus = el.querySelectorAll('.menustrip .menu');
-  menus.forEach((m) => {
-    m.querySelector('.top').onclick = (ev) => { ev.stopPropagation(); const abierto = m.classList.contains('open'); cerrarMenus(); if (!abierto) m.classList.add('open'); };
-    m.onmouseenter = () => { if (el.querySelector('.menu.open') && !m.classList.contains('open')) { cerrarMenus(); m.classList.add('open'); } };
-  });
-  el.querySelectorAll('[data-accion]').forEach((b) => b.onclick = () => {
-    cerrarMenus();
-    ({ cerrar: cerrarSesion, salir: salirApp, acerca: acercaDe, atajos: atajos })[b.dataset.accion]();
-  });
-  document.onclick = cerrarMenus;
   document.onkeydown = (ev) => {
-    if (ev.key === 'Escape') cerrarMenus();
     const tecla = { F2: 'productos', F3: 'clientes', F4: 'proveedores', F5: 'venta', F6: 'ordenes', F7: 'compras' }[ev.key];
     if (tecla && state.user?.modulos.includes(tecla) && !document.querySelector('.overlay')) { ev.preventDefault(); abrir(tecla); }
   };
   $app.appendChild(el);
-  abrir(state.modulo);
+  abrir(u.modulos.includes(state.modulo) ? state.modulo : u.modulos[0]);
 }
 
-function menuHtml(u) {
-  const tiene = (m) => u.modulos.includes(m);
-  const item = (m, atajo) => (tiene(m) ? `<button data-m="${m}">${MODULOS[m][0]}${atajo ? `<kbd>${atajo}</kbd>` : ''}</button>` : '');
-  const grupos = [
-    ['Archivo', `<button data-accion="cerrar">Cerrar sesión</button><button data-accion="salir">Salir</button>`],
-    ['Catálogos', item('productos', 'F2') + item('clientes', 'F3') + item('proveedores', 'F4') + '<hr>' + item('categorias') + item('marcas') + item('tipos')],
-    ['Procesos', item('venta', 'F5') + item('ordenes', 'F6') + item('compras', 'F7')],
-    ['Consultas', item('ventas') + item('reportes')],
-    ['Administración', item('usuarios') + item('ajustes') + item('auditoria')],
-    ['Ayuda', `<button data-accion="atajos">Atajos de teclado</button><button data-accion="acerca">Acerca de TecnoStore</button>`],
-  ];
-  return grupos.filter(([, html]) => html)
-    .map(([t, html]) => `<div class="menu"><span class="top">${t}</span><div class="dropdown">${html}</div></div>`).join('');
-}
-
-function cerrarMenus() { document.querySelectorAll('.menu.open').forEach((m) => m.classList.remove('open')); }
-
-const acercaDe = () => messageBox('TecnoStore — Sistema Integral de Gestión\nProyecto final de Taller de Bases de Datos\n\nVista previa conectada a SQL Server. La aplicación real es la solución de Windows Forms en 03_WindowsForms.', { title: 'Acerca de' });
-const atajos = () => messageBox('F2  Productos\nF3  Clientes\nF4  Proveedores\nF5  Nueva venta\nF6  Órdenes de servicio\nF7  Compras\nEnter  Buscar en los filtros\nEsc  Cerrar menús', { title: 'Atajos de teclado' });
+const acercaDe = () => messageBox('TecnoStore — Panel de administración\nProyecto final de Taller de Bases de Datos\n\nVista previa conectada a SQL Server. La aplicación real es la solución de Windows Forms en 03_WindowsForms.', { title: 'Acerca de' });
 
 async function abrir(m) {
   state.modulo = m;
-  document.querySelectorAll('.nav [data-m]').forEach((b) => b.classList.toggle('active', b.dataset.m === m));
+  document.querySelectorAll('.lateral [data-m]').forEach((b) => b.classList.toggle('active', b.dataset.m === m));
+  document.querySelector('.encabezado .titulo').textContent = MODULOS[m][0];
+  document.querySelector('.encabezado .atajo').textContent = MODULOS[m][3] ? 'Atajo: ' + MODULOS[m][3] : '';
   const content = document.querySelector('.content');
   content.innerHTML = '<div class="sub">Cargando…</div>';
+  content.scrollTop = 0;
   try { await MODULOS[m][1](content); } catch (e) { content.innerHTML = ''; showError(e); }
 }
 
-/* ---------- Inicio ---------- */
-async function renderInicio(c) {
-  const d = await api('/api/inicio');
-  c.innerHTML = `<h1>Bienvenido, ${esc(state.user.nombre)}</h1><div class="sub">${esc(state.user.puesto)} · ${esc(state.user.sucursal)}</div>
-    <div class="kpis">
-      <fieldset class="groupbox"><legend>Ventas (30 días)</legend><b>${d.kpi.ventas30}</b><small>operaciones completadas</small></fieldset>
-      <fieldset class="groupbox"><legend>Ingresos (30 días)</legend><b>${money(d.kpi.ingresos30)}</b><small>total cobrado</small></fieldset>
-      <fieldset class="groupbox"><legend>Alertas de stock</legend><b style="color:#c50f1f">${d.kpi.alertas}</b><small>productos en o bajo el mínimo</small></fieldset>
-      <fieldset class="groupbox"><legend>Taller</legend><b>${d.kpi.ordenes_abiertas}</b><small>órdenes abiertas</small></fieldset>
+/* ---------- FrmDashboard ---------- */
+const PALETA = ['#0071e3', '#34c759', '#ff9500', '#af52de', '#ff3b30', '#5ac8fa', '#ffcc00', '#8e8e93', '#30b0c7', '#5856d6'];
+const mx = (v, d = 0) => Number(v).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: d, minimumFractionDigits: d });
+
+function variacion(actual, anterior) {
+  if (!anterior) return [actual ? 'sin datos del periodo anterior' : 'sin movimientos', ''];
+  const pct = (actual - anterior) * 100 / anterior;
+  return [`${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct).toFixed(1)} % vs. 90 días previos`, pct >= 0 ? 'sube' : 'baja'];
+}
+
+// Gráfica de columnas en SVG (equivale al Chart de tipo Column en C#)
+function columnas(datos) {
+  const W = 560, H = 230, iz = 52, ab = 26, ar = 22, max = Math.max(1, ...datos.map((d) => d.v)) * 1.12;
+  const paso = (W - iz - 10) / datos.length, ancho = paso * 0.55;
+  const y = (v) => ar + (H - ar - ab) * (1 - v / max);
+  const lineas = [0, 0.25, 0.5, 0.75, 1].map((f) => {
+    const v = max * f, yy = y(v);
+    return `<line x1="${iz}" x2="${W - 6}" y1="${yy}" y2="${yy}" class="rejilla"/><text x="${iz - 8}" y="${yy + 4}" class="eje" text-anchor="end">${v ? '$' + Math.round(v / 1000) + 'K' : '0'}</text>`;
+  }).join('');
+  const barras = datos.map((d, i) => {
+    const x = iz + paso * i + (paso - ancho) / 2, yy = y(d.v);
+    return `<rect x="${x}" y="${yy}" width="${ancho}" height="${H - ab - yy}" rx="4" class="barra${i === datos.length - 1 ? ' actual' : ''}"><title>${esc(d.t)}: ${esc(mx(d.v))}</title></rect>
+      <text x="${x + ancho / 2}" y="${yy - 6}" class="valor" text-anchor="middle">${d.v ? '$' + Math.round(d.v / 1000) + 'K' : ''}</text>
+      <text x="${x + ancho / 2}" y="${H - 8}" class="eje" text-anchor="middle">${esc(d.t)}</text>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" class="grafica">${lineas}${barras}</svg>`;
+}
+
+// Gráfica de dona en SVG con leyenda (Chart de tipo Doughnut en C#)
+function dona(datos) {
+  const total = datos.reduce((a, d) => a + d.v, 0) || 1;
+  let ang = -Math.PI / 2;
+  const R = 90, r = 56, cx = 110, cy = 110;
+  const arcos = datos.map((d, i) => {
+    const a2 = ang + (d.v / total) * Math.PI * 2, largo = a2 - ang > Math.PI ? 1 : 0;
+    const p = (rad, a) => `${cx + rad * Math.cos(a)} ${cy + rad * Math.sin(a)}`;
+    const path = `M ${p(R, ang)} A ${R} ${R} 0 ${largo} 1 ${p(R, a2)} L ${p(r, a2)} A ${r} ${r} 0 ${largo} 0 ${p(r, ang)} Z`;
+    ang = a2;
+    return `<path d="${path}" fill="${PALETA[i % PALETA.length]}"><title>${esc(d.t)}: ${esc(mx(d.v))}</title></path>`;
+  }).join('');
+  const leyenda = datos.map((d, i) => `<li><i style="background:${PALETA[i % PALETA.length]}"></i><span>${esc(d.t)}</span><b>${esc(mx(d.v))}</b></li>`).join('');
+  return `<div class="dona"><svg viewBox="0 0 220 220">${arcos}<text x="110" y="106" text-anchor="middle" class="total-t">Total</text>
+    <text x="110" y="126" text-anchor="middle" class="total-v">${esc('$' + Math.round(total / 1000) + 'K')}</text></svg><ul>${leyenda}</ul></div>`;
+}
+
+async function renderDashboard(c) {
+  const d = await api('/api/dashboard');
+  const k = d.kpi, u = state.user;
+  const hora = new Date().getHours();
+  const saludo = hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches';
+  const fecha = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const [vi, ci] = variacion(k.ingresos_mes, k.ingresos_ant), [vv, cv] = variacion(k.ventas_mes, k.ventas_ant);
+  const tarjetas = [
+    ['Ingresos · 90 días', mx(k.ingresos_mes), vi, ci],
+    ['Ventas · 90 días', k.ventas_mes, vv, cv],
+    ['Ticket promedio', mx(k.ventas_mes ? k.ingresos_mes / k.ventas_mes : 0), 'por venta completada', ''],
+    ['Unidades vendidas', k.unidades_mes, 'piezas en 90 días', ''],
+    ['Órdenes en taller', k.ordenes_abiertas, `${k.ordenes_listas} listas para entregar`, ''],
+    ['Alertas de stock', k.alertas_stock, k.agotados ? `${k.agotados} agotado(s)` : 'ninguno agotado', k.agotados ? 'baja' : 'sube'],
+    ['Clientes activos', k.clientes_activos, `+${k.clientes_nuevos} nuevos en 90 días`, ''],
+    ['Valor del inventario', mx(k.valor_inventario), `${k.garantias_vigentes} garantías vigentes`, ''],
+  ];
+  const meses = [];
+  for (let i = 5; i >= 0; i--) {
+    const f = new Date(); f.setDate(1); f.setMonth(f.getMonth() - i);
+    const clave = f.toISOString().slice(0, 7);
+    const fila = d.meses.find((m) => m.mes === clave);
+    const t = f.toLocaleDateString('es-MX', { month: 'short' }).replace('.', '');
+    meses.push({ t: t[0].toUpperCase() + t.slice(1), v: fila ? fila.ingresos : 0 });
+  }
+  c.innerHTML = `<div class="dash">
+    <div class="dash-saludo"><div><h1>${saludo}, ${esc(u.nombre.split(' ')[0])}</h1>
+      <div class="sub">${esc(fecha[0].toUpperCase() + fecha.slice(1))} · ${esc(u.sucursal)}</div></div>
+      <span class="spacer"></span><span class="sub">Actualizado a las ${new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>
+      <button data-actualizar>Actualizar</button></div>
+    <div class="kpis">${tarjetas.map(([t, v, n, cls]) => `<div class="card kpi"><span>${esc(t)}</span><b>${esc(v)}</b><small class="${cls}">${esc(n)}</small></div>`).join('')}</div>
+    <div class="fila2">
+      <div class="card"><h3>Ingresos por mes · últimos 6 meses</h3>${columnas(meses)}</div>
+      <div class="card"><h3>Ventas por categoría · últimos 90 días</h3>${dona(d.categorias.map((x) => ({ t: x.categoria, v: x.ingresos })))}</div>
     </div>
-    <div class="two"><fieldset class="groupbox" id="g1"><legend>Productos por resurtir (vw_StockBajo)</legend></fieldset>
-    <fieldset class="groupbox" id="g2"><legend>Órdenes abiertas (vw_OrdenServicioCompleta)</legend></fieldset></div>`;
-  c.querySelector('#g1').appendChild(grid([
-    { t: 'SKU', k: 'sku' }, { t: 'Producto', k: 'nombre' }, { t: 'Stock', k: 'stock_actual', num: 1 }, { t: 'Mínimo', k: 'stock_minimo', num: 1 },
-  ], d.stock, { cls: 'mid', rowClass: (r) => (r.stock_actual === 0 ? 'danger' : 'warn') }));
-  c.querySelector('#g2').appendChild(grid([
-    { t: 'Folio', k: 'folio' }, { t: 'Cliente', k: 'cliente' }, { t: 'Estado', k: 'estado' }, { t: 'Días', k: 'dias_en_taller', num: 1 },
-  ], d.ordenes, { cls: 'mid' }));
+    <div class="fila2">
+      <div class="card"><h3>Ventas recientes</h3><div data-g="recientes"></div></div>
+      <div class="card"><h3>Más vendidos · últimos 90 días</h3><div data-g="vendidos"></div></div>
+    </div>
+    <div class="fila2">
+      <div class="card"><h3>Productos por resurtir</h3><div data-g="alertas"></div></div>
+      <div class="card"><h3>Equipos en el taller</h3><div data-g="taller"></div></div>
+    </div></div>`;
+  const poner = (k2, el) => c.querySelector(`[data-g=${k2}]`).replaceWith(el);
+  poner('recientes', grid([{ t: 'Folio', k: 'folio' }, { t: 'Fecha', k: 'fecha', f: datetime }, { t: 'Cliente', k: 'cliente' },
+    { t: 'Sucursal', k: 'sucursal' }, { t: 'Total', k: 'total', num: 1, f: M() }, { t: 'Estado', k: 'estado', f: (v) => `<span class="pill ${v === 'Cancelada' ? 'roja' : 'verde'}">${esc(v)}</span>` }],
+    d.recientes, { cls: 'compacta' }));
+  poner('vendidos', grid([{ t: 'Producto', k: 'producto' }, { t: 'Unidades', k: 'unidades', num: 1 }, { t: 'Importe', k: 'importe', num: 1, f: M() }], d.vendidos, { cls: 'compacta' }));
+  poner('alertas', grid([{ t: 'SKU', k: 'sku' }, { t: 'Producto', k: 'producto' }, { t: 'Stock', k: 'stock', num: 1, f: (v) => `<span class="${v === 0 ? 'texto-rojo' : ''}">${v}</span>` }, { t: 'Mínimo', k: 'minimo', num: 1 }], d.alertas, { cls: 'compacta' }));
+  poner('taller', grid([{ t: 'Folio', k: 'folio' }, { t: 'Equipo', k: 'equipo' }, { t: 'Técnico', k: 'tecnico' }, { t: 'Estado', k: 'estado', f: (v) => `<span class="pill azul">${esc(v)}</span>` }, { t: 'Días', k: 'dias', num: 1 }], d.taller, { cls: 'compacta' }));
+  c.querySelector('[data-actualizar]').onclick = () => renderDashboard(c).catch(showError);
 }
 
 /* ---------- FrmProductos ---------- */

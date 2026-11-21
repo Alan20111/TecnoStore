@@ -21,10 +21,10 @@ const config = {
 
 // Permisos por rol (matriz del documento: Administrador, Supervisor, Operador, Consulta)
 const MODULOS = {
-  Administrador: ['inicio', 'productos', 'clientes', 'proveedores', 'categorias', 'marcas', 'tipos', 'venta', 'ordenes', 'compras', 'ventas', 'reportes', 'usuarios', 'ajustes', 'auditoria'],
-  Supervisor:    ['inicio', 'productos', 'clientes', 'proveedores', 'categorias', 'marcas', 'tipos', 'venta', 'ordenes', 'compras', 'ventas', 'reportes', 'ajustes', 'auditoria'],
-  Operador:      ['inicio', 'productos', 'clientes', 'proveedores', 'categorias', 'marcas', 'tipos', 'venta', 'ordenes', 'ventas'],
-  Consulta:      ['inicio', 'productos', 'clientes', 'proveedores', 'categorias', 'marcas', 'tipos', 'ventas', 'reportes'],
+  Administrador: ['dashboard', 'venta', 'ventas', 'clientes', 'ordenes', 'productos', 'compras', 'proveedores', 'ajustes', 'categorias', 'marcas', 'tipos', 'reportes', 'usuarios', 'auditoria'],
+  Supervisor:    ['dashboard', 'venta', 'ventas', 'clientes', 'ordenes', 'productos', 'compras', 'proveedores', 'ajustes', 'categorias', 'marcas', 'tipos', 'reportes', 'auditoria'],
+  Operador:      ['venta', 'ventas', 'clientes', 'ordenes', 'productos', 'proveedores', 'categorias', 'marcas', 'tipos'],
+  Consulta:      ['dashboard', 'ventas', 'clientes', 'productos', 'proveedores', 'categorias', 'marcas', 'tipos', 'reportes'],
 };
 
 // Catálogos administrados con la misma pantalla. Los nombres de tabla son fijos
@@ -107,6 +107,47 @@ const rutas = {
     const stock = await q(`SELECT TOP 6 sku, nombre, stock_actual, stock_minimo FROM vw_StockBajo ORDER BY faltante DESC`);
     const ordenes = await q(`SELECT TOP 6 folio, cliente, estado, dias_en_taller FROM vw_OrdenServicioCompleta WHERE es_final = 0 ORDER BY fecha_recepcion`);
     return { kpi, stock, ordenes };
+  },
+
+  // Mismas consultas que Data/DashboardRepository.cs de la app en C#
+  'GET /api/dashboard': async ({ user }) => {
+    if (!MODULOS[user.rol].includes('dashboard')) throw new Error('Tu perfil no tiene Dashboard.');
+    const [kpi, meses, categorias, recientes, vendidos, alertas, taller] = await Promise.all([
+      q(`-- Periodo: últimos 90 días; se compara con los 90 días anteriores
+                DECLARE @ini DATE = DATEADD(DAY, -90, CAST(GETDATE() AS DATE));
+                DECLARE @ant DATE = DATEADD(DAY, -90, @ini);
+                SELECT
+                  (SELECT COUNT(*) FROM Venta WHERE estado = 'Completada' AND fecha >= @ini) AS ventas_mes,
+                  (SELECT COUNT(*) FROM Venta WHERE estado = 'Completada' AND fecha >= @ant AND fecha < @ini) AS ventas_ant,
+                  (SELECT ISNULL(SUM(total), 0) FROM Venta WHERE estado = 'Completada' AND fecha >= @ini) AS ingresos_mes,
+                  (SELECT ISNULL(SUM(total), 0) FROM Venta WHERE estado = 'Completada' AND fecha >= @ant AND fecha < @ini) AS ingresos_ant,
+                  (SELECT ISNULL(SUM(dv.cantidad), 0) FROM DetalleVenta dv JOIN Venta v ON v.id_venta = dv.id_venta
+                    WHERE v.estado = 'Completada' AND v.fecha >= @ini) AS unidades_mes,
+                  (SELECT COUNT(*) FROM vw_OrdenServicioCompleta WHERE es_final = 0) AS ordenes_abiertas,
+                  (SELECT COUNT(*) FROM vw_OrdenServicioCompleta WHERE estado = 'Lista') AS ordenes_listas,
+                  (SELECT COUNT(*) FROM vw_StockBajo) AS alertas_stock,
+                  (SELECT COUNT(*) FROM vw_StockBajo WHERE stock_actual = 0) AS agotados,
+                  (SELECT COUNT(*) FROM Cliente WHERE activo = 1) AS clientes_activos,
+                  (SELECT COUNT(*) FROM Cliente WHERE activo = 1 AND fecha_registro >= @ini) AS clientes_nuevos,
+                  (SELECT COUNT(*) FROM Garantia WHERE fecha_fin >= CAST(GETDATE() AS DATE)) AS garantias_vigentes,
+                  (SELECT ISNULL(SUM(stock_actual * costo), 0) FROM Producto WHERE activo = 1) AS valor_inventario`),
+      q(`SELECT mes, ventas, ingresos FROM vw_ResumenMensual
+                WHERE mes >= FORMAT(DATEADD(MONTH, -5, GETDATE()), 'yyyy-MM') ORDER BY mes`),
+      q(`SELECT categoria, ingresos FROM dbo.fn_VentasPorCategoria(DATEADD(DAY, -90, GETDATE()), GETDATE())
+                                 ORDER BY ingresos DESC`),
+      q(`SELECT TOP 8 folio, fecha, cliente, sucursal, total, estado FROM vw_VentaCompleta ORDER BY fecha DESC`),
+      q(`SELECT TOP 6 p.nombre AS producto, SUM(dv.cantidad) AS unidades, SUM(dv.subtotal) AS importe
+                FROM DetalleVenta dv
+                JOIN Venta v ON v.id_venta = dv.id_venta AND v.estado = 'Completada'
+                JOIN Producto p ON p.id_producto = dv.id_producto
+                WHERE v.fecha >= DATEADD(DAY, -90, GETDATE())
+                GROUP BY p.nombre ORDER BY unidades DESC, importe DESC`),
+      q(`SELECT TOP 8 sku, nombre AS producto, stock_actual AS stock, stock_minimo AS minimo
+                                 FROM vw_StockBajo ORDER BY faltante DESC`),
+      q(`SELECT TOP 8 folio, equipo_descripcion AS equipo, tecnico, estado, dias_en_taller AS dias
+                                 FROM vw_OrdenServicioCompleta WHERE es_final = 0 ORDER BY dias_en_taller DESC`)
+    ]);
+    return { kpi: kpi[0], meses, categorias, recientes, vendidos, alertas, taller };
   },
 
   'GET /api/catalogos': async () => ({
