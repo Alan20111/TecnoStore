@@ -13,7 +13,7 @@
    - ventas canceladas y órdenes canceladas
    - movimientos repartidos de abril a noviembre de 2026
 
-   Usuarios de prueba (contraseña de todos: Tecno123!):
+   Usuarios de prueba (contraseña de todos: 1234):
    admin, csupervisor, loperador, fconsulta, smendez
    ============================================================= */
 USE TecnoStore;
@@ -173,11 +173,11 @@ SELECT id_producto, ((id_producto + 3) % 10) + 1, ROUND(costo * 1.04, 2) FROM Pr
 INSERT INTO Rol (nombre) VALUES ('Administrador'),('Supervisor'),('Operador'),('Consulta');
 
 INSERT INTO Usuario (id_empleado, nombre_usuario, hash_contrasena) VALUES
- (1,'admin',      HASHBYTES('SHA2_256','Tecno123!')),
- (2,'csupervisor',HASHBYTES('SHA2_256','Tecno123!')),
- (3,'loperador',  HASHBYTES('SHA2_256','Tecno123!')),
- (10,'fconsulta', HASHBYTES('SHA2_256','Tecno123!')),
- (6,'smendez',    HASHBYTES('SHA2_256','Tecno123!'));
+ (1,'admin',      HASHBYTES('SHA2_256','1234')),
+ (2,'csupervisor',HASHBYTES('SHA2_256','1234')),
+ (3,'loperador',  HASHBYTES('SHA2_256','1234')),
+ (10,'fconsulta', HASHBYTES('SHA2_256','1234')),
+ (6,'smendez',    HASHBYTES('SHA2_256','1234'));
 
 INSERT INTO UsuarioRol (id_usuario, id_rol) VALUES (1,1),(2,2),(3,3),(4,4),(5,3);
 

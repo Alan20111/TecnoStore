@@ -37,9 +37,14 @@ Opcionales, para demostrar: `05_Consultas.sql` (40 consultas), `11_Transacciones
 
 ### 2. Abrir y ejecutar la aplicación
 
+**Sin Visual Studio:** descarguen `TecnoStore-vX.Y-win.zip` del [último release](https://github.com/Alan20111/TecnoStore/releases/latest), descompriman y abran `TecnoStore.exe` (ajustando `Server=` en `TecnoStore.exe.config` si hace falta). Cada cambio al proyecto publica un release nuevo.
+
+**Con Visual Studio:**
+
+
 1. Abrir `03_WindowsForms/TecnoStore.sln` con **Visual Studio 2022** (o 2019) que tenga la carga de trabajo **"Desarrollo de escritorio de .NET"**.
 2. Revisar `App.config`: en `connectionStrings`, la cadena `Unica` usa `Server=localhost` con autenticación de Windows. Si su instancia es SQL Express cambien a `Server=.\SQLEXPRESS`.
-3. **F5**. Entrar con un usuario demo (contraseña de todos: `Tecno123!`):
+3. **F5**. Entrar con un usuario demo (contraseña de todos: `1234`):
 
 | Usuario | Rol | Qué puede hacer |
 |---|---|---|
@@ -102,6 +107,12 @@ scripts/crear_base.sh
 
 La app de Windows Forms no corre en macOS; compila con `dotnet build 03_WindowsForms/TecnoStore.sln -p:EnableWindowsTargeting=true`.
 `preview/` (Node.js) simula las pantallas en el navegador con la base real: `cd preview && npm install && node server.js`.
+
+Para publicar un release nuevo con el `.exe` (después de hacer commit y push):
+
+```bash
+scripts/publicar_release.sh "Qué cambió"
+```
 
 Para regenerar toda la documentación y evidencias desde la base (con la vista previa corriendo):
 

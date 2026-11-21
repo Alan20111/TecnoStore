@@ -89,13 +89,13 @@ function renderLogin() {
       <div class="field"><span>Contraseña:</span><input name="contrasena" type="password" required></div>
       <div class="error-label"></div>
       <div class="row"><span class="spacer"></span><button type="submit" class="primary">Ingresar</button><button type="button" data-salir-app>Salir</button></div>
-      <div class="hint">Usuarios demo (contraseña <code data-p>Tecno123!</code>):<br>
+      <div class="hint">Usuarios demo (contraseña <code data-p>1234</code>):<br>
         <code data-u>admin</code> Administrador · <code data-u>csupervisor</code> Supervisor<br>
         <code data-u>loperador</code> Operador · <code data-u>fconsulta</code> Consulta</div>
     </form></div>`);
   const form = el.querySelector('form');
-  el.querySelectorAll('[data-u]').forEach((c) => c.onclick = () => { form.usuario.value = c.textContent; form.contrasena.value = 'Tecno123!'; });
-  el.querySelector('[data-p]').onclick = () => { form.contrasena.value = 'Tecno123!'; };
+  el.querySelectorAll('[data-u]').forEach((c) => c.onclick = () => { form.usuario.value = c.textContent; form.contrasena.value = '1234'; });
+  el.querySelector('[data-p]').onclick = () => { form.contrasena.value = '1234'; };
   el.querySelector('[data-salir-app]').onclick = salirApp;
   ventana(el, salirApp);
   form.onsubmit = async (ev) => {
@@ -808,7 +808,7 @@ async function inicio() {
   const demo = ['admin', 'csupervisor', 'loperador', 'fconsulta'];
   if (!demo.includes(p.get('usuario'))) return renderLogin();
   try {
-    const r = await api('/api/login', { usuario: p.get('usuario'), contrasena: 'Tecno123!' });
+    const r = await api('/api/login', { usuario: p.get('usuario'), contrasena: '1234' });
     state.token = r.token; state.user = r.user;
     state.cat = await api('/api/catalogos');
     state.modulo = r.user.modulos.includes(p.get('modulo')) ? p.get('modulo') : 'inicio';

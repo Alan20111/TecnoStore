@@ -361,10 +361,10 @@ formulario; <b>Editar</b> habilita los campos; <b>Guardar</b> confirma; <b>Cance
 <li><b>Atajos:</b> F2 Productos · F3 Clientes · F4 Proveedores · F5 Nueva venta · F6 Órdenes · F7 Compras · Enter busca en los filtros.</li>
 </ul>
 """ % (d['HOY'], tabla(['Usuario', 'Contraseña', 'Perfil', 'Qué ve'], [
-        ['admin', 'Tecno123!', 'Administrador', 'Todo'],
-        ['csupervisor', 'Tecno123!', 'Supervisor', 'Todo menos usuarios'],
-        ['loperador', 'Tecno123!', 'Operador', 'Ventas, clientes, órdenes, catálogos en lectura'],
-        ['fconsulta', 'Tecno123!', 'Consulta', 'Solo lectura y reportes'],
+        ['admin', '1234', 'Administrador', 'Todo'],
+        ['csupervisor', '1234', 'Supervisor', 'Todo menos usuarios'],
+        ['loperador', '1234', 'Operador', 'Ventas, clientes, órdenes, catálogos en lectura'],
+        ['fconsulta', '1234', 'Consulta', 'Solo lectura y reportes'],
     ]))
     h += seccion('4. Iniciar sesión', '01_login', 'Inicio de sesión', [
         'Escribir usuario y contraseña y presionar <b>Ingresar</b> (o Enter).',

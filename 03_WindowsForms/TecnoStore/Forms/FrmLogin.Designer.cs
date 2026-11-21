@@ -102,7 +102,7 @@ namespace TecnoStore.Forms
             this.lblAyuda.Location = new System.Drawing.Point(27, 244);
             this.lblAyuda.Name = "lblAyuda";
             this.lblAyuda.Size = new System.Drawing.Size(290, 48);
-            this.lblAyuda.Text = "Usuarios demo: admin, csupervisor, loperador, fconsulta\r\nContraseña: Tecno123!";
+            this.lblAyuda.Text = "Usuarios demo: admin, csupervisor, loperador, fconsulta\r\nContraseña: 1234";
             //
             // errorProvider
             //
