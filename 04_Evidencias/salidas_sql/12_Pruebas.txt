@@ -1,3 +1,5 @@
+Warning: Null value is eliminated by an aggregate or other SET operation.
+Warning: Null value is eliminated by an aggregate or other SET operation.
 caso|tipo|descripcion|entrada|esperado|obtenido|resultado
 ----|----|-----------|-------|--------|--------|---------
 P01|Correcta|Alta de cliente|Mariana Prueba, correo con mayúsculas|Se crea; correo en minúsculas|id=31 correo=mariana.prueba@correo.mx|PASA
@@ -32,6 +34,8 @@ P29|Correcta|Alta de usuario con rol (Usuario + UsuarioRol)|mtorres, Operador|Us
 P30|Validación|Contraseña débil|"corta"|Mínimo 8 caracteres y un número|La contraseña debe tener al menos 8 caracteres y un número.|PASA
 P31|Seguridad|Supervisor intenta crear un Administrador|id_admin = csupervisor|Solo un Administrador|Solo un Administrador puede administrar usuarios.|PASA
 P32|Validación|Borrar categoría con productos|DELETE Categoria Celulares|Conflicto con FK_Producto_Categoria|The DELETE statement conflicted with the REFERENCE constraint "FK_Producto_Categoria". The conflict occurred in database "TecnoStore", table "dbo.Producto", column 'id_categoria'.|PASA
+P33|Seguridad|Permisos de la interfaz para el Operador|usp_PermisosApp loperador|Vende y registra clientes; no ve costos, reportes, auditoría ni compras|venta=1 costos=0 reportes=0 auditoria=0 compras=0|PASA
+P34|Seguridad|Permisos de la interfaz para el Supervisor|usp_PermisosApp csupervisor|Cancela, compra, ajusta y ve auditoría; no administra usuarios ni edita catálogos|cancelar=1 usuarios=0 catalogos=0|PASA
 pasan|total
 -----|-----
-32|32
+34|34

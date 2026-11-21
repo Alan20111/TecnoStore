@@ -12,6 +12,9 @@
      tecno_consulta    -> rol_consulta
    Contraseña de todos (solo desarrollo): Tecno#2026sql
 
+   La app lee estos permisos con usp_PermisosApp (más abajo) para
+   decidir qué módulos, columnas y botones muestra a cada rol.
+
    Matriz de permisos
    Objeto/Módulo          Administrador  Supervisor        Operador            Consulta
    Catálogos              CRUD           R                 R                   R
@@ -134,6 +137,60 @@ GO
    además existe el DENY de arriba, el operador sigue sin acceso. */
 GRANT  EXECUTE ON dbo.usp_AjustarStock TO rol_operador;
 REVOKE EXECUTE ON dbo.usp_AjustarStock FROM rol_operador;
+GO
+
+/* =============================================================
+   La interfaz se arma con los permisos REALES de la base
+   -------------------------------------------------------------
+   usp_PermisosApp recibe el usuario de la aplicación, se pone en el
+   lugar de su usuario de base de datos (EXECUTE AS USER) y pregunta a
+   SQL Server, con HAS_PERMS_BY_NAME, qué puede hacer. La app muestra u
+   oculta módulos, columnas y botones según la respuesta: si alguien
+   cambia un GRANT o DENY aquí, la interfaz cambia sola.
+   Va WITH EXECUTE AS OWNER para poder hacer EXECUTE AS USER; solo lee.
+   ============================================================= */
+CREATE OR ALTER PROCEDURE dbo.usp_PermisosApp
+    @id_usuario INT
+WITH EXECUTE AS OWNER
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @rol VARCHAR(40) = (SELECT TOP 1 r.nombre FROM UsuarioRol ur JOIN Rol r ON r.id_rol = ur.id_rol
+                                WHERE ur.id_usuario = @id_usuario);
+    IF @rol IS NULL THROW 50150, 'El usuario no tiene rol asignado.', 1;
+
+    -- Rol de la aplicación → usuario de base de datos del mismo rol
+    DECLARE @usuario_db SYSNAME = CASE @rol
+        WHEN 'Administrador' THEN 'tecno_admin'   WHEN 'Supervisor' THEN 'tecno_supervisor'
+        WHEN 'Operador'      THEN 'tecno_operador' WHEN 'Consulta'  THEN 'tecno_consulta' END;
+    IF USER_ID(@usuario_db) IS NULL THROW 50151, 'No existe el usuario de base de datos del rol; ejecuten 07_Seguridad.sql.', 1;
+
+    -- Capacidad de la interfaz → objeto y permiso que la respalda en SQL Server
+    DECLARE @capacidades TABLE (capacidad VARCHAR(40), objeto SYSNAME, permiso VARCHAR(20));
+    INSERT INTO @capacidades VALUES
+        ('ver_costos',        'dbo.vw_TopProductos',             'SELECT'),   -- costos, márgenes, utilidad, valor de inventario
+        ('ver_reportes',      'dbo.usp_ActividadEmpleados',      'EXECUTE'),  -- módulo Reportes y Dashboard
+        ('ver_auditoria',     'dbo.Auditoria',                   'SELECT'),
+        ('admin_usuarios',    'dbo.usp_UsuarioGuardar',          'EXECUTE'),
+        ('registrar_venta',   'dbo.usp_RegistrarVenta',          'EXECUTE'),
+        ('cancelar_venta',    'dbo.usp_CancelarVenta',           'EXECUTE'),
+        ('registrar_compra',  'dbo.usp_RegistrarCompra',         'EXECUTE'),
+        ('ajustar_stock',     'dbo.usp_AjustarStock',            'EXECUTE'),
+        ('ajustar_precio',    'dbo.usp_AjustarPrecio',           'EXECUTE'),
+        ('guardar_producto',  'dbo.usp_ProductoGuardar',         'EXECUTE'),
+        ('eliminar_producto', 'dbo.Producto',                    'DELETE'),
+        ('guardar_cliente',   'dbo.usp_ClienteGuardar',          'EXECUTE'),
+        ('guardar_proveedor', 'dbo.usp_ProveedorGuardar',        'EXECUTE'),
+        ('editar_catalogos',  'dbo.Categoria',                   'INSERT'),
+        ('gestionar_ordenes', 'dbo.usp_RegistrarOrdenServicio',  'EXECUTE');
+
+    EXECUTE AS USER = @usuario_db;
+    SELECT capacidad, CAST(ISNULL(HAS_PERMS_BY_NAME(objeto, 'OBJECT', permiso), 0) AS BIT) AS permitido
+    FROM @capacidades;
+    REVERT;
+END
+GO
+GRANT EXECUTE ON dbo.usp_PermisosApp TO tecno_login, rol_administrador, rol_supervisor, rol_operador, rol_consulta;
 GO
 
 /* =============================================================

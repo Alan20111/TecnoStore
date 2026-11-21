@@ -21,6 +21,7 @@ namespace TecnoStore.Forms
         {
             InitializeComponent();
             Ui.Grid(dgvDetalle);
+            Ui.Mostrar(dgvDetalle, "Producto", "Cantidad", "Precio", "Importe");
             dgvDetalle.AutoGenerateColumns = true;
             dgvDetalle.DataSource = lineas;
             lineas.ListChanged += (s, e) => Totales();

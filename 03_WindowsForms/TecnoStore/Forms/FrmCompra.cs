@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Windows.Forms;
 using TecnoStore.Data;
+using TecnoStore.Models;
 using TecnoStore.Utils;
 
 namespace TecnoStore.Forms
@@ -21,6 +22,8 @@ namespace TecnoStore.Forms
             InitializeComponent();
             Ui.Grid(dgvDetalle);
             Ui.Grid(dgvRecientes);
+            Ui.Mostrar(dgvRecientes, "folio", "fecha", "proveedor", "total");
+            Ui.Mostrar(dgvDetalle, "Producto", "Cantidad", "Costo", "Importe", "Series");
             dgvDetalle.DataSource = lineas;
             lineas.ListChanged += (s, e) =>
             {

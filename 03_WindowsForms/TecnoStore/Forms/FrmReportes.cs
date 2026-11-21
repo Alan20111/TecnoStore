@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using TecnoStore.Data;
+using TecnoStore.Models;
 using TecnoStore.Utils;
 
 namespace TecnoStore.Forms
@@ -20,6 +21,10 @@ namespace TecnoStore.Forms
         {
             InitializeComponent();
             foreach (var g in new[] { dgvResumen, dgvTop, dgvEmpleados, dgvStock, dgvCategorias }) Ui.Grid(g);
+            Ui.Mostrar(dgvTop, "nombre=Producto", "categoria=Categoría", "unidades_vendidas", "ingresos", "utilidad_bruta");
+            Ui.Mostrar(dgvStock, "nombre=Producto", "stock_actual", "stock_minimo", "faltante=Faltan", "proveedor_sugerido=Proveedor sugerido");
+            // Desempeño por empleado y utilidad solo para quien la base deja ver costos
+            if (!Db.Sesion.Puede(Capacidad.VerCostos)) tabReportes.TabPages.Remove(tabEmpleados);
             dtpDesde.Value = DateTime.Today.AddMonths(-6);
             dtpHasta.Value = DateTime.Today;
         }

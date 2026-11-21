@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using TecnoStore.Data;
+using TecnoStore.Models;
 using TecnoStore.Utils;
 
 namespace TecnoStore.Forms
@@ -44,7 +45,11 @@ namespace TecnoStore.Forms
 
         private void FrmCatalogo_Load(object sender, EventArgs e)
         {
-            lblPermiso.Text = Db.Sesion.EsAdministrador ? "" : "Solo lectura: únicamente el Administrador modifica catálogos.";
+            bool puede = Db.Sesion.Puede(Capacidad.EditarCatalogos);
+            lblPermiso.Text = puede ? "" : "Solo lectura";
+            btnNuevo.Visible = btnEditar.Visible = btnEliminar.Visible = btnGuardar.Visible = btnCancelar.Visible = puede;
+            grpDatos.Visible = puede;
+            pnlDerecho.Visible = puede;   // sin permiso, la lista ocupa todo el ancho
             Buscar();
             Estado(false);
         }
@@ -62,7 +67,7 @@ namespace TecnoStore.Forms
         private void Estado(bool edicion)
         {
             editando = edicion;
-            bool admin = Db.Sesion.EsAdministrador;
+            bool admin = Db.Sesion.Puede(Capacidad.EditarCatalogos);
             grpDatos.Enabled = edicion;
             btnNuevo.Enabled = !edicion && admin;
             btnEditar.Enabled = !edicion && admin && idActual != null;

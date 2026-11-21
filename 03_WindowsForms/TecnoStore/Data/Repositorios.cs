@@ -30,6 +30,46 @@ namespace TecnoStore.Data
                 Rol = (string)r["rol"],
             };
         }
+
+        /// <summary>
+        /// Pide a SQL Server las capacidades del usuario (usp_PermisosApp evalúa
+        /// los GRANT/DENY reales de su rol). Si el procedimiento no existe, usa la
+        /// misma matriz de 07_Seguridad.sql escrita aquí como respaldo.
+        /// </summary>
+        public static void CargarPermisos(UsuarioSesion s)
+        {
+            try
+            {
+                var t = Db.ProcedimientoTabla("usp_PermisosApp", Db.P("@id_usuario", SqlDbType.Int, s.IdUsuario));
+                s.Capacidades = new HashSet<string>(t.Rows.Cast<DataRow>().Where(r => (bool)r["permitido"]).Select(r => (string)r["capacidad"]));
+                s.PermisosDeLaBase = true;
+            }
+            catch (System.Data.SqlClient.SqlException)
+            {
+                s.Capacidades = new HashSet<string>(Respaldo(s.Rol));
+                s.PermisosDeLaBase = false;
+            }
+        }
+
+        private static IEnumerable<string> Respaldo(string rol)
+        {
+            switch (rol)
+            {
+                case "Administrador":
+                    return new[] { Capacidad.VerCostos, Capacidad.VerReportes, Capacidad.VerAuditoria, Capacidad.AdminUsuarios,
+                        Capacidad.RegistrarVenta, Capacidad.CancelarVenta, Capacidad.RegistrarCompra, Capacidad.AjustarStock,
+                        Capacidad.AjustarPrecio, Capacidad.GuardarProducto, Capacidad.EliminarProducto, Capacidad.GuardarCliente,
+                        Capacidad.GuardarProveedor, Capacidad.EditarCatalogos, Capacidad.GestionarOrdenes };
+                case "Supervisor":
+                    return new[] { Capacidad.VerCostos, Capacidad.VerReportes, Capacidad.VerAuditoria, Capacidad.RegistrarVenta,
+                        Capacidad.CancelarVenta, Capacidad.RegistrarCompra, Capacidad.AjustarStock, Capacidad.AjustarPrecio,
+                        Capacidad.GuardarProducto, Capacidad.GuardarCliente, Capacidad.GuardarProveedor, Capacidad.GestionarOrdenes };
+                case "Operador":
+                    return new[] { Capacidad.RegistrarVenta, Capacidad.GuardarCliente, Capacidad.GestionarOrdenes };
+                default:   // Consulta
+                    return new[] { Capacidad.VerCostos, Capacidad.VerReportes };
+            }
+        }
     }
 
     public static class CatalogoRepository

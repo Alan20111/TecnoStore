@@ -49,6 +49,7 @@ namespace TecnoStore.Forms
                 Db.Servidor = txtServidor.Text.Trim();
                 Db.Sesion = null;   // el login usa la conexión "Login"
                 Db.Sesion = AuthRepository.Login(txtUsuario.Text.Trim(), txtContrasena.Text);
+                AuthRepository.CargarPermisos(Db.Sesion);   // qué puede ver y hacer, según SQL Server
                 GuardarServidor();
                 DialogResult = DialogResult.OK;
                 Close();

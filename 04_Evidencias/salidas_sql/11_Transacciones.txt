@@ -38,7 +38,7 @@ OK: la refacción no entró
 === Proceso 3 · cancelación correcta de la venta recién hecha
 folio estado fecha_cancelacion motivo_cancelacion
 ----- ------ ----------------- ------------------
-V-01046 Cancelada 2026-11-21 05:53:15.9065579 Prueba de cancelación
+V-01046 Cancelada 2026-11-21 06:17:36.8291682 Prueba de cancelación
 stock_antes stock_despues
 ----------- -------------
 6 7

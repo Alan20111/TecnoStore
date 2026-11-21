@@ -126,7 +126,58 @@ Hay cuatro grosores: ultraThin, thin, regular y thick. Más grueso significa má
 
 ---
 
-## 4. Dónde está cada cosa en el código
+## 4. Menos información por pantalla y permisos por rol
+
+Cada pantalla tenía demasiada información. Estos son los principios que aplicamos y de dónde salen.
+
+### 4.1 Principios
+
+| Principio | Fuente | Cómo lo aplicamos |
+|---|---|---|
+| **Divulgación progresiva**: mostrar primero lo que casi todos usan y dejar lo avanzado a un clic | [NN/g · Progressive Disclosure](https://www.nngroup.com/articles/progressive-disclosure/) | Búsqueda más 2 o 3 filtros; el resto (fechas del historial) va en **Más filtros**. El detalle de un registro aparece al seleccionarlo, no en la tabla |
+| **Ley de Hick**: más opciones hacen más lenta la decisión | [Laws of UX · Hick](https://lawsofux.com/hicks-law/) | Menú lateral solo con los módulos del rol; **un botón principal** (naranja) por pantalla |
+| **Ley de Miller**: la memoria de trabajo es limitada | [Laws of UX · Miller](https://lawsofux.com/millers-law/) | Tablas de **5 a 7 columnas**; listas del Dashboard de **5 filas** |
+| **Estética minimalista** y **lenguaje del usuario** (heurísticas 2 y 8) | [NN/g · 10 heurísticas](https://www.nngroup.com/articles/ten-usability-heuristics/) | Sin nombres de procedimientos, tablas ni triggers en la interfaz: "Se registra sola cada vez que cambia un precio" en vez de "trg_Producto_Auditoria" |
+| **Tablas para buscar y comparar**, no para leerlo todo | [NN/g · Data Tables](https://www.nngroup.com/articles/data-tables/) | Las columnas que identifican (folio, nombre) van primero; la cifra clave (total, stock) al final, alineada a la derecha |
+| **Dashboard de un vistazo** en una sola pantalla, sin pastel ni dona | Stephen Few, *Information Dashboard Design* | 4 indicadores, 2 gráficas de barras (categorías en barras horizontales) y 2 listas de "Requiere atención" |
+| **Estados vacíos** que dicen qué hacer | [NN/g · Empty States](https://www.nngroup.com/articles/empty-state-interface-design/) | "No hay resultados. Prueba con otra búsqueda o quita filtros." |
+| **Confirmar solo lo riesgoso** | [NN/g · Confirmation Dialogs](https://www.nngroup.com/articles/confirmation-dialog/) | Se confirma guardar una venta o compra, cancelar y ajustar; buscar o abrir nunca pide confirmación |
+| **Autorizar en el servidor y negar por defecto** | [OWASP · Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html) | La interfaz oculta, pero quien decide es SQL Server (ver 4.2) |
+
+**Ocultar o deshabilitar.** [Nuestro] Si el rol **nunca** podrá usar algo, se oculta (menú, botón, panel o columna). Si es un bloqueo **temporal** (una orden ya entregada, una venta sin líneas), se deshabilita y se dice por qué.
+
+### 4.2 Permisos que salen de la base de datos
+
+La app no tiene una lista de roles escrita a mano. Al iniciar sesión pregunta a SQL Server qué puede hacer el usuario:
+
+1. [`usp_PermisosApp`](../02_SQL/07_Seguridad.sql) recibe el usuario de la app y toma su rol (`UsuarioRol`).
+2. Se pone en el lugar del usuario de base de datos de ese rol (`EXECUTE AS USER = 'tecno_operador'`, etc.) y pregunta con `HAS_PERMS_BY_NAME` si tiene cada permiso. Después hace `REVERT`.
+3. Devuelve 15 capacidades (`ver_costos`, `registrar_venta`, `cancelar_venta`…) con 1 o 0.
+
+Así, si alguien cambia un `GRANT` o un `DENY` en `07_Seguridad.sql`, la interfaz cambia sola. Las pruebas P33 y P34 de `12_Pruebas.sql` comprueban la matriz del Operador y del Supervisor.
+
+| Qué se oculta | Capacidad | Admin | Supervisor | Operador | Consulta |
+|---|---|:-:|:-:|:-:|:-:|
+| Dashboard y Reportes | `ver_reportes` | ✓ | ✓ | — | ✓ |
+| Costos, márgenes, utilidad y actividad por empleado | `ver_costos` | ✓ | ✓ | — | ✓ |
+| Nueva venta | `registrar_venta` | ✓ | ✓ | ✓ | — |
+| Botón Cancelar venta | `cancelar_venta` | ✓ | ✓ | — | — |
+| Panel para cambiar estado de órdenes | `gestionar_ordenes` | ✓ | ✓ | ✓ | — |
+| Compras | `registrar_compra` | ✓ | ✓ | — | — |
+| Ajustes (inventario / precios) | `ajustar_stock` / `ajustar_precio` | ✓ | ✓ | — | — |
+| Editar productos | `guardar_producto` | ✓ | ✓ | — | — |
+| Eliminar productos y editar catálogos | `eliminar_producto` / `editar_catalogos` | ✓ | — | — | — |
+| Editar clientes / proveedores | `guardar_cliente` / `guardar_proveedor` | ✓ | ✓ | ✓ / — | — |
+| Auditoría | `ver_auditoria` | ✓ | ✓ | — | — |
+| Usuarios | `admin_usuarios` | ✓ | — | — | — |
+
+Ocultar no basta. Si alguien llama la operación de todos modos, SQL Server la rechaza por el `DENY` o la falta de `GRANT`, y el servidor de la vista previa valida la misma capacidad antes de ejecutarla. Sin `ver_costos`, los costos **no salen del servidor**: no basta con esconder la columna.
+
+**En el código:** `AuthRepository.CargarPermisos` y `UsuarioSesion.Puede()` (WinForms; si la base aún no tiene el procedimiento, usa una copia de la misma matriz), `Ui.Mostrar(grid, columnas…)` para elegir columnas, `modulosDe()`, `exige()` y `sinCostos()` en `preview/server.js`, y `tiene()` en `preview/public/app.js`.
+
+---
+
+## 5. Dónde está cada cosa en el código
 
 | Pieza | Vista previa | Windows Forms |
 |---|---|---|
@@ -142,7 +193,7 @@ Hay cuatro grosores: ultraThin, thin, regular y thick. Más grueso significa má
 
 ---
 
-## 5. Limitaciones honestas
+## 6. Limitaciones honestas
 
 - **Windows Forms no tiene desenfoque de fondo.** El vidrio líquido solo existe en la vista previa. La app de Windows usa la versión opaca del mismo sistema, que equivale al estilo iOS 16.
 - `corner-shape: squircle` solo funciona en Chrome/Edge 139+; en otros navegadores se ven esquinas circulares.

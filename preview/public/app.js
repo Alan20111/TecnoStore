@@ -41,10 +41,16 @@ function messageBox(text, { title = 'TecnoStore', icon = 'info', buttons = ['Ace
 }
 const showError = (e) => messageBox(e.message || e, { icon: 'error', title: 'Error' });
 
-// DataGridView
+// Capacidades que SQL Server concede al rol (usp_PermisosApp); la interfaz solo muestra lo que se puede usar
+const tiene = (cap) => !!state.user?.caps?.includes(cap);
+const ES_COSTO = /costo|margen|utilidad|valor_inventario/i;
+const vacia = '<div class="empty">No hay resultados. Prueba con otra búsqueda o quita filtros.</div>';
+
+// DataGridView: pocas columnas; las de costo desaparecen si el rol no puede verlas
 function grid(cols, rows, { onSelect, rowClass, cls = '' } = {}) {
+  if (!tiene('ver_costos')) cols = cols.filter((x) => !ES_COSTO.test(x.k));
   const el = h(`<div class="grid ${cls}"></div>`);
-  if (!rows.length) { el.innerHTML = '<div class="empty">Sin registros</div>'; return el; }
+  if (!rows.length) { el.innerHTML = vacia; return el; }
   el.innerHTML = `<table><thead><tr><th class="rowheader"></th>${cols.map((c) => `<th>${esc(c.t)}</th>`).join('')}</tr></thead>
     <tbody>${rows.map((r, i) => `<tr data-i="${i}" class="${rowClass ? rowClass(r) : ''}"><td class="rowheader"></td>${cols.map((c) => {
       const v = c.f ? c.f(r[c.k], r) : esc(r[c.k]);
@@ -58,6 +64,7 @@ function grid(cols, rows, { onSelect, rowClass, cls = '' } = {}) {
   return el;
 }
 const M = (k) => (v) => money(v);
+const pillEstado = (v) => `<span class="pill ${v === 'Cancelada' ? 'roja' : 'verde'}">${esc(v)}</span>`;
 const N = (v) => esc(v);
 const options = (list, sel, empty) => (empty ? `<option value="">${esc(empty)}</option>` : '') +
   list.map((o) => `<option value="${o.id}" ${String(o.id) === String(sel) ? 'selected' : ''}>${esc(o.nombre)}</option>`).join('');
@@ -260,9 +267,10 @@ async function abrir(m) {
 }
 
 /* ---------- FrmDashboard ---------- */
-// Un solo acento: escala del verde azulado y de la tinta (sin arcoíris)
-const PALETA = ['#016a71', '#2e8a90', '#5ea7ac', '#90c3c6', '#c0dcde', '#27251e', '#55534d', '#82807a', '#aeaca6', '#d6d3cd'];
+// Una sola pantalla (Stephen Few): 4 indicadores, 2 gráficas de barras y 2 listas cortas.
+// El detalle vive en Reportes.
 const mx = (v, d = 0) => Number(v).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: d, minimumFractionDigits: d });
+const miles = (v) => (v ? '$' + Math.round(v / 1000) + 'K' : '0');
 
 function variacion(actual, anterior) {
   if (!anterior) return [actual ? 'sin datos del periodo anterior' : 'sin movimientos', ''];
@@ -275,34 +283,25 @@ function columnas(datos) {
   const W = 560, H = 230, iz = 52, ab = 26, ar = 22, max = Math.max(1, ...datos.map((d) => d.v)) * 1.12;
   const paso = (W - iz - 10) / datos.length, ancho = paso * 0.55;
   const y = (v) => ar + (H - ar - ab) * (1 - v / max);
-  const lineas = [0, 0.25, 0.5, 0.75, 1].map((f) => {
+  const lineas = [0, 0.5, 1].map((f) => {
     const v = max * f, yy = y(v);
-    return `<line x1="${iz}" x2="${W - 6}" y1="${yy}" y2="${yy}" class="rejilla"/><text x="${iz - 8}" y="${yy + 4}" class="eje" text-anchor="end">${v ? '$' + Math.round(v / 1000) + 'K' : '0'}</text>`;
+    return `<line x1="${iz}" x2="${W - 6}" y1="${yy}" y2="${yy}" class="rejilla"/><text x="${iz - 8}" y="${yy + 4}" class="eje" text-anchor="end">${miles(v)}</text>`;
   }).join('');
   const barras = datos.map((d, i) => {
     const x = iz + paso * i + (paso - ancho) / 2, yy = y(d.v);
     return `<rect x="${x}" y="${yy}" width="${ancho}" height="${H - ab - yy}" rx="4" class="barra${i === datos.length - 1 ? ' actual' : ''}"><title>${esc(d.t)}: ${esc(mx(d.v))}</title></rect>
-      <text x="${x + ancho / 2}" y="${yy - 6}" class="valor" text-anchor="middle">${d.v ? '$' + Math.round(d.v / 1000) + 'K' : ''}</text>
+      <text x="${x + ancho / 2}" y="${yy - 6}" class="valor" text-anchor="middle">${d.v ? miles(d.v) : ''}</text>
       <text x="${x + ancho / 2}" y="${H - 8}" class="eje" text-anchor="middle">${esc(d.t)}</text>`;
   }).join('');
   return `<svg viewBox="0 0 ${W} ${H}" class="grafica">${lineas}${barras}</svg>`;
 }
 
-// Gráfica de dona en SVG con leyenda (Chart de tipo Doughnut en C#)
-function dona(datos) {
-  const total = datos.reduce((a, d) => a + d.v, 0) || 1;
-  let ang = -Math.PI / 2;
-  const R = 90, r = 56, cx = 110, cy = 110;
-  const arcos = datos.map((d, i) => {
-    const a2 = ang + (d.v / total) * Math.PI * 2, largo = a2 - ang > Math.PI ? 1 : 0;
-    const p = (rad, a) => `${cx + rad * Math.cos(a)} ${cy + rad * Math.sin(a)}`;
-    const path = `M ${p(R, ang)} A ${R} ${R} 0 ${largo} 1 ${p(R, a2)} L ${p(r, a2)} A ${r} ${r} 0 ${largo} 0 ${p(r, ang)} Z`;
-    ang = a2;
-    return `<path d="${path}" fill="${PALETA[i % PALETA.length]}"><title>${esc(d.t)}: ${esc(mx(d.v))}</title></path>`;
-  }).join('');
-  const leyenda = datos.map((d, i) => `<li><i style="background:${PALETA[i % PALETA.length]}"></i><span>${esc(d.t)}</span><b>${esc(mx(d.v))}</b></li>`).join('');
-  return `<div class="dona"><svg viewBox="0 0 220 220">${arcos}<text x="110" y="106" text-anchor="middle" class="total-t">Total</text>
-    <text x="110" y="126" text-anchor="middle" class="total-v">${esc('$' + Math.round(total / 1000) + 'K')}</text></svg><ul>${leyenda}</ul></div>`;
+// Barras horizontales: comparar categorías es más fácil que en una dona (Chart tipo Bar en C#)
+function barrasH(datos) {
+  if (!datos.length) return vacia;
+  const max = Math.max(1, ...datos.map((d) => d.v));
+  return `<div class="barrasH">${datos.map((d) => `<div class="bh" title="${esc(d.t)}: ${esc(mx(d.v))}"><span>${esc(d.t)}</span>
+    <div><i style="width:${(d.v / max) * 100}%"></i></div><b>${esc(miles(d.v))}</b></div>`).join('')}</div>`;
 }
 
 async function renderDashboard(c) {
@@ -312,15 +311,12 @@ async function renderDashboard(c) {
   const saludo = hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches';
   const fecha = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const [vi, ci] = variacion(k.ingresos_mes, k.ingresos_ant), [vv, cv] = variacion(k.ventas_mes, k.ventas_ant);
+  // Lo más importante arriba a la izquierda
   const tarjetas = [
-    ['Ingresos · 90 días', mx(k.ingresos_mes), vi, ci],
+    ['Ingresos · 90 días', k.ingresos_mes, vi, ci, true],
     ['Ventas · 90 días', k.ventas_mes, vv, cv],
-    ['Ticket promedio', mx(k.ventas_mes ? k.ingresos_mes / k.ventas_mes : 0), 'por venta completada', ''],
-    ['Unidades vendidas', k.unidades_mes, 'piezas en 90 días', ''],
-    ['Órdenes en taller', k.ordenes_abiertas, `${k.ordenes_listas} listas para entregar`, ''],
-    ['Alertas de stock', k.alertas_stock, k.agotados ? `${k.agotados} agotado(s)` : 'ninguno agotado', k.agotados ? 'baja' : 'sube'],
-    ['Clientes activos', k.clientes_activos, `+${k.clientes_nuevos} nuevos en 90 días`, ''],
-    ['Valor del inventario', mx(k.valor_inventario), `${k.garantias_vigentes} garantías vigentes`, ''],
+    ['Equipos en taller', k.ordenes_abiertas, `${k.ordenes_listas} listos para entregar`, ''],
+    ['Productos por resurtir', k.alertas_stock, k.agotados ? `${k.agotados} agotado(s)` : 'ninguno agotado', k.agotados ? 'baja' : 'sube'],
   ];
   const meses = [];
   for (let i = 5; i >= 0; i--) {
@@ -335,39 +331,28 @@ async function renderDashboard(c) {
       <div class="sub">${esc(fecha[0].toUpperCase() + fecha.slice(1))} · ${esc(u.sucursal)}</div></div>
       <span class="spacer"></span><span class="sub">Actualizado a las ${new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>
       <button data-actualizar>Actualizar</button></div>
-    <div class="kpis">${tarjetas.map(([t, v, n, cls], i) => `<div class="card kpi"><span>${esc(t)}</span><b data-kpi="${i}">${esc(v)}</b><small class="${cls}">${esc(n)}</small></div>`).join('')}</div>
+    <div class="kpis">${tarjetas.map(([t, , n, cls], i) => `<div class="card kpi"><span>${esc(t)}</span><b data-kpi="${i}">—</b><small class="${cls}">${esc(n)}</small></div>`).join('')}</div>
     <div class="fila2">
-      <div class="card"><h3>Ingresos por mes · últimos 6 meses</h3>${columnas(meses)}</div>
-      <div class="card"><h3>Ventas por categoría · últimos 90 días</h3>${dona(d.categorias.map((x) => ({ t: x.categoria, v: x.ingresos })))}</div>
+      <div class="card"><h3>Ingresos por mes</h3>${columnas(meses)}</div>
+      <div class="card"><h3>Ventas por categoría · 90 días</h3>${barrasH(d.categorias.map((x) => ({ t: x.categoria, v: x.ingresos })))}</div>
     </div>
     <div class="fila2">
-      <div class="card"><h3>Ventas recientes</h3><div data-g="recientes"></div></div>
-      <div class="card"><h3>Más vendidos · últimos 90 días</h3><div data-g="vendidos"></div></div>
-    </div>
-    <div class="fila2">
-      <div class="card"><h3>Productos por resurtir</h3><div data-g="alertas"></div></div>
-      <div class="card"><h3>Equipos en el taller</h3><div data-g="taller"></div></div>
+      <div class="card"><h3>Requiere atención · productos por resurtir</h3><div data-g="alertas"></div></div>
+      <div class="card"><h3>Requiere atención · equipos en el taller</h3><div data-g="taller"></div></div>
     </div></div>`;
   const poner = (k2, el) => c.querySelector(`[data-g=${k2}]`).replaceWith(el);
-  poner('recientes', grid([{ t: 'Folio', k: 'folio' }, { t: 'Fecha', k: 'fecha', f: datetime }, { t: 'Cliente', k: 'cliente' },
-    { t: 'Sucursal', k: 'sucursal' }, { t: 'Total', k: 'total', num: 1, f: M() }, { t: 'Estado', k: 'estado', f: (v) => `<span class="pill ${v === 'Cancelada' ? 'roja' : 'verde'}">${esc(v)}</span>` }],
-    d.recientes, { cls: 'compacta' }));
-  poner('vendidos', grid([{ t: 'Producto', k: 'producto' }, { t: 'Unidades', k: 'unidades', num: 1 }, { t: 'Importe', k: 'importe', num: 1, f: M() }], d.vendidos, { cls: 'compacta' }));
-  poner('alertas', grid([{ t: 'SKU', k: 'sku' }, { t: 'Producto', k: 'producto' }, { t: 'Stock', k: 'stock', num: 1, f: (v) => `<span class="${v === 0 ? 'texto-rojo' : ''}">${v}</span>` }, { t: 'Mínimo', k: 'minimo', num: 1 }], d.alertas, { cls: 'compacta' }));
-  poner('taller', grid([{ t: 'Folio', k: 'folio' }, { t: 'Equipo', k: 'equipo' }, { t: 'Técnico', k: 'tecnico' }, { t: 'Estado', k: 'estado', f: (v) => `<span class="pill azul">${esc(v)}</span>` }, { t: 'Días', k: 'dias', num: 1 }], d.taller, { cls: 'compacta' }));
+  poner('alertas', grid([{ t: 'Producto', k: 'producto' }, { t: 'Stock', k: 'stock', num: 1, f: (v) => `<span class="${v === 0 ? 'texto-rojo' : ''}">${v}</span>` }, { t: 'Mínimo', k: 'minimo', num: 1 }], d.alertas, { cls: 'compacta' }));
+  poner('taller', grid([{ t: 'Folio', k: 'folio' }, { t: 'Equipo', k: 'equipo' }, { t: 'Estado', k: 'estado', f: (v) => `<span class="pill azul">${esc(v)}</span>` }, { t: 'Días', k: 'dias', num: 1 }], d.taller, { cls: 'compacta' }));
   c.querySelector('[data-actualizar]').onclick = () => renderDashboard(c).catch(showError);
-  const numeros = [k.ingresos_mes, k.ventas_mes, k.ventas_mes ? k.ingresos_mes / k.ventas_mes : 0, k.unidades_mes,
-                   k.ordenes_abiertas, k.alertas_stock, k.clientes_activos, k.valor_inventario];
-  const dinero = [0, 2, 7];
   c.querySelectorAll('[data-kpi]').forEach((el) => {
-    const i = +el.dataset.kpi;
-    contar(el, Number(numeros[i]) || 0, dinero.includes(i) ? (v) => mx(v) : (v) => Math.round(v).toLocaleString('es-MX'));
+    const [, valor, , , dinero] = tarjetas[+el.dataset.kpi];
+    contar(el, Number(valor) || 0, dinero ? (v) => mx(v) : (v) => Math.round(v).toLocaleString('es-MX'));
   });
 }
 
 /* ---------- FrmProductos ---------- */
 async function renderProductos(c) {
-  c.innerHTML = `<h1>Productos</h1><div class="sub">Búsqueda con <b>usp_ProductoBuscar</b> (parámetros opcionales) · margen con <b>fn_MargenProducto</b></div>
+  c.innerHTML = `<h1>Productos</h1><div class="sub">Busca por nombre o SKU. Los que necesitan resurtirse aparecen resaltados.</div>
     <fieldset class="groupbox"><legend>Filtros</legend><div class="row">
       <div class="field"><span>Buscar (nombre o SKU):</span><input name="texto" style="width:220px"></div>
       <div class="field"><span>Categoría:</span><select name="categoria">${options(state.cat.categorias, '', '(Todas)')}</select></div>
@@ -380,10 +365,9 @@ async function renderProductos(c) {
     const qs = new URLSearchParams({ texto: f('texto').value, categoria: f('categoria').value, alertas: f('alertas').checked ? '1' : '' });
     const rows = await api('/api/productos?' + qs);
     c.querySelector('.slot').replaceChildren(grid([
-      { t: 'SKU', k: 'sku' }, { t: 'Producto', k: 'nombre' }, { t: 'Categoría', k: 'categoria' }, { t: 'Marca', k: 'marca' },
-      { t: 'Condición', k: 'condicion' }, { t: 'Precio', k: 'precio_venta', num: 1, f: M() },
-      { t: 'Margen %', k: 'margen_pct', num: 1 }, { t: 'Stock', k: 'stock_actual', num: 1 }, { t: 'Mín.', k: 'stock_minimo', num: 1 },
-      { t: 'Alerta', k: 'alerta_stock' },
+      { t: 'SKU', k: 'sku' }, { t: 'Producto', k: 'nombre' }, { t: 'Categoría', k: 'categoria' },
+      { t: 'Precio', k: 'precio_venta', num: 1, f: M() }, { t: 'Stock', k: 'stock_actual', num: 1 },
+      { t: 'Alerta', k: 'alerta_stock', f: (v) => (v === 'OK' || !v ? '' : `<span class="pill ${v === 'Agotado' ? 'roja' : 'ambar'}">${esc(v)}</span>`) },
     ], rows, { rowClass: (r) => ({ Agotado: 'danger', 'Stock bajo': 'warn' }[r.alerta_stock] || '') }));
     c.querySelector('.count').textContent = `${rows.length} registro(s)`;
   };
@@ -395,7 +379,7 @@ async function renderProductos(c) {
 
 /* ---------- FrmClientes ---------- */
 async function renderClientes(c) {
-  c.innerHTML = `<h1>Clientes</h1><div class="sub">Total y nivel calculados en SQL Server con <b>fn_TotalCompradoCliente</b> y <b>fn_ClasificacionCliente</b></div>
+  c.innerHTML = `<h1>Clientes</h1><div class="sub">El nivel depende de cuánto ha comprado cada cliente.</div>
     <fieldset class="groupbox"><legend>Búsqueda</legend><div class="row">
       <div class="field"><span>Nombre, apellidos o correo:</span><input name="texto" style="width:260px"></div>
       <button class="primary" data-buscar style="margin-top:14px">Buscar</button>
@@ -403,10 +387,9 @@ async function renderClientes(c) {
   const cargar = async () => {
     const rows = await api('/api/clientes?' + new URLSearchParams({ texto: c.querySelector('[name=texto]').value }));
     c.querySelector('.slot').replaceChildren(grid([
-      { t: '#', k: 'id_cliente', num: 1 }, { t: 'Cliente', k: 'cliente' }, { t: 'Correo', k: 'correo' }, { t: 'Teléfono', k: 'telefono' },
-      { t: 'Registro', k: 'registro', f: date }, { t: 'Compras', k: 'compras', num: 1 }, { t: 'Total comprado', k: 'total_comprado', num: 1, f: M() },
+      { t: 'Cliente', k: 'cliente' }, { t: 'Correo', k: 'correo' },
+      { t: 'Compras', k: 'compras', num: 1 }, { t: 'Total comprado', k: 'total_comprado', num: 1, f: M() },
       { t: 'Nivel', k: 'nivel', f: (v) => (v === 'Sin compras' ? '<span style="color:#888">Sin compras</span>' : `<span class="badge ${esc(v)}">${esc(v)}</span>`) },
-      { t: 'Activo', k: 'activo', f: (v) => (v ? 'Sí' : 'No') },
     ], rows, { rowClass: (r) => (r.activo ? '' : 'danger') }));
     c.querySelector('.count').textContent = `${rows.length} cliente(s)`;
   };
@@ -420,13 +403,13 @@ async function renderVenta(c) {
   state.cat = await api('/api/catalogos');
   const lineas = [];
   const prod = (id) => state.cat.productos.find((p) => p.id === +id);
-  c.innerHTML = `<h1>Nueva venta</h1><div class="sub">Se guarda con <b>usp_RegistrarVenta</b>: una sola transacción (encabezado, detalle, stock, piezas con serie y garantías). Cualquier error hace ROLLBACK.</div>
+  c.innerHTML = `<h1>Nueva venta</h1><div class="sub">Elige cliente y productos, y guarda. Si algo no cuadra (stock, descuento) no se guarda nada.</div>
     <fieldset class="groupbox"><legend>Encabezado</legend><div class="row">
       <div class="field"><span>Cliente: *</span><select name="cliente" style="width:240px">${options(state.cat.clientes, '', '(Selecciona)')}</select></div>
       <div class="field"><span>Método de pago: *</span><select name="metodo">${options(state.cat.metodos, 1)}</select></div>
       <div class="field"><span>Descuento %:</span><input name="desc" type="number" min="0" max="50" step="1" value="0" style="width:70px"></div>
       <div class="field"><span>Vendedor:</span><input value="${esc(state.user.nombre)}" disabled style="width:180px"></div>
-    </div><div class="sub" style="margin-top:6px">Descuentos mayores a ${esc(state.cat.descuentoMax)} % requieren rol Supervisor (regla validada en el SP).</div></fieldset>
+    </div><div class="sub" style="margin-top:6px">${tiene('cancelar_venta') ? 'Puedes autorizar descuentos de hasta 50 %.' : `Descuentos mayores a ${esc(state.cat.descuentoMax)} % los autoriza un Supervisor.`}</div></fieldset>
     <fieldset class="groupbox"><legend>Agregar producto</legend><div class="row">
       <div class="field"><span>Producto:</span><select name="producto" style="width:380px">${state.cat.productos.map((p) =>
         `<option value="${p.id}">${esc(p.sku)} — ${esc(p.nombre)} (${money(p.precio_venta)} · stock ${p.stock_actual})</option>`).join('')}</select></div>
@@ -441,9 +424,8 @@ async function renderVenta(c) {
   const pintar = () => {
     sel = null;
     c.querySelector('.slot').replaceChildren(grid([
-      { t: 'SKU', k: 'sku' }, { t: 'Producto', k: 'nombre' }, { t: 'Cantidad', k: 'cantidad', num: 1 },
+      { t: 'Producto', k: 'nombre' }, { t: 'Cantidad', k: 'cantidad', num: 1 },
       { t: 'Precio', k: 'precio_venta', num: 1, f: M() }, { t: 'Importe', k: 'importe', num: 1, f: M() },
-      { t: 'Serie', k: 'requiere_serie', f: (v) => (v ? 'Se asigna al guardar' : '—') },
     ], lineas.map((l) => ({ ...l, importe: l.precio_venta * l.cantidad })), { onSelect: (r) => sel = r }));
     const sub = lineas.reduce((a, l) => a + l.precio_venta * l.cantidad, 0);
     const desc = Math.round(sub * (+f('desc').value || 0)) / 100;
@@ -478,7 +460,7 @@ async function renderVenta(c) {
       await renderVenta(c);
     } catch (e) {
       guardar.disabled = false;
-      showError(new Error(`SQL Server rechazó la venta y no se guardó nada (ROLLBACK):\n\n${e.message}`));
+      showError(new Error(`La venta no se guardó:\n\n${e.message}`));
     }
   };
   pintar();
@@ -486,16 +468,17 @@ async function renderVenta(c) {
 
 /* ---------- FrmHistorialVentas ---------- */
 async function renderVentas(c) {
-  const puedeCancelar = ['Administrador', 'Supervisor'].includes(state.user.rol);
-  c.innerHTML = `<h1>Historial de ventas</h1><div class="sub">Consulta sobre <b>vw_VentaCompleta</b> · cancelación con <b>usp_CancelarVenta</b> (reintegra stock y libera piezas)</div>
-    <fieldset class="groupbox"><legend>Filtros</legend><div class="row">
-      <div class="field"><span>Desde:</span><input type="date" name="desde" value="2026-05-01"></div>
-      <div class="field"><span>Hasta:</span><input type="date" name="hasta" value="${new Date().toISOString().slice(0, 10)}"></div>
+  const puedeCancelar = tiene('cancelar_venta');
+  c.innerHTML = `<h1>Historial de ventas</h1><div class="sub">Selecciona una venta para ver qué se vendió.</div>
+    <fieldset class="groupbox"><legend>Buscar</legend><div class="row">
+      <div class="field"><span>Folio o cliente:</span><input name="texto" style="width:220px"></div>
       <div class="field"><span>Estado:</span><select name="estado"><option value="">(Todos)</option><option>Completada</option><option>Cancelada</option></select></div>
-      <div class="field"><span>Folio o cliente:</span><input name="texto"></div>
       <button class="primary" data-buscar style="margin-top:14px">Buscar</button>
+      <details class="mas"><summary>Más filtros</summary>
+        <div class="field"><span>Desde:</span><input type="date" name="desde" value="2026-01-01"></div>
+        <div class="field"><span>Hasta:</span><input type="date" name="hasta" value="${new Date().toISOString().slice(0, 10)}"></div></details>
       <span class="spacer"></span>
-      <button data-cancelar style="margin-top:14px" ${puedeCancelar ? '' : 'disabled title="Requiere rol Supervisor"'}>Cancelar venta…</button>
+      ${puedeCancelar ? '<button data-cancelar style="margin-top:14px">Cancelar venta…</button>' : ''}
     </div></fieldset>
     <div class="slot" style="flex:1;display:flex;min-height:0"></div>
     <fieldset class="groupbox"><legend>Detalle de la venta seleccionada</legend><div class="det"><div class="sub">Selecciona una venta.</div></div></fieldset>`;
@@ -506,23 +489,22 @@ async function renderVentas(c) {
     const qs = new URLSearchParams({ desde: f('desde').value, hasta: f('hasta').value, estado: f('estado').value, texto: f('texto').value });
     const rows = await api('/api/ventas?' + qs);
     c.querySelector('.slot').replaceChildren(grid([
-      { t: 'Folio', k: 'folio' }, { t: 'Fecha', k: 'fecha', f: datetime }, { t: 'Cliente', k: 'cliente' }, { t: 'Vendedor', k: 'vendedor' },
-      { t: 'Sucursal', k: 'sucursal' }, { t: 'Pago', k: 'metodo_pago' }, { t: 'Líneas', k: 'lineas', num: 1 },
-      { t: 'Descuento', k: 'descuento', num: 1, f: M() }, { t: 'Total', k: 'total', num: 1, f: M() }, { t: 'Estado', k: 'estado' },
+      { t: 'Folio', k: 'folio' }, { t: 'Fecha', k: 'fecha', f: datetime }, { t: 'Cliente', k: 'cliente' },
+      { t: 'Total', k: 'total', num: 1, f: M() }, { t: 'Estado', k: 'estado', f: pillEstado },
     ], rows, {
       rowClass: (r) => (r.estado === 'Cancelada' ? 'danger' : ''),
       onSelect: async (r) => {
         sel = r;
         const det = await api('/api/ventas/detalle?id=' + r.id_venta);
         c.querySelector('.det').replaceChildren(grid([
-          { t: 'SKU', k: 'sku' }, { t: 'Producto', k: 'nombre' }, { t: 'No. de serie', k: 'numero_serie' }, { t: 'Cant.', k: 'cantidad', num: 1 },
-          { t: 'Precio', k: 'precio_unitario', num: 1, f: M() }, { t: 'Importe', k: 'subtotal', num: 1, f: M() }, { t: 'Garantía', k: 'garantia' },
+          { t: 'Producto', k: 'nombre' }, { t: 'No. de serie', k: 'numero_serie' }, { t: 'Cant.', k: 'cantidad', num: 1 },
+          { t: 'Importe', k: 'subtotal', num: 1, f: M() }, { t: 'Garantía', k: 'garantia' },
         ], det, { cls: 'short' }));
       },
     }));
   };
   c.querySelector('[data-buscar]').onclick = () => cargar().catch(showError);
-  c.querySelector('[data-cancelar]').onclick = async () => {
+  if (puedeCancelar) c.querySelector('[data-cancelar]').onclick = async () => {
     if (!sel) return messageBox('Selecciona una venta.', { icon: 'info' });
     if (sel.estado === 'Cancelada') return messageBox(`La venta ${sel.folio} ya está cancelada.`, { icon: 'info' });
     const motivo = await inputBox(`Motivo de la cancelación de ${sel.folio}:`, 'Cancelar venta');
@@ -537,31 +519,33 @@ async function renderVentas(c) {
 /* ---------- FrmOrdenesServicio ---------- */
 async function renderOrdenes(c) {
   const estados = state.cat.estados;
-  c.innerHTML = `<h1>Órdenes de servicio (taller)</h1><div class="sub">Cada cambio de estado lo registra el trigger <b>trg_OrdenServicio_Estado</b>, que además bloquea órdenes Entregadas o Canceladas.</div>
+  const gestiona = tiene('gestionar_ordenes');
+  c.innerHTML = `<h1>Órdenes de servicio (taller)</h1><div class="sub">Las órdenes entregadas o canceladas ya no cambian de estado.</div>
     <div class="row"><label><input type="checkbox" name="abiertas" checked> Solo órdenes abiertas</label></div>
     <div class="slot" style="flex:1;display:flex;min-height:0"></div>
-    <div class="two">
-      <fieldset class="groupbox"><legend>Historial de estados (HistorialEstadoOrden)</legend><div class="hist"><div class="sub">Selecciona una orden.</div></div></fieldset>
-      <fieldset class="groupbox"><legend>Cambiar estado</legend>
+    <div class="${gestiona ? 'two' : ''}">
+      <fieldset class="groupbox"><legend>Historial de estados</legend><div class="hist"><div class="sub">Selecciona una orden.</div></div></fieldset>
+      ${gestiona ? `<fieldset class="groupbox"><legend>Cambiar estado</legend>
         <div class="row"><div class="field"><span>Orden:</span><input name="folio" disabled style="width:110px"></div>
         <div class="field"><span>Nuevo estado:</span><select name="estado">${options(estados)}</select></div>
         <button class="primary" data-aplicar style="margin-top:14px">Aplicar</button></div>
-        <div class="sub" style="margin-top:8px">Prueba: quita el filtro, elige una orden Entregada e intenta cambiarla; SQL Server la rechaza.</div>
-      </fieldset></div>`;
+      </fieldset>` : ''}</div>`;
   let sel = null;
   const cargar = async () => {
     const rows = await api('/api/ordenes?abiertas=' + (c.querySelector('[name=abiertas]').checked ? '1' : ''));
     c.querySelector('.slot').replaceChildren(grid([
-      { t: 'Folio', k: 'folio' }, { t: 'Recepción', k: 'fecha_recepcion', f: date }, { t: 'Cliente', k: 'cliente' }, { t: 'Equipo', k: 'equipo_descripcion' },
-      { t: 'Falla', k: 'descripcion_falla' }, { t: 'Técnico', k: 'tecnico' }, { t: 'Estado', k: 'estado' },
-      { t: 'Días', k: 'dias_en_taller', num: 1 }, { t: 'Total', k: 'total', num: 1, f: M() },
+      { t: 'Folio', k: 'folio' }, { t: 'Equipo', k: 'equipo_descripcion' }, { t: 'Cliente', k: 'cliente' },
+      { t: 'Estado', k: 'estado', f: (v) => `<span class="pill ${v === 'Cancelada' ? 'roja' : v === 'Lista' ? 'verde' : 'azul'}">${esc(v)}</span>` },
+      { t: 'Días', k: 'dias_en_taller', num: 1 },
     ], rows, {
       rowClass: (r) => (r.estado === 'Cancelada' ? 'danger' : ''),
       onSelect: async (r) => {
         sel = r;
-        c.querySelector('[name=folio]').value = r.folio;
-        const cur = estados.find((e) => e.nombre === r.estado);
-        c.querySelector('[name=estado]').value = Math.min(cur.id + 1, 5);
+        if (gestiona) {
+          c.querySelector('[name=folio]').value = r.folio;
+          const cur = estados.find((e) => e.nombre === r.estado);
+          c.querySelector('[name=estado]').value = Math.min(cur.id + 1, 5);
+        }
         const hist = await api('/api/ordenes/historial?id=' + r.id_orden);
         c.querySelector('.hist').replaceChildren(grid([
           { t: 'Fecha', k: 'fecha', f: datetime }, { t: 'De', k: 'de_estado', f: (v) => esc(v || '(alta)') }, { t: 'A', k: 'a_estado' }, { t: 'Usuario', k: 'usuario' },
@@ -570,7 +554,7 @@ async function renderOrdenes(c) {
     }));
   };
   c.querySelector('[name=abiertas]').onchange = () => cargar().catch(showError);
-  c.querySelector('[data-aplicar]').onclick = async () => {
+  if (gestiona) c.querySelector('[data-aplicar]').onclick = async () => {
     if (!sel) return messageBox('Selecciona una orden.', { icon: 'info' });
     const nuevo = estados.find((e) => e.id === +c.querySelector('[name=estado]').value);
     try {
@@ -584,9 +568,9 @@ async function renderOrdenes(c) {
 
 /* ---------- FrmReportes ---------- */
 async function renderReportes(c) {
-  c.innerHTML = `<h1>Reportes</h1><div class="sub">Rango de fechas aplica a "Resumen por periodo" (<b>usp_ResumenPeriodo</b>) y "Ventas por categoría" (<b>fn_VentasPorCategoria</b>).</div>
+  c.innerHTML = `<h1>Reportes</h1><div class="sub">Las fechas aplican al resumen y a las ventas por categoría.</div>
     <div class="row">
-      <div class="field"><span>Desde:</span><input type="date" name="desde" value="2026-05-01"></div>
+      <div class="field"><span>Desde:</span><input type="date" name="desde" value="2026-01-01"></div>
       <div class="field"><span>Hasta:</span><input type="date" name="hasta" value="${new Date().toISOString().slice(0, 10)}"></div>
       <button class="primary" data-gen style="margin-top:14px">Generar</button><span class="spacer"></span>
       <button data-csv style="margin-top:14px">Exportar CSV</button>
@@ -594,9 +578,9 @@ async function renderReportes(c) {
     <div class="tabs"></div><div class="tabpage"></div>`;
   const TABS = [
     ['resumen', 'Resumen por periodo', [{ t: 'Mes', k: 'mes' }, { t: 'Ventas', k: 'ventas', num: 1 }, { t: 'Ingresos', k: 'ingresos', num: 1, f: M() }, { t: 'Ticket promedio', k: 'ticket_promedio', num: 1, f: M() }]],
-    ['top', 'Top 10 productos', [{ t: 'SKU', k: 'sku' }, { t: 'Producto', k: 'nombre' }, { t: 'Categoría', k: 'categoria' }, { t: 'Unidades', k: 'unidades_vendidas', num: 1 }, { t: 'Ingresos', k: 'ingresos', num: 1, f: M() }, { t: 'Utilidad bruta', k: 'utilidad_bruta', num: 1, f: M() }]],
+    ['top', 'Top 10 productos', [{ t: 'Producto', k: 'nombre' }, { t: 'Categoría', k: 'categoria' }, { t: 'Unidades', k: 'unidades_vendidas', num: 1 }, { t: 'Ingresos', k: 'ingresos', num: 1, f: M() }, { t: 'Utilidad bruta', k: 'utilidad_bruta', num: 1, f: M() }]],
     ['empleados', 'Actividad por empleado', [{ t: 'Empleado', k: 'empleado' }, { t: 'Puesto', k: 'puesto' }, { t: 'Sucursal', k: 'sucursal' }, { t: 'Ventas', k: 'ventas', num: 1 }, { t: 'Vendido', k: 'vendido', num: 1, f: M() }, { t: 'Órdenes taller', k: 'ordenes', num: 1 }]],
-    ['stock', 'Stock bajo', [{ t: 'SKU', k: 'sku' }, { t: 'Producto', k: 'nombre' }, { t: 'Categoría', k: 'categoria' }, { t: 'Stock', k: 'stock_actual', num: 1 }, { t: 'Mínimo', k: 'stock_minimo', num: 1 }, { t: 'Faltante', k: 'faltante', num: 1 }, { t: 'Proveedor más barato', k: 'proveedor_sugerido' }]],
+    ['stock', 'Stock bajo', [{ t: 'Producto', k: 'nombre' }, { t: 'Stock', k: 'stock_actual', num: 1 }, { t: 'Mínimo', k: 'stock_minimo', num: 1 }, { t: 'Faltante', k: 'faltante', num: 1 }, { t: 'Proveedor más barato', k: 'proveedor_sugerido' }]],
     ['categorias', 'Ventas por categoría', [{ t: 'Categoría', k: 'categoria' }, { t: 'Ventas', k: 'ventas', num: 1 }, { t: 'Unidades', k: 'unidades', num: 1 }, { t: 'Ingresos', k: 'ingresos', num: 1, f: M() }]],
   ];
   let data = null, tab = 'resumen';
@@ -620,6 +604,8 @@ async function renderReportes(c) {
   };
   const cargar = async () => {
     data = await api('/api/reportes?' + new URLSearchParams({ desde: c.querySelector('[name=desde]').value, hasta: c.querySelector('[name=hasta]').value }));
+    // Sin permiso para ver costos, la pestaña de empleados no existe (igual que en la app de C#)
+    if (!data.empleados) { const i = TABS.findIndex((t) => t[0] === 'empleados'); if (i >= 0) TABS.splice(i, 1); }
     pintar();
   };
   c.querySelector('[data-gen]').onclick = () => cargar().catch(showError);
@@ -636,13 +622,12 @@ async function renderReportes(c) {
 /* ---------- FrmAuditoria ---------- */
 async function renderAuditoria(c) {
   const rows = await api('/api/auditoria');
-  c.innerHTML = `<h1>Auditoría</h1><div class="sub">Generada por los triggers <b>trg_Producto_Auditoria</b> y <b>trg_Venta_Auditoria</b>. Solo lectura: <b>trg_Auditoria_SoloLectura</b> impide editarla o borrarla.</div>
+  c.innerHTML = `<h1>Auditoría</h1><div class="sub">Se registra sola cada vez que cambia un precio, el inventario o una venta. Nadie puede editarla ni borrarla.</div>
     ${rows.length ? '' : '<div class="banner">Aún no hay cambios auditados: registra o cancela una venta y vuelve aquí.</div>'}
     <div class="slot" style="flex:1;display:flex;min-height:0"></div>`;
   c.querySelector('.slot').appendChild(grid([
-    { t: 'Fecha', k: 'fecha', f: datetime }, { t: 'Usuario app', k: 'usuario_app' }, { t: 'Login SQL', k: 'usuario' }, { t: 'Tabla', k: 'tabla' },
-    { t: 'Operación', k: 'operacion' }, { t: 'Id', k: 'id_registro', num: 1 }, { t: 'Valor anterior', k: 'valor_anterior' },
-    { t: 'Valor nuevo', k: 'valor_nuevo' }, { t: 'Motivo', k: 'motivo' },
+    { t: 'Fecha', k: 'fecha', f: datetime }, { t: 'Usuario', k: 'usuario_app' }, { t: 'Qué cambió', k: 'tabla' },
+    { t: 'Antes', k: 'valor_anterior' }, { t: 'Después', k: 'valor_nuevo' }, { t: 'Motivo', k: 'motivo' },
   ], rows));
 }
 
@@ -722,7 +707,7 @@ function crud(c, { campos, puede, alGuardar, alEliminar }) {
     } catch (e) { btn.disabled = false; showError(e); }
   };
   if (alEliminar) panel.querySelector('[data-eliminar]').onclick = async () => {
-    if (await messageBox('¿Eliminar el registro seleccionado?\nSi está en uso, SQL Server no lo permitirá.', { icon: 'question', buttons: ['Sí', 'No'] }) !== 'Sí') return;
+    if (await messageBox('¿Eliminar el registro seleccionado?\nSi está en uso no se podrá eliminar.', { icon: 'question', buttons: ['Sí', 'No'] }) !== 'Sí') return;
     try { await alEliminar(st.id); st.id = null; llenar(null); pintar(); } catch (e) { showError(e); }
   };
   llenar(null); pintar();
@@ -736,14 +721,14 @@ async function renderCatalogo(c, tipo) {
     marcas: { titulo: 'Marcas', c2: 'País de origen', max: 60 },
     tipos: { titulo: 'Tipos de servicio', c2: 'Precio base', num: true },
   }[tipo];
-  const admin = state.user.rol === 'Administrador';
-  c.innerHTML = `<h1>${cfg.titulo}</h1><div class="sub">Catálogo con INSERT, UPDATE y DELETE parametrizados. Borrar algo en uso lo impide la llave foránea.
-      ${admin ? '' : '<b>Solo lectura:</b> únicamente el Administrador modifica catálogos.'}</div>
+  const admin = tiene('editar_catalogos');
+  c.innerHTML = `<h1>${cfg.titulo}${admin ? '' : '<span class="solo-lectura">Solo lectura</span>'}</h1>
+    <div class="sub">${admin ? 'Lo que ya está en uso no se puede eliminar.' : 'Tu perfil puede consultar este catálogo, no modificarlo.'}</div>
     <fieldset class="groupbox"><legend>Búsqueda</legend><div class="row">
-      <div class="field"><span>Nombre:</span><input name="texto"></div><button class="primary" data-buscar style="margin-top:14px">Buscar</button>
+      <div class="field"><span>Nombre:</span><input name="texto"></div><button data-buscar style="margin-top:14px">Buscar</button>
       <span class="sub count" style="margin:14px 0 0"></span></div></fieldset>
-    <div class="split"><div class="slot" style="flex:1;display:flex;min-height:0"></div><div class="crud"></div></div>`;
-  const form = crud(c, {
+    <div class="split"><div class="slot" style="flex:1;display:flex;min-height:0"></div>${admin ? '<div class="crud"></div>' : ''}</div>`;
+  const form = !admin ? { seleccionar() {} } : crud(c, {
     campos: [{ k: 'nombre', t: 'Nombre: *', req: true, max: 80 }, { k: 'campo2', t: cfg.c2 + ':', tipo: cfg.num ? 'number' : 'text', max: cfg.max }],
     puede: admin,
     alGuardar: async (d) => { await api('/api/catalogo', { tipo, id: d.id, nombre: d.nombre, campo2: d.campo2 }); await cargar(); },
@@ -765,14 +750,14 @@ async function renderCatalogo(c, tipo) {
 
 /* ---------- FrmProveedores ---------- */
 async function renderProveedores(c) {
-  const puede = ['Administrador', 'Supervisor'].includes(state.user.rol);
-  c.innerHTML = `<h1>Proveedores</h1><div class="sub">Guardado con <b>usp_ProveedorGuardar</b> · productos que surte desde la tabla N:M <b>ProductoProveedor</b></div>
+  const puede = tiene('guardar_proveedor');
+  c.innerHTML = `<h1>Proveedores${puede ? '' : '<span class="solo-lectura">Solo lectura</span>'}</h1><div class="sub">Selecciona un proveedor para ver los productos que surte.</div>
     <fieldset class="groupbox"><legend>Búsqueda</legend><div class="row">
       <div class="field"><span>Razón social o RFC:</span><input name="texto" style="width:240px"></div>
-      <button class="primary" data-buscar style="margin-top:14px">Buscar</button><span class="sub count" style="margin:14px 0 0"></span></div></fieldset>
-    <div class="split"><div class="slot" style="flex:1;display:flex;min-height:0"></div><div class="crud"></div></div>
+      <button ${puede ? '' : 'class="primary"'} data-buscar style="margin-top:14px">Buscar</button><span class="sub count" style="margin:14px 0 0"></span></div></fieldset>
+    <div class="split"><div class="slot" style="flex:1;display:flex;min-height:0"></div>${puede ? '<div class="crud"></div>' : ''}</div>
     <fieldset class="groupbox"><legend>Productos que surte</legend><div class="det"><div class="sub">Selecciona un proveedor.</div></div></fieldset>`;
-  const form = crud(c, {
+  const form = !puede ? { seleccionar() {} } : crud(c, {
     campos: Object.assign([
       { k: 'razon_social', t: 'Razón social: *', req: true, max: 120 },
       { k: 'rfc', t: 'RFC: *', req: true, max: 13, mayus: true },
@@ -785,17 +770,15 @@ async function renderProveedores(c) {
   const cargar = async () => {
     const rows = await api('/api/proveedores?' + new URLSearchParams({ texto: c.querySelector('[name=texto]').value }));
     c.querySelector('.slot').replaceChildren(grid([
-      { t: 'Razón social', k: 'razon_social' }, { t: 'RFC', k: 'rfc' }, { t: 'Correo', k: 'correo' }, { t: 'Teléfono', k: 'telefono' },
-      { t: 'Productos', k: 'productos', num: 1 }, { t: 'Compras', k: 'compras', num: 1 }, { t: 'Total comprado', k: 'total_comprado', num: 1, f: M() },
-      { t: 'Activo', k: 'activo', f: (v) => (v ? 'Sí' : 'No') },
+      { t: 'Razón social', k: 'razon_social' }, { t: 'RFC', k: 'rfc' }, { t: 'Teléfono', k: 'telefono' },
+      { t: 'Productos', k: 'productos', num: 1 },
     ], rows, {
       rowClass: (r) => (r.activo ? '' : 'danger'),
       onSelect: async (r) => {
         form.seleccionar(r);
         const det = await api('/api/proveedores/productos?id=' + r.id_proveedor);
         c.querySelector('.det').replaceChildren(grid([
-          { t: 'SKU', k: 'sku' }, { t: 'Producto', k: 'nombre' }, { t: 'Costo del proveedor', k: 'costo_proveedor', num: 1, f: M() },
-          { t: 'Costo actual', k: 'costo_actual', num: 1, f: M() }, { t: 'Stock', k: 'stock_actual', num: 1 },
+          { t: 'Producto', k: 'nombre' }, { t: 'Costo del proveedor', k: 'costo_proveedor', num: 1, f: M() }, { t: 'Stock', k: 'stock_actual', num: 1 },
         ], det, { cls: 'short' }));
       },
     }));
@@ -809,7 +792,7 @@ async function renderProveedores(c) {
 async function renderCompras(c) {
   const d = await api('/api/compras');
   const lineas = [];
-  c.innerHTML = `<h1>Compras a proveedor</h1><div class="sub">Se guarda con <b>usp_RegistrarCompra</b>: encabezado, detalle, entrada al stock, piezas con número de serie y relación ProductoProveedor en una transacción.</div>
+  c.innerHTML = `<h1>Compras a proveedor</h1><div class="sub">El inventario sube en cuanto guardas la compra.</div>
     <fieldset class="groupbox"><legend>Encabezado</legend><div class="row">
       <div class="field"><span>Proveedor: *</span><select name="proveedor" style="width:320px">${options(d.proveedores, '', '(Selecciona)')}</select></div>
       <div class="field"><span>Recibe:</span><input value="${esc(state.user.nombre)}" disabled style="width:200px"></div></div></fieldset>
@@ -837,14 +820,13 @@ async function renderCompras(c) {
   const pintar = () => {
     sel = null;
     c.querySelector('.slot').replaceChildren(grid([
-      { t: 'SKU', k: 'sku' }, { t: 'Producto', k: 'nombre' }, { t: 'Cantidad', k: 'cantidad', num: 1 },
+      { t: 'Producto', k: 'nombre' }, { t: 'Cantidad', k: 'cantidad', num: 1 },
       { t: 'Costo', k: 'costo_unitario', num: 1, f: M() }, { t: 'Importe', k: 'importe', num: 1, f: M() }, { t: 'Series', k: 'series_txt' },
     ], lineas.map((l) => ({ ...l, importe: l.cantidad * l.costo_unitario, series_txt: (l.series || []).join(', ') })), { onSelect: (r) => sel = r }));
     c.querySelector('.total').textContent = 'Total: ' + money(lineas.reduce((a, l) => a + l.cantidad * l.costo_unitario, 0));
   };
   const recientes = (rows) => c.querySelector('.recientes').replaceChildren(grid([
-    { t: 'Folio', k: 'folio' }, { t: 'Fecha', k: 'fecha', f: datetime }, { t: 'Proveedor', k: 'proveedor' }, { t: 'Recibió', k: 'recibio' },
-    { t: 'Líneas', k: 'lineas', num: 1 }, { t: 'Total', k: 'total', num: 1, f: M() }, { t: 'Estado', k: 'estado' },
+    { t: 'Folio', k: 'folio' }, { t: 'Fecha', k: 'fecha', f: datetime }, { t: 'Proveedor', k: 'proveedor' }, { t: 'Total', k: 'total', num: 1, f: M() },
   ], rows, { cls: 'short' }));
   f('producto').onchange = alCambiarProducto;
   c.querySelector('[data-agregar]').onclick = () => {
@@ -873,7 +855,7 @@ async function renderCompras(c) {
       await renderCompras(c);
     } catch (e) {
       guardar.disabled = false;
-      showError(new Error(`SQL Server rechazó la compra y no se guardó nada (ROLLBACK):\n\n${e.message}`));
+      showError(new Error(`La compra no se guardó:\n\n${e.message}`));
     }
   };
   alCambiarProducto(); pintar(); recientes(d.recientes);
@@ -882,7 +864,7 @@ async function renderCompras(c) {
 /* ---------- FrmUsuarios ---------- */
 async function renderUsuarios(c) {
   const d = await api('/api/usuarios');
-  c.innerHTML = `<h1>Usuarios y roles</h1><div class="sub">Guardado con <b>usp_UsuarioGuardar</b> (Usuario + UsuarioRol en una transacción). La contraseña se guarda como hash SHA2_256 y nunca se muestra.</div>
+  c.innerHTML = `<h1>Usuarios y roles</h1><div class="sub">El rol decide qué pantallas y botones ve cada persona. La contraseña se guarda cifrada y nunca se muestra.</div>
     <div class="split"><div class="slot" style="flex:1;display:flex;min-height:0"></div><div class="crud"></div></div>`;
   const form = crud(c, {
     campos: Object.assign([
@@ -897,28 +879,28 @@ async function renderUsuarios(c) {
   });
   form.ayuda('Contraseña nueva: 8+ caracteres y un número. Al editar, déjala vacía para conservar la actual.');
   c.querySelector('.slot').replaceChildren(grid([
-    { t: 'Usuario', k: 'usuario' }, { t: 'Empleado', k: 'empleado' }, { t: 'Puesto', k: 'puesto' }, { t: 'Rol', k: 'rol' },
+    { t: 'Usuario', k: 'usuario' }, { t: 'Empleado', k: 'empleado' }, { t: 'Rol', k: 'rol' },
     { t: 'Activo', k: 'activo', f: (v) => (v ? 'Sí' : 'Bloqueado') }, { t: 'Último acceso', k: 'ultimo_acceso', f: datetime },
-    { t: 'Intentos fallidos', k: 'intentos_fallidos', num: 1 },
   ], d.usuarios, { rowClass: (r) => (r.activo ? '' : 'danger'), onSelect: (r) => form.seleccionar({ ...r, contrasena: '' }) }));
 }
 
 /* ---------- FrmAjusteStock ---------- */
 async function renderAjustes(c) {
   const d = await api('/api/ajustes');
-  c.innerHTML = `<h1>Ajustes de inventario y precios</h1><div class="sub">Solo Supervisor y Administrador. Las reglas las valida SQL Server y cada cambio queda en la auditoría con su motivo.</div>
-    <fieldset class="groupbox"><legend>Ajuste de inventario (usp_AjustarStock · máximo ±20 piezas)</legend>
+  const stock = tiene('ajustar_stock'), precio = tiene('ajustar_precio');
+  c.innerHTML = `<h1>Ajustes de inventario y precios</h1><div class="sub">Cada cambio queda en la auditoría con su motivo.</div>
+    ${stock ? `<fieldset class="groupbox"><legend>Ajuste de inventario · máximo ±20 piezas</legend>
       <div class="row"><div class="field"><span>Producto (sin número de serie):</span><select name="producto" style="width:420px">${options(d.productos)}</select></div>
       <div class="field"><span>Cantidad (+ entra, − sale):</span><input name="cant" type="number" min="-20" max="20" value="0" style="width:90px"></div></div>
       <div class="row" style="margin-top:6px"><div class="field" style="flex:1"><span>Motivo: *</span><input name="motivo" maxlength="200"></div>
-      <button class="primary" data-stock style="margin-top:14px">Aplicar ajuste</button></div></fieldset>
-    <fieldset class="groupbox"><legend>Cambio de precios por categoría (usp_AjustarPrecio · máximo ±30 %)</legend>
+      <button class="primary" data-stock style="margin-top:14px">Aplicar ajuste</button></div></fieldset>` : ''}
+    ${precio ? `<fieldset class="groupbox"><legend>Cambio de precios por categoría · máximo ±30 %</legend>
       <div class="row"><div class="field"><span>Categoría:</span><select name="categoria" style="width:260px">${options(d.categorias)}</select></div>
       <div class="field"><span>Porcentaje:</span><input name="pct" type="number" min="-30" max="30" step="0.5" value="0" style="width:90px"></div>
-      <button class="primary" data-precio style="margin-top:14px">Aplicar precios</button></div>
-      <div class="sub" style="margin-top:6px">Si algún precio quedara por debajo del costo, la restricción CK_Producto_precio_vs_costo detiene todo y no se cambia ninguno.</div></fieldset>`;
+      <button ${stock ? '' : 'class="primary"'} data-precio style="margin-top:14px">Aplicar precios</button></div>
+      <div class="sub" style="margin-top:6px">Si algún precio quedara por debajo de su costo, no se cambia ninguno.</div></fieldset>` : ''}`;
   const f = (n) => c.querySelector(`[name=${n}]`);
-  c.querySelector('[data-stock]').onclick = async () => {
+  if (stock) c.querySelector('[data-stock]').onclick = async () => {
     const cant = parseInt(f('cant').value, 10);
     f('motivo').classList.toggle('invalid', !f('motivo').value.trim());
     if (!cant) return messageBox('La cantidad no puede ser cero.', { icon: 'error' });
@@ -929,14 +911,14 @@ async function renderAjustes(c) {
       await messageBox('Ajuste aplicado y registrado en la auditoría.', { icon: 'ok' }); await renderAjustes(c); }
     catch (e) { showError(e); }
   };
-  c.querySelector('[data-precio]').onclick = async () => {
+  if (precio) c.querySelector('[data-precio]').onclick = async () => {
     const pct = +f('pct').value;
     if (!pct) return messageBox('El porcentaje no puede ser cero.', { icon: 'error' });
     const cat = f('categoria').selectedOptions[0].textContent;
     if (await messageBox(`¿Cambiar ${pct > 0 ? '+' : ''}${pct} % el precio de todos los productos activos de ${cat}?`, { icon: 'question', buttons: ['Sí', 'No'] }) !== 'Sí') return;
     try { await api('/api/ajustes/precio', { porcentaje: pct, id_categoria: f('categoria').value });
       await messageBox('Precios actualizados; cada cambio quedó en la auditoría.', { icon: 'ok' }); f('pct').value = 0; }
-    catch (e) { showError(new Error(`No se cambiaron los precios (ROLLBACK):\n\n${e.message}`)); }
+    catch (e) { showError(new Error(`No se cambiaron los precios:\n\n${e.message}`)); }
   };
 }
 

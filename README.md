@@ -33,7 +33,7 @@ Abrir cada archivo de `02_SQL/` y ejecutarlo (F5) **en este orden**:
 8. `10_Triggers.sql`
 9. `07_Seguridad.sql` (va al final porque da permisos sobre los procedimientos; requiere modo de autenticación mixto, ver abajo)
 
-Opcionales, para demostrar: `05_Consultas.sql` (40 consultas), `11_Transacciones.sql` (los 4 procesos con éxito y ROLLBACK) y `12_Pruebas.sql` (32 casos automáticos; ejecútenlo sobre una base recién creada y al final muestra cuántos pasan).
+Opcionales, para demostrar: `05_Consultas.sql` (40 consultas), `11_Transacciones.sql` (los 4 procesos con éxito y ROLLBACK) y `12_Pruebas.sql` (34 casos automáticos; ejecútenlo sobre una base recién creada y al final muestra cuántos pasan).
 
 ### 2. Abrir y ejecutar la aplicación
 

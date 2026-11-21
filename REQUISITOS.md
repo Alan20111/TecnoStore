@@ -111,7 +111,8 @@ Mapa de cada requisito del [documento del proyecto](<Contexto/ProyectoFinal8Sema
 | DENY | [seguridad](02_SQL/07_Seguridad.sql#L86), [auditoría](02_SQL/07_Seguridad.sql#L92), [reporte limitado](02_SQL/07_Seguridad.sql#L99) |
 | REVOKE | [demostración](02_SQL/07_Seguridad.sql#L135) |
 | Sin db_owner | [administrador por esquema](02_SQL/07_Seguridad.sql#L128) |
-| EXECUTE AS / REVERT | [demostraciones](02_SQL/07_Seguridad.sql#L144) |
+| EXECUTE AS / REVERT | [demostraciones](02_SQL/07_Seguridad.sql#L197) |
+| La interfaz sigue los permisos | [usp_PermisosApp](02_SQL/07_Seguridad.sql#L152) (EXECUTE AS USER + HAS_PERMS_BY_NAME) → [CargarPermisos](03_WindowsForms/TecnoStore/Data/Repositorios.cs#L39) · [Guía de diseño §4](01_Documentacion/GuiaDiseno.md) |
 | Login de la app con hash | [usp_Login](02_SQL/08_StoredProcedures.sql#L34) |
 
 ## 9 · Transacciones — [11_Transacciones.sql](02_SQL/11_Transacciones.sql)
@@ -223,7 +224,7 @@ Todos funcionan con varias filas (`inserted`/`deleted` como conjuntos).
 | 13 | No se opera con clientes ni productos inactivos | SP | [usp_RegistrarVenta](02_SQL/08_StoredProcedures.sql#L285) |
 | 14 | Totales siempre calculados por la base | SP + función | [usp_RegistrarVenta](02_SQL/08_StoredProcedures.sql#L285), [fn_TotalOrden](02_SQL/09_Functions.sql#L70) |
 | 15 | Encabezado y detalle se guardan juntos o nada | Transacción | [11_Transacciones.sql](02_SQL/11_Transacciones.sql) |
-| 16 | Permisos según rol | Roles SQL + WinForms | [07_Seguridad.sql](02_SQL/07_Seguridad.sql), [FrmPrincipal](03_WindowsForms/TecnoStore/Forms/FrmPrincipal.cs) |
+| 16 | Permisos según rol | Roles SQL + WinForms: menú, botones, paneles y columnas de costo se muestran según lo que concede SQL Server | [usp_PermisosApp](02_SQL/07_Seguridad.sql#L152), [FrmPrincipal](03_WindowsForms/TecnoStore/Forms/FrmPrincipal.cs), [Capacidad](03_WindowsForms/TecnoStore/Models/Modelos.cs#L32) |
 | 17 | Ajustes de stock ±20 piezas, con motivo | SP | [usp_AjustarStock](02_SQL/08_StoredProcedures.sql#L686) |
 | 18 | Cambios de precio máximo ±30 % | SP | [usp_AjustarPrecio](02_SQL/08_StoredProcedures.sql#L726) |
 | 19 | Técnico solo hace servicios para los que está habilitado | SP + función (N:M) | [fn_TecnicoHabilitado](02_SQL/09_Functions.sql#L57) |
@@ -259,11 +260,11 @@ Exportación a CSV: [btnExportar](03_WindowsForms/TecnoStore/Forms/FrmReportes.c
 | Operaciones correctas | 8 | [P01–P10](02_SQL/12_Pruebas.sql#L25) |
 | Validaciones | 5 | [P11–P17](02_SQL/12_Pruebas.sql#L127) |
 | Transacciones fallidas | 3 | [P18–P20](02_SQL/12_Pruebas.sql#L182) |
-| Seguridad | 2 | [P21–P22](02_SQL/12_Pruebas.sql#L213) |
+| Seguridad | 2 | [P21–P22](02_SQL/12_Pruebas.sql#L213), P31, P33–P34 (permisos de la interfaz) |
 | Triggers / auditoría | 2 | [P23–P26](02_SQL/12_Pruebas.sql#L237) |
 | Catálogos, proveedores y usuarios | — | [P27–P32](02_SQL/12_Pruebas.sql#L271) |
 
-Al ejecutarlo muestra la tabla con entrada, esperado, obtenido y PASA/FALLA. Pasan 32 de 32. Detalle en [CasosPrueba.pdf](01_Documentacion/CasosPrueba.pdf) y salida real en [12_Pruebas.txt](04_Evidencias/salidas_sql/12_Pruebas.txt).
+Al ejecutarlo muestra la tabla con entrada, esperado, obtenido y PASA/FALLA. Pasan 34 de 34. Detalle en [CasosPrueba.pdf](01_Documentacion/CasosPrueba.pdf) y salida real en [12_Pruebas.txt](04_Evidencias/salidas_sql/12_Pruebas.txt).
 
 ## 20 · Entregables finales
 
@@ -307,4 +308,4 @@ node preview/server.js &
 python3 scripts/generar_documentacion.py
 ```
 
-Crea la base desde cero, lee tablas, columnas y permisos de SQL Server, ejecuta las consultas, transacciones y los 32 casos de prueba, toma las capturas y genera los PDF.
+Crea la base desde cero, lee tablas, columnas y permisos de SQL Server, ejecuta las consultas, transacciones y los 34 casos de prueba, toma las capturas y genera los PDF.

@@ -117,7 +117,7 @@ REGLAS = [
     ('No se opera con clientes, empleados o productos inactivos', 'SP', 'usp_RegistrarVenta, usp_RegistrarCompra, usp_RegistrarOrdenServicio'),
     ('Totales calculados por la base', 'SP + Function', 'usp_RegistrarVenta, fn_TotalOrden'),
     ('Encabezado y detalle se guardan juntos o nada', 'Transacción', 'Todos los SP de procesos'),
-    ('Permisos según rol', 'Roles SQL + WinForms', '07_Seguridad.sql, menú de FrmPrincipal'),
+    ('Permisos según rol', 'Roles SQL + WinForms (usp_PermisosApp)', '07_Seguridad.sql, FrmPrincipal, UsuarioSesion.Puede'),
     ('Ajustes de stock de máximo ±20 piezas y con motivo', 'SP', 'usp_AjustarStock'),
     ('Cambios de precio de máximo ±30 %', 'SP', 'usp_AjustarPrecio'),
     ('El técnico solo hace servicios para los que está habilitado', 'SP + Function (N:M)', 'usp_OrdenAgregarLinea, fn_TecnicoHabilitado'),

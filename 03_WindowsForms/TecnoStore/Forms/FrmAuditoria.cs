@@ -1,6 +1,7 @@
 using System;
 using System.Windows.Forms;
 using TecnoStore.Data;
+using TecnoStore.Models;
 using TecnoStore.Utils;
 
 namespace TecnoStore.Forms
@@ -15,6 +16,7 @@ namespace TecnoStore.Forms
         {
             InitializeComponent();
             Ui.Grid(dgvAuditoria);
+            Ui.Mostrar(dgvAuditoria, "fecha", "usuario_app", "tabla=Qué cambió", "valor_anterior", "valor_nuevo", "motivo");
             dtpDesde.Value = DateTime.Today.AddDays(-30);
             dtpHasta.Value = DateTime.Today;
             cboTabla.SelectedIndex = 0;

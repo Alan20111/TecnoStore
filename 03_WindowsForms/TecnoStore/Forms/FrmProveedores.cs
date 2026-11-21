@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using TecnoStore.Data;
+using TecnoStore.Models;
 using TecnoStore.Utils;
 
 namespace TecnoStore.Forms
@@ -21,6 +22,9 @@ namespace TecnoStore.Forms
             InitializeComponent();
             Ui.Grid(dgvProveedores);
             Ui.Grid(dgvProductos);
+            Ui.Mostrar(dgvProveedores, "razon_social", "rfc", "telefono", "productos=Productos");
+            Ui.Mostrar(dgvProductos, "nombre=Producto", "costo_proveedor", "stock_actual");
+            btnNuevo.Visible = btnEditar.Visible = btnGuardar.Visible = btnCancelar.Visible = Db.Sesion.Puede(Capacidad.GuardarProveedor);
         }
 
         private void FrmProveedores_Load(object sender, EventArgs e) { Buscar(); Estado(false); }
@@ -38,7 +42,7 @@ namespace TecnoStore.Forms
         private void Estado(bool edicion)
         {
             editando = edicion;
-            bool puede = Db.Sesion.EsSupervisorOMas;
+            bool puede = Db.Sesion.Puede(Capacidad.GuardarProveedor);
             grpDatos.Enabled = edicion;
             btnNuevo.Enabled = !edicion && puede;
             btnEditar.Enabled = !edicion && puede && idActual != null;

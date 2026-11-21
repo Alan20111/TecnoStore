@@ -33,7 +33,7 @@ namespace TecnoStore.Forms
             this.pnlScroll.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlScroll.Name = "pnlScroll";
             //
-            // tlpDashboard: fila 0 saludo, filas 1-2 indicadores, fila 3 gráficas, filas 4-5 tablas
+            // tlpDashboard: fila 0 saludo, fila 1 indicadores, fila 2 gráficas, fila 3 "requiere atención"
             //
             this.tlpDashboard.ColumnCount = 4;
             this.tlpDashboard.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 25F));
@@ -44,14 +44,12 @@ namespace TecnoStore.Forms
             this.tlpDashboard.SetColumnSpan(this.pnlSaludo, 4);
             this.tlpDashboard.Dock = System.Windows.Forms.DockStyle.Top;
             this.tlpDashboard.Name = "tlpDashboard";
-            this.tlpDashboard.RowCount = 6;
+            this.tlpDashboard.RowCount = 4;
             this.tlpDashboard.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 70F));
             this.tlpDashboard.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 112F));
-            this.tlpDashboard.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 112F));
-            this.tlpDashboard.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 320F));
-            this.tlpDashboard.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 300F));
-            this.tlpDashboard.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 300F));
-            this.tlpDashboard.Size = new System.Drawing.Size(1000, 1214);
+            this.tlpDashboard.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 290F));
+            this.tlpDashboard.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 240F));
+            this.tlpDashboard.Size = new System.Drawing.Size(1000, 712);
             //
             // pnlSaludo
             //

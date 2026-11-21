@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using TecnoStore.Data;
+using TecnoStore.Models;
 using TecnoStore.Utils;
 
 namespace TecnoStore.Forms
@@ -17,6 +18,9 @@ namespace TecnoStore.Forms
             InitializeComponent();
             Ui.Grid(dgvVentas);
             Ui.Grid(dgvDetalle);
+            // Vendedor, sucursal, pago y desglose quedan en el detalle de abajo
+            Ui.Mostrar(dgvVentas, "folio", "fecha", "cliente", "total", "estado");
+            Ui.Mostrar(dgvDetalle, "nombre=Producto", "numero_serie", "cantidad", "subtotal=Importe", "garantia_hasta");
             dtpDesde.Value = DateTime.Today.AddMonths(-6);
             dtpHasta.Value = DateTime.Today;
             cboEstado.SelectedIndex = 0;
@@ -24,7 +28,7 @@ namespace TecnoStore.Forms
 
         private void FrmHistorialVentas_Load(object sender, EventArgs e)
         {
-            btnCancelarVenta.Enabled = Db.Sesion.EsSupervisorOMas;
+            btnCancelarVenta.Visible = Db.Sesion.Puede(Capacidad.CancelarVenta);
             Buscar();
         }
 

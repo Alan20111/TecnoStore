@@ -17,6 +17,25 @@ namespace TecnoStore.Models
         public bool EsAdministrador => Rol == "Administrador";
         public bool EsSupervisorOMas => Rol == "Administrador" || Rol == "Supervisor";
         public bool PuedeOperar => Rol != "Consulta";
+
+        /// <summary>
+        /// Capacidades que SQL Server le concede a este usuario (usp_PermisosApp).
+        /// La interfaz oculta lo que no puede usar; la base lo vuelve a validar.
+        /// </summary>
+        public HashSet<string> Capacidades { get; set; } = new HashSet<string>();
+        /// <summary>true si los permisos vinieron de SQL Server; false si se usó la matriz de respaldo.</summary>
+        public bool PermisosDeLaBase { get; set; }
+        public bool Puede(string capacidad) => Capacidades.Contains(capacidad);
+    }
+
+    /// <summary>Nombres de las capacidades que devuelve usp_PermisosApp.</summary>
+    public static class Capacidad
+    {
+        public const string VerCostos = "ver_costos", VerReportes = "ver_reportes", VerAuditoria = "ver_auditoria",
+            AdminUsuarios = "admin_usuarios", RegistrarVenta = "registrar_venta", CancelarVenta = "cancelar_venta",
+            RegistrarCompra = "registrar_compra", AjustarStock = "ajustar_stock", AjustarPrecio = "ajustar_precio",
+            GuardarProducto = "guardar_producto", EliminarProducto = "eliminar_producto", GuardarCliente = "guardar_cliente",
+            GuardarProveedor = "guardar_proveedor", EditarCatalogos = "editar_catalogos", GestionarOrdenes = "gestionar_ordenes";
     }
 
     /// <summary>Elemento de un ComboBox: el usuario ve el texto, la app usa el Id.</summary>

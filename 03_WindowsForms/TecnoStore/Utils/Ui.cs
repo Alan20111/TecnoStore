@@ -1,7 +1,10 @@
 using System;
 using System.Data.SqlClient;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
+using TecnoStore.Data;
+using TecnoStore.Models;
 
 namespace TecnoStore.Utils
 {
@@ -11,9 +14,21 @@ namespace TecnoStore.Utils
         public static void Error(Exception ex, string titulo = "Error")
         {
             // Los THROW de los procedimientos llegan como SqlException con el mensaje de negocio.
-            string msg = ex is SqlException sql && sql.Number >= 50000 ? sql.Message
-                       : ex is SqlException sql2 && sql2.Number == 229 ? "Tu perfil no tiene permiso para esta operación.\n\n" + sql2.Message
-                       : ex.Message;
+            // Reglas de negocio (THROW 50000+): su mensaje ya está escrito para el usuario.
+            // Lo demás se traduce a lenguaje humano; el detalle técnico queda al final, como diagnóstico.
+            string msg;
+            if (ex is SqlException sql)
+            {
+                msg = sql.Number >= 50000 ? sql.Message
+                    : sql.Number == 229 || sql.Number == 230 ? "Tu perfil no tiene permiso para esta operación."
+                    : sql.Number == 547 ? "No se puede completar porque hay información relacionada que lo impide."
+                    : sql.Number == 2627 || sql.Number == 2601 ? "Ya existe un registro con esos datos."
+                    : sql.Number == -2 ? "SQL Server tardó demasiado en responder. Intenta de nuevo."
+                    : sql.Number == 53 || sql.Number == 2 || sql.Number == -1 ? "No hay conexión con el servidor de base de datos."
+                    : "No se pudo completar la operación.";
+                if (sql.Number < 50000) msg += "\n\nDetalle para soporte: error " + sql.Number;
+            }
+            else msg = ex.Message;
             MessageBox.Show(msg, titulo, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
@@ -46,14 +61,48 @@ namespace TecnoStore.Utils
             g.DataBindingComplete += (s, e) => Formatear(g);
         }
 
+        /// <summary>
+        /// Divulgación progresiva: la tabla muestra solo estas columnas, en este
+        /// orden; el resto queda en el panel de detalle de la pantalla. Los
+        /// encabezados opcionales se escriben "columna=Encabezado".
+        /// </summary>
+        public static void Mostrar(DataGridView g, params string[] columnas)
+        {
+            g.Tag = columnas;
+            if (g.Columns.Count > 0) Formatear(g);
+        }
+
+        // Encabezados en español natural (sin nombres de columnas de la base)
+        private static readonly System.Collections.Generic.Dictionary<string, string> Encabezados =
+            new System.Collections.Generic.Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["sku"] = "SKU", ["nombre"] = "Nombre", ["precio_venta"] = "Precio", ["stock_actual"] = "Stock", ["stock_minimo"] = "Mínimo",
+            ["alerta_stock"] = "Estado", ["margen_pct"] = "Margen %", ["total_comprado"] = "Total comprado", ["nivel"] = "Nivel",
+            ["razon_social"] = "Proveedor", ["rfc"] = "RFC", ["telefono"] = "Teléfono", ["correo"] = "Correo",
+            ["equipo_descripcion"] = "Equipo", ["dias_en_taller"] = "Días", ["numero_serie"] = "No. de serie",
+            ["garantia_hasta"] = "Garantía hasta", ["costo_proveedor"] = "Costo", ["usuario_app"] = "Usuario",
+            ["valor_anterior"] = "Antes", ["valor_nuevo"] = "Después", ["ultimo_acceso"] = "Último acceso",
+            ["unidades_vendidas"] = "Unidades", ["utilidad_bruta"] = "Utilidad", ["stock"] = "Stock", ["minimo"] = "Mínimo",
+        };
+
         /// <summary>Encabezados legibles y formato de moneda/fecha según el nombre de columna.</summary>
         public static void Formatear(DataGridView g)
         {
+            var mostrar = g.Tag as string[];
+            var claves = mostrar?.Select(x => x.Split('=')[0].ToLowerInvariant()).ToList();
             foreach (DataGridViewColumn col in g.Columns)
             {
                 string n = col.DataPropertyName.ToLowerInvariant();
-                if (n.StartsWith("id_") || n == "id" || n == "idproducto" || n == "es_final") { col.Visible = false; continue; }
-                col.HeaderText = Titulo(col.DataPropertyName);
+                bool oculta = n.StartsWith("id_") || n == "id" || n == "idproducto" || n == "es_final"
+                              || (claves != null && !claves.Contains(n))
+                              || (!(Db.Sesion?.Puede(Capacidad.VerCostos) ?? true) && EsCosto(n));   // la base no le deja ver costos
+                if (oculta) { col.Visible = false; continue; }
+                col.Visible = true;
+                int i = claves?.IndexOf(n) ?? -1;
+                if (i >= 0) col.DisplayIndex = Math.Min(i, g.Columns.Count - 1);
+                string propio = i >= 0 && mostrar[i].Contains("=") ? mostrar[i].Split('=')[1] : null;
+                string conocido;
+                col.HeaderText = propio ?? (Encabezados.TryGetValue(n, out conocido) ? conocido : Titulo(col.DataPropertyName));
                 if (n.Contains("precio") || n.Contains("total") || n.Contains("subtotal") || n.Contains("costo") ||
                     n.Contains("ingresos") || n.Contains("vendido") || n.Contains("utilidad") || n.Contains("descuento") ||
                     n.Contains("ticket") || n == "importe")
@@ -64,6 +113,13 @@ namespace TecnoStore.Utils
                 else if (n.Contains("fecha") || n == "registro" || n.Contains("hasta"))
                     col.DefaultCellStyle.Format = n.Contains("fecha") && n != "fecha_fin" ? "dd/MM/yyyy HH:mm" : "dd/MM/yyyy";
             }
+        }
+
+        /// <summary>Columnas que revelan costos o márgenes (solo con la capacidad ver_costos).</summary>
+        public static bool EsCosto(string columna)
+        {
+            string n = columna.ToLowerInvariant();
+            return n.Contains("costo") || n.Contains("margen") || n.Contains("utilidad") || n == "valor_inventario";
         }
 
         private static string Titulo(string columna)

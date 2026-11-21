@@ -20,6 +20,10 @@ namespace TecnoStore.Forms
 
         private void FrmAjusteStock_Load(object sender, EventArgs e)
         {
+            // Cada sección aparece solo si la base le concede ese ajuste
+            grpStock.Visible = Db.Sesion.Puede(Capacidad.AjustarStock);
+            grpPrecio.Visible = Db.Sesion.Puede(Capacidad.AjustarPrecio);
+            if (!grpStock.Visible) grpPrecio.Top = grpStock.Top;
             try
             {
                 cboProducto.DataSource = CatalogoRepository.Refacciones();

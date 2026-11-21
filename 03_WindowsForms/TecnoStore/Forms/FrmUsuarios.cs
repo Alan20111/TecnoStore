@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using TecnoStore.Data;
+using TecnoStore.Models;
 using TecnoStore.Utils;
 
 namespace TecnoStore.Forms
@@ -20,6 +21,7 @@ namespace TecnoStore.Forms
         {
             InitializeComponent();
             Ui.Grid(dgvUsuarios);
+            Ui.Mostrar(dgvUsuarios, "usuario", "empleado", "rol", "activo", "ultimo_acceso");
         }
 
         private void FrmUsuarios_Load(object sender, EventArgs e)

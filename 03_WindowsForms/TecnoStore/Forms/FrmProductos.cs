@@ -23,6 +23,13 @@ namespace TecnoStore.Forms
         {
             InitializeComponent();
             Ui.Grid(dgvProductos);
+            // Lo esencial a la vista; marca, condición, mínimo y margen en el panel de la derecha
+            Ui.Mostrar(dgvProductos, "sku", "nombre=Producto", "categoria=Categoría", "precio_venta", "stock_actual", "alerta_stock");
+            var s = Db.Sesion;
+            // Lo que la base no le permite, ni se ve
+            btnNuevo.Visible = btnEditar.Visible = btnGuardar.Visible = btnCancelar.Visible = s.Puede(Capacidad.GuardarProducto);
+            btnEliminar.Visible = s.Puede(Capacidad.EliminarProducto);
+            lblCosto.Visible = nudCosto.Visible = s.Puede(Capacidad.VerCostos);
         }
 
         private void FrmProductos_Load(object sender, EventArgs e)
@@ -53,13 +60,13 @@ namespace TecnoStore.Forms
         private void Estado(bool edicion)
         {
             editando = edicion;
-            bool puedeEditar = Db.Sesion.EsSupervisorOMas;
+            bool puedeEditar = Db.Sesion.Puede(Capacidad.GuardarProducto);
             grpDatos.Enabled = edicion;
             btnNuevo.Enabled = !edicion && puedeEditar;
             btnEditar.Enabled = !edicion && puedeEditar && dgvProductos.CurrentRow != null;
             btnGuardar.Enabled = edicion;
             btnCancelar.Enabled = edicion;
-            btnEliminar.Enabled = !edicion && Db.Sesion.EsAdministrador && dgvProductos.CurrentRow != null;
+            btnEliminar.Enabled = !edicion && Db.Sesion.Puede(Capacidad.EliminarProducto) && dgvProductos.CurrentRow != null;
             dgvProductos.Enabled = !edicion;
             grpDatos.Text = !edicion ? "Datos del producto (lectura)" : idActual == null ? "Nuevo producto" : "Editando producto";
         }
@@ -90,8 +97,9 @@ namespace TecnoStore.Forms
             nudStockMinimo.Value = (int)fila["stock_minimo"];
             chkSerie.Checked = (bool)fila["requiere_serie"];
             chkActivo.Checked = (bool)fila["activo"];
-            lblStock.Text = "Stock actual: " + fila["stock_actual"] + "   ·   Margen: " +
-                            (nudPrecio.Value > 0 ? ((nudPrecio.Value - nudCosto.Value) * 100 / nudPrecio.Value).ToString("0.0") + " %" : "-");
+            lblStock.Text = "Stock actual: " + fila["stock_actual"] + "   ·   Mínimo: " + fila["stock_minimo"] +
+                            (Db.Sesion.Puede(Capacidad.VerCostos) && nudPrecio.Value > 0
+                                ? "   ·   Margen: " + ((nudPrecio.Value - nudCosto.Value) * 100 / nudPrecio.Value).ToString("0.0") + " %" : "");
             Estado(false);
         }
 

@@ -1,6 +1,6 @@
 ﻿/* =============================================================
    TecnoStore · 12_Pruebas.sql
-   32 casos de prueba automáticos (sección 17). Cada caso guarda
+   34 casos de prueba automáticos (sección 17). Cada caso guarda
    entrada, resultado esperado, resultado obtenido y si pasó.
    Ejecutar sobre una base recién creada (01 → 10, 07); modifica datos.
 
@@ -8,7 +8,7 @@
    Operación correcta     P01–P10, P27, P29
    Validación             P11–P17, P28, P30, P32
    Transacción fallida    P18–P20
-   Seguridad              P21–P22, P31
+   Seguridad              P21–P22, P31, P33–P34
    Trigger / auditoría    P23–P26
    ============================================================= */
 USE TecnoStore;
@@ -316,6 +316,36 @@ BEGIN TRY
 END TRY BEGIN CATCH
     INSERT INTO #Prueba VALUES ('P32','Validación','Borrar categoría con productos','DELETE Categoria Celulares','Conflicto con FK_Producto_Categoria',LEFT(ERROR_MESSAGE(),400),IIF(ERROR_NUMBER() = 547, 1, 0));
 END CATCH
+GO
+
+/* ==================== La interfaz sigue a los permisos de la base ==================== */
+BEGIN TRY
+    DECLARE @op TABLE (capacidad VARCHAR(40), permitido BIT);
+    INSERT INTO @op EXEC usp_PermisosApp 3;   -- loperador
+    INSERT INTO #Prueba SELECT 'P33','Seguridad','Permisos de la interfaz para el Operador','usp_PermisosApp loperador',
+        'Vende y registra clientes; no ve costos, reportes, auditoría ni compras',
+        CONCAT('venta=', MAX(CASE capacidad WHEN 'registrar_venta' THEN CAST(permitido AS INT) END),
+               ' costos=', MAX(CASE capacidad WHEN 'ver_costos' THEN CAST(permitido AS INT) END),
+               ' reportes=', MAX(CASE capacidad WHEN 'ver_reportes' THEN CAST(permitido AS INT) END),
+               ' auditoria=', MAX(CASE capacidad WHEN 'ver_auditoria' THEN CAST(permitido AS INT) END),
+               ' compras=', MAX(CASE capacidad WHEN 'registrar_compra' THEN CAST(permitido AS INT) END)),
+        IIF(SUM(CASE WHEN capacidad IN ('registrar_venta','guardar_cliente') THEN CAST(permitido AS INT) END) = 2
+            AND SUM(CASE WHEN capacidad IN ('ver_costos','ver_reportes','ver_auditoria','registrar_compra','admin_usuarios') THEN CAST(permitido AS INT) END) = 0, 1, 0)
+    FROM @op;
+END TRY BEGIN CATCH INSERT INTO #Prueba VALUES ('P33','Seguridad','Permisos del Operador','','Ver detalle',ERROR_MESSAGE(),0); END CATCH
+GO
+BEGIN TRY
+    DECLARE @sup TABLE (capacidad VARCHAR(40), permitido BIT);
+    INSERT INTO @sup EXEC usp_PermisosApp 2;   -- csupervisor
+    INSERT INTO #Prueba SELECT 'P34','Seguridad','Permisos de la interfaz para el Supervisor','usp_PermisosApp csupervisor',
+        'Cancela, compra, ajusta y ve auditoría; no administra usuarios ni edita catálogos',
+        CONCAT('cancelar=', MAX(CASE capacidad WHEN 'cancelar_venta' THEN CAST(permitido AS INT) END),
+               ' usuarios=', MAX(CASE capacidad WHEN 'admin_usuarios' THEN CAST(permitido AS INT) END),
+               ' catalogos=', MAX(CASE capacidad WHEN 'editar_catalogos' THEN CAST(permitido AS INT) END)),
+        IIF(SUM(CASE WHEN capacidad IN ('cancelar_venta','registrar_compra','ajustar_stock','ver_auditoria','ver_costos') THEN CAST(permitido AS INT) END) = 5
+            AND SUM(CASE WHEN capacidad IN ('admin_usuarios','editar_catalogos','eliminar_producto') THEN CAST(permitido AS INT) END) = 0, 1, 0)
+    FROM @sup;
+END TRY BEGIN CATCH INSERT INTO #Prueba VALUES ('P34','Seguridad','Permisos del Supervisor','','Ver detalle',ERROR_MESSAGE(),0); END CATCH
 GO
 
 EXEC sp_set_session_context N'id_usuario', NULL;

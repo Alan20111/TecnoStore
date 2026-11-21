@@ -20,6 +20,10 @@ namespace TecnoStore.Forms
             Ui.Grid(dgvOrdenes);
             Ui.Grid(dgvDetalle);
             Ui.Grid(dgvHistorial);
+            Ui.Mostrar(dgvOrdenes, "folio", "equipo_descripcion", "cliente", "estado", "dias_en_taller");
+            Ui.Mostrar(dgvDetalle, "concepto", "cantidad", "subtotal=Importe");
+            // Quien solo consulta no ve los paneles para recibir equipos ni cambiar estados
+            pnlDerecho.Visible = Db.Sesion.Puede(Capacidad.GestionarOrdenes);
         }
 
         private int? IdSeleccionada => dgvOrdenes.CurrentRow == null ? (int?)null : (int)dgvOrdenes.CurrentRow.Cells["id_orden"].Value;
@@ -59,7 +63,7 @@ namespace TecnoStore.Forms
                 dgvDetalle.DataSource = OrdenRepository.Detalle(id.Value);
                 dgvHistorial.DataSource = OrdenRepository.Historial(id.Value);
                 bool cerrada = (bool)dgvOrdenes.CurrentRow.Cells["es_final"].Value;
-                grpAcciones.Enabled = !cerrada && Db.Sesion.PuedeOperar;
+                grpAcciones.Enabled = !cerrada && Db.Sesion.Puede(Capacidad.GestionarOrdenes);
                 grpAcciones.Text = "Orden " + dgvOrdenes.CurrentRow.Cells["folio"].Value + (cerrada ? " (cerrada)" : "");
             }
             catch (Exception ex) { Ui.Error(ex); }

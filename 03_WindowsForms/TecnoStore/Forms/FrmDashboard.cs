@@ -6,33 +6,26 @@ using System.Linq;
 using System.Windows.Forms;
 using System.Windows.Forms.DataVisualization.Charting;
 using TecnoStore.Data;
+using TecnoStore.Models;
 using TecnoStore.Utils;
 
 namespace TecnoStore.Forms
 {
     /// <summary>
-    /// Dashboard del administrador: indicadores de los últimos 90 días, ingresos por mes,
-    /// ventas por categoría, ventas recientes, más vendidos, alertas de stock
-    /// y órdenes del taller. Solo lectura; usa vistas y funciones existentes.
-    /// Las tarjetas y gráficas se arman en código (Construir) para mantener el
-    /// diseño en un solo lugar.
+    /// Dashboard: lo que hay que saber de un vistazo, en una sola pantalla
+    /// (Stephen Few; NN/g). Cuatro indicadores, dos gráficas de barras (sin
+    /// pastel ni dona) y dos listas de "requiere atención" con 5 filas.
+    /// El detalle vive en Reportes. Solo lectura; usa vistas y funciones existentes.
     /// </summary>
     public partial class FrmDashboard : Form
     {
         private static readonly CultureInfo Mx = new CultureInfo("es-MX");
-        // Un solo acento: escala del verde azulado y de la tinta (sin arcoíris)
-        private static readonly Color[] Paleta =
-        {
-            Color.FromArgb(1, 106, 113), Color.FromArgb(46, 138, 144), Color.FromArgb(94, 167, 172), Color.FromArgb(144, 195, 198),
-            Color.FromArgb(192, 220, 222), Color.FromArgb(39, 37, 30), Color.FromArgb(85, 83, 77), Color.FromArgb(130, 128, 122),
-            Color.FromArgb(174, 172, 166), Color.FromArgb(214, 211, 205),
-        };
         private static readonly Color ColumnaClara = Color.FromArgb(201, 223, 225);
 
         private Chart chtIngresos, chtCategorias;
-        private DataGridView dgvRecientes, dgvMasVendidos, dgvAlertas, dgvOrdenes;
-        private readonly Label[] kpiValor = new Label[8];
-        private readonly Label[] kpiNota = new Label[8];
+        private DataGridView dgvAlertas, dgvOrdenes;
+        private readonly Label[] kpiValor = new Label[4];
+        private readonly Label[] kpiNota = new Label[4];
 
         public FrmDashboard()
         {
@@ -45,49 +38,51 @@ namespace TecnoStore.Forms
 
         private void Construir()
         {
-            string[] titulos =
-            {
-                "Ingresos · 90 días", "Ventas · 90 días", "Ticket promedio", "Unidades vendidas",
-                "Órdenes en taller", "Alertas de stock", "Clientes activos", "Valor del inventario",
-            };
-            for (int i = 0; i < 8; i++)
+            // El indicador más importante arriba a la izquierda
+            string[] titulos = { "Ingresos · 90 días", "Ventas · 90 días", "Equipos en taller", "Productos por resurtir" };
+            for (int i = 0; i < 4; i++)
             {
                 var t = new Tarjeta { Dock = DockStyle.Fill, Margin = new Padding(6) };
                 var lt = new Label { Text = titulos[i], AutoSize = true, ForeColor = Tema.TextoSuave, Font = Tema.Fuente, Location = new Point(16, 14) };
                 kpiValor[i] = new Label { Text = "—", AutoSize = true, ForeColor = Tema.Texto, Font = Tema.FuenteKpi, Location = new Point(13, 36) };
-                kpiNota[i] = new Label { Text = "", AutoSize = true, ForeColor = Tema.TextoSuave, Font = new Font("Segoe UI", 8.5F), Location = new Point(16, 78) };
+                kpiNota[i] = new Label { Text = "", AutoSize = true, ForeColor = Tema.TextoSuave, Font = Tema.FuentePequena, Location = new Point(16, 78) };
                 t.Controls.AddRange(new Control[] { lt, kpiValor[i], kpiNota[i] });
-                tlpDashboard.Controls.Add(t, i % 4, 1 + i / 4);
+                tlpDashboard.Controls.Add(t, i, 1);
             }
 
             chtIngresos = NuevaGrafica();
-            var area = chtIngresos.ChartAreas[0];
-            area.AxisY.LabelStyle.Format = "$#,##0,K";
+            chtIngresos.ChartAreas[0].AxisY.LabelStyle.Format = "$#,##0,K";
             var serie = chtIngresos.Series.Add("Ingresos");
             serie.ChartType = SeriesChartType.Column;
             serie.Color = ColumnaClara;
             serie["PointWidth"] = "0.55";
             serie.IsValueShownAsLabel = true;
             serie.LabelFormat = "$#,##0,K";
-            serie.Font = new Font("Segoe UI", 8F);
+            serie.Font = Tema.FuentePequena;
             serie.LabelForeColor = Tema.TextoSuave;
-            tlpDashboard.Controls.Add(Contenedor("Ingresos por mes · últimos 6 meses", chtIngresos), 0, 3);
-            tlpDashboard.SetColumnSpan(tlpDashboard.GetControlFromPosition(0, 3), 2);
+            AgregarAncho(Contenedor("Ingresos por mes", chtIngresos), 0, 2);
 
+            // Categorías en barras horizontales: se comparan mejor que en una dona
             chtCategorias = NuevaGrafica();
-            var dona = chtCategorias.Series.Add("Categorías");
-            dona.ChartType = SeriesChartType.Doughnut;
-            dona["DoughnutRadius"] = "45";
-            dona["PieLabelStyle"] = "Disabled";
-            chtCategorias.Legends.Add(new Legend { Docking = Docking.Right, Font = new Font("Segoe UI", 8.5F), ForeColor = Tema.Texto, BackColor = Color.Transparent });
-            tlpDashboard.Controls.Add(Contenedor("Ventas por categoría · últimos 90 días", chtCategorias), 2, 3);
-            tlpDashboard.SetColumnSpan(tlpDashboard.GetControlFromPosition(2, 3), 2);
+            var area = chtCategorias.ChartAreas[0];
+            area.AxisY.LabelStyle.Format = "$#,##0,K";
+            area.AxisX.IsReversed = true;   // la mayor arriba
+            var barras = chtCategorias.Series.Add("Categorías");
+            barras.ChartType = SeriesChartType.Bar;
+            barras.Color = Tema.Navegacion;
+            barras["PointWidth"] = "0.6";
+            barras.IsValueShownAsLabel = true;
+            barras.LabelFormat = "$#,##0,K";
+            barras.Font = Tema.FuentePequena;
+            barras.LabelForeColor = Tema.TextoSuave;
+            AgregarAncho(Contenedor("Ventas por categoría · 90 días", chtCategorias), 2, 2);
 
-            dgvRecientes = NuevaTabla(); dgvMasVendidos = NuevaTabla(); dgvAlertas = NuevaTabla(); dgvOrdenes = NuevaTabla();
-            AgregarAncho(Contenedor("Ventas recientes", dgvRecientes), 0, 4);
-            AgregarAncho(Contenedor("Más vendidos · últimos 90 días", dgvMasVendidos), 2, 4);
-            AgregarAncho(Contenedor("Productos por resurtir", dgvAlertas), 0, 5);
-            AgregarAncho(Contenedor("Equipos en el taller", dgvOrdenes), 2, 5);
+            dgvAlertas = NuevaTabla();
+            dgvOrdenes = NuevaTabla();
+            Ui.Mostrar(dgvAlertas, "producto", "stock", "minimo");
+            Ui.Mostrar(dgvOrdenes, "equipo", "estado", "dias");
+            AgregarAncho(Contenedor("Requiere atención · productos por resurtir", dgvAlertas), 0, 3);
+            AgregarAncho(Contenedor("Requiere atención · equipos en el taller", dgvOrdenes), 2, 3);
             dgvAlertas.RowPrePaint += (s, e) =>
             {
                 var row = dgvAlertas.Rows[e.RowIndex];
@@ -112,18 +107,18 @@ namespace TecnoStore.Forms
 
         private static Chart NuevaGrafica()
         {
-            var c = new Chart { BackColor = Tema.Tarjeta, Palette = ChartColorPalette.None, PaletteCustomColors = Paleta };
+            var c = new Chart { BackColor = Tema.Tarjeta };
             var a = new ChartArea("principal") { BackColor = Tema.Tarjeta };
             a.AxisX.MajorGrid.Enabled = false;
-            a.AxisX.LineColor = Tema.Borde;
+            a.AxisX.LineColor = Tema.LineaSuave;
             a.AxisX.MajorTickMark.Enabled = false;
-            a.AxisX.LabelStyle.Font = new Font("Segoe UI", 8.5F);
+            a.AxisX.LabelStyle.Font = Tema.FuentePequena;
             a.AxisX.LabelStyle.ForeColor = Tema.TextoSuave;
             a.AxisX.Interval = 1;
             a.AxisY.MajorGrid.LineColor = Color.FromArgb(239, 236, 230);
             a.AxisY.LineColor = Tema.Tarjeta;
             a.AxisY.MajorTickMark.Enabled = false;
-            a.AxisY.LabelStyle.Font = new Font("Segoe UI", 8F);
+            a.AxisY.LabelStyle.Font = Tema.FuentePequena;
             a.AxisY.LabelStyle.ForeColor = Tema.TextoSuave;
             c.ChartAreas.Add(a);
             return c;
@@ -134,7 +129,6 @@ namespace TecnoStore.Forms
             var g = new DataGridView();
             Ui.Grid(g);
             Tema.Tabla(g);
-            g.ScrollBars = ScrollBars.Vertical;
             g.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             return g;
         }
@@ -154,15 +148,11 @@ namespace TecnoStore.Forms
                 Func<decimal, string> dinero = v => v.ToString("C0", Mx), entero = v => v.ToString("N0", Mx);
                 Kpi(0, ingresos, dinero, Variacion(ingresos, ingresosAnt));
                 Kpi(1, ventas, entero, Variacion(ventas, ventasAnt));
-                Kpi(2, ventas == 0 ? 0 : ingresos / ventas, dinero, "por venta completada", Tema.TextoSuave);
-                Kpi(3, Convert.ToInt32(k["unidades_mes"]), entero, "piezas en 90 días", Tema.TextoSuave);
-                Kpi(4, (int)k["ordenes_abiertas"], entero, k["ordenes_listas"] + " listas para entregar", Tema.TextoSuave);
-                int alertas = (int)k["alertas_stock"], agotados = (int)k["agotados"];
-                Kpi(5, alertas, entero, agotados > 0 ? agotados + " agotado(s)" : "ninguno agotado", agotados > 0 ? Tema.Rojo : Tema.Verde);
-                Kpi(6, Convert.ToInt32(k["clientes_activos"]), entero, "+" + k["clientes_nuevos"] + " nuevos en 90 días", Tema.TextoSuave);
-                Kpi(7, (decimal)k["valor_inventario"], dinero, k["garantias_vigentes"] + " garantías vigentes", Tema.TextoSuave);
+                Kpi(2, (int)k["ordenes_abiertas"], entero, k["ordenes_listas"] + " listos para entregar", Tema.TextoSuave);
+                int agotados = (int)k["agotados"];
+                Kpi(3, (int)k["alertas_stock"], entero, agotados > 0 ? agotados + " agotado(s)" : "ninguno agotado", agotados > 0 ? Tema.Rojo : Tema.Verde);
 
-                // Ingresos por mes: se completan los meses sin ventas con 0
+                // Ingresos por mes: meses sin ventas en 0; el actual en verde azulado
                 var meses = DashboardRepository.IngresosPorMes().Rows.Cast<DataRow>()
                     .ToDictionary(r => (string)r["mes"], r => (decimal)r["ingresos"]);
                 var pts = chtIngresos.Series[0].Points;
@@ -174,32 +164,43 @@ namespace TecnoStore.Forms
                     meses.TryGetValue(m.ToString("yyyy-MM"), out v);
                     pts.AddXY(Mx.TextInfo.ToTitleCase(m.ToString("MMM", Mx).TrimEnd('.')), v);
                 }
-                if (pts.Count > 0) pts[pts.Count - 1].Color = Tema.Navegacion; // mes actual
-                // Las columnas crecen desde cero (eje fijo para que no "salte")
-                var finales = pts.Select(x => x.YValues[0]).ToArray();
-                chtIngresos.ChartAreas[0].AxisY.Maximum = Math.Max(1, finales.Max() * 1.18);
-                Animacion.Ejecutar(650, Animacion.Salida, p =>
-                {
-                    for (int i = 0; i < pts.Count; i++) pts[i].YValues[0] = finales[i] * p;
-                    chtIngresos.Invalidate();
-                });
+                pts[pts.Count - 1].Color = Tema.Navegacion;
+                Crecer(chtIngresos);
 
-                var dona = chtCategorias.Series[0].Points;
-                dona.Clear();
-                foreach (DataRow r in DashboardRepository.VentasPorCategoria().Rows)
-                {
-                    int idx = dona.AddXY(r["categoria"], r["ingresos"]);
-                    dona[idx].LegendText = r["categoria"] + "  " + ((decimal)r["ingresos"]).ToString("C0", Mx);
-                }
+                // Las 6 categorías que más venden
+                var cat = chtCategorias.Series[0].Points;
+                cat.Clear();
+                foreach (DataRow r in DashboardRepository.VentasPorCategoria().Rows.Cast<DataRow>().Take(6))
+                    cat.AddXY(r["categoria"], r["ingresos"]);
+                Crecer(chtCategorias);
 
-                dgvRecientes.DataSource = DashboardRepository.VentasRecientes();
-                dgvMasVendidos.DataSource = DashboardRepository.MasVendidos();
-                dgvAlertas.DataSource = DashboardRepository.AlertasStock();
-                dgvOrdenes.DataSource = DashboardRepository.OrdenesAbiertas();
+                dgvAlertas.DataSource = Primeras(DashboardRepository.AlertasStock(), 5);
+                dgvOrdenes.DataSource = Primeras(DashboardRepository.OrdenesAbiertas(), 5);
                 lblActualizado.Text = "Actualizado a las " + DateTime.Now.ToString("HH:mm");
             }
             catch (Exception ex) { Ui.Error(ex, "No se pudo cargar el dashboard"); }
             finally { Cursor = Cursors.Default; }
+        }
+
+        private static DataTable Primeras(DataTable t, int n)
+        {
+            var copia = t.Clone();
+            foreach (DataRow r in t.Rows.Cast<DataRow>().Take(n)) copia.ImportRow(r);
+            return copia;
+        }
+
+        /// <summary>Las barras crecen desde cero (eje fijo para que no "salte").</summary>
+        private static void Crecer(Chart c)
+        {
+            var pts = c.Series[0].Points;
+            if (pts.Count == 0) return;
+            var finales = pts.Select(x => x.YValues[0]).ToArray();
+            c.ChartAreas[0].AxisY.Maximum = Math.Max(1, finales.Max() * 1.2);
+            Animacion.Ejecutar(650, Animacion.Salida, p =>
+            {
+                for (int i = 0; i < pts.Count; i++) pts[i].YValues[0] = finales[i] * p;
+                c.Invalidate();
+            });
         }
 
         private void Kpi(int i, decimal valor, Func<decimal, string> formato, Tuple<string, Color> nota) => Kpi(i, valor, formato, nota.Item1, nota.Item2);

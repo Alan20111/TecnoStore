@@ -167,6 +167,14 @@ en App.config), de modo que aunque alguien quitara una validación del código, 
 utilidad para el operador, escritura en catálogos) y <b>REVOKE</b> (se retira un permiso dado por error). Ningún usuario operativo tiene
 <code>db_owner</code>. La demostración con <code>EXECUTE AS USER</code> / <code>REVERT</code> está al final de 07_Seguridad.sql.
 El detalle de permisos reales está en <b>MatrizPermisos.pdf</b>.</p>
+<p><b>La interfaz sigue a la base de datos.</b> Al iniciar sesión la app ejecuta <code>usp_PermisosApp</code>: toma el rol del usuario,
+se pone en el lugar de su usuario de base de datos con <code>EXECUTE AS USER</code> y pregunta con <code>HAS_PERMS_BY_NAME</code> si tiene cada permiso.
+Con esas 15 capacidades (ver costos, registrar venta, cancelar venta, ajustar inventario…) se muestran u ocultan módulos del menú, botones,
+paneles y columnas de costo. Si cambia un GRANT o DENY, la interfaz cambia sola; y aunque alguien llame la operación, SQL Server la rechaza.
+Las pruebas P33 y P34 comprueban la matriz del Operador y del Supervisor.</p>
+<p><b>Menos información por pantalla.</b> Siguiendo divulgación progresiva (NN/g), las leyes de Hick y Miller y el diseño de dashboards de Stephen Few:
+tablas de 5 a 7 columnas, búsqueda con 2 o 3 filtros y el resto en «Más filtros», un solo botón principal por pantalla, Dashboard de 4 indicadores,
+sin gráficas de pastel y sin nombres técnicos en la interfaz. Detalle y fuentes en <b>GuiaDiseno.md §4</b>.</p>
 <p>Además, las contraseñas de la aplicación se guardan como <code>HASHBYTES('SHA2_256')</code>, nunca en texto plano; tras 5 intentos
 fallidos el usuario se bloquea y solo un Administrador lo reactiva.</p>
 

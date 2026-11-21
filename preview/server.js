@@ -19,14 +19,6 @@ const config = {
   options: { encrypt: false, trustServerCertificate: true },
 };
 
-// Permisos por rol (matriz del documento: Administrador, Supervisor, Operador, Consulta)
-const MODULOS = {
-  Administrador: ['dashboard', 'venta', 'ventas', 'clientes', 'ordenes', 'productos', 'compras', 'proveedores', 'ajustes', 'categorias', 'marcas', 'tipos', 'reportes', 'usuarios', 'auditoria'],
-  Supervisor:    ['dashboard', 'venta', 'ventas', 'clientes', 'ordenes', 'productos', 'compras', 'proveedores', 'ajustes', 'categorias', 'marcas', 'tipos', 'reportes', 'auditoria'],
-  Operador:      ['venta', 'ventas', 'clientes', 'ordenes', 'productos', 'proveedores', 'categorias', 'marcas', 'tipos'],
-  Consulta:      ['dashboard', 'ventas', 'clientes', 'productos', 'proveedores', 'categorias', 'marcas', 'tipos', 'reportes'],
-};
-
 // Catálogos administrados con la misma pantalla. Los nombres de tabla son fijos
 // aquí; del usuario solo llegan valores como parámetros.
 const CATALOGOS = {
@@ -59,12 +51,20 @@ const CATALOGOS = {
     c2: () => sql.Decimal(10, 2),
   },
 };
-const soloRol = (user, roles, msg) => { if (!roles.includes(user.rol)) throw new Error(msg); };
-const PUEDE = {
-  cancelar: ['Administrador', 'Supervisor'],
-  vender: ['Administrador', 'Supervisor', 'Operador'],
-  avanzarOrden: ['Administrador', 'Supervisor', 'Operador'],
+// Igual que FrmPrincipal en C#: cada módulo depende de una capacidad que concede SQL Server
+const MODULO_REQUIERE = {
+  dashboard: ['ver_reportes'], venta: ['registrar_venta'], ventas: [], clientes: [], ordenes: [], productos: [],
+  compras: ['registrar_compra'], proveedores: [], ajustes: ['ajustar_stock', 'ajustar_precio'], categorias: [], marcas: [],
+  tipos: [], reportes: ['ver_reportes'], usuarios: ['admin_usuarios'], auditoria: ['ver_auditoria'],
 };
+const modulosDe = (caps) => Object.keys(MODULO_REQUIERE).filter((m) => !MODULO_REQUIERE[m].length || MODULO_REQUIERE[m].some((c) => caps.includes(c)));
+const ES_COSTO = /costo|margen|utilidad|valor_inventario/i;
+const sinCostos = (v) => Array.isArray(v) ? v.map(sinCostos)
+  : v && typeof v === 'object' && !(v instanceof Date)
+    ? Object.fromEntries(Object.entries(v).filter(([k]) => !ES_COSTO.test(k)).map(([k, x]) => [k, sinCostos(x)]))
+    : v;
+// La operación se valida con la misma capacidad que oculta el botón (y la base la vuelve a validar)
+const exige = (user, cap, msg) => { if (!user.caps.includes(cap)) throw new Error(msg || 'Tu perfil no tiene permiso para esta operación.'); };
 
 const sesiones = new Map();
 let pool;
@@ -93,7 +93,10 @@ const rutas = {
     });
     if (!rows.length) throw new Error('Usuario o contraseña incorrectos.');
     const token = crypto.randomUUID();
-    const user = { ...rows[0], modulos: MODULOS[rows[0].rol] };
+    // Permisos reales de su rol en SQL Server (usp_PermisosApp: EXECUTE AS USER + HAS_PERMS_BY_NAME)
+    const permisos = (await sp('usp_PermisosApp', { id_usuario: [sql.Int, rows[0].id_usuario] })).rows;
+    const caps = permisos.filter((x) => x.permitido).map((x) => x.capacidad);
+    const user = { ...rows[0], caps, modulos: modulosDe(caps) };
     sesiones.set(token, user);
     return { token, user };
   },
@@ -111,8 +114,9 @@ const rutas = {
 
   // Mismas consultas que Data/DashboardRepository.cs de la app en C#
   'GET /api/dashboard': async ({ user }) => {
-    if (!MODULOS[user.rol].includes('dashboard')) throw new Error('Tu perfil no tiene Dashboard.');
-    const [kpi, meses, categorias, recientes, vendidos, alertas, taller] = await Promise.all([
+    exige(user, 'ver_reportes', 'Tu perfil no tiene Dashboard.');
+    // Una sola pantalla: 4 indicadores, 2 gráficas de barras y 2 listas cortas de "requiere atención"
+    const [kpi, meses, categorias, alertas, taller] = await Promise.all([
       q(`-- Periodo: últimos 90 días; se compara con los 90 días anteriores
                 DECLARE @ini DATE = DATEADD(DAY, -90, CAST(GETDATE() AS DATE));
                 DECLARE @ant DATE = DATEADD(DAY, -90, @ini);
@@ -135,19 +139,12 @@ const rutas = {
                 WHERE mes >= FORMAT(DATEADD(MONTH, -5, GETDATE()), 'yyyy-MM') ORDER BY mes`),
       q(`SELECT categoria, ingresos FROM dbo.fn_VentasPorCategoria(DATEADD(DAY, -90, GETDATE()), GETDATE())
                                  ORDER BY ingresos DESC`),
-      q(`SELECT TOP 8 folio, fecha, cliente, sucursal, total, estado FROM vw_VentaCompleta ORDER BY fecha DESC`),
-      q(`SELECT TOP 6 p.nombre AS producto, SUM(dv.cantidad) AS unidades, SUM(dv.subtotal) AS importe
-                FROM DetalleVenta dv
-                JOIN Venta v ON v.id_venta = dv.id_venta AND v.estado = 'Completada'
-                JOIN Producto p ON p.id_producto = dv.id_producto
-                WHERE v.fecha >= DATEADD(DAY, -90, GETDATE())
-                GROUP BY p.nombre ORDER BY unidades DESC, importe DESC`),
-      q(`SELECT TOP 8 sku, nombre AS producto, stock_actual AS stock, stock_minimo AS minimo
+      q(`SELECT TOP 5 nombre AS producto, stock_actual AS stock, stock_minimo AS minimo
                                  FROM vw_StockBajo ORDER BY faltante DESC`),
-      q(`SELECT TOP 8 folio, equipo_descripcion AS equipo, tecnico, estado, dias_en_taller AS dias
+      q(`SELECT TOP 5 folio, equipo_descripcion AS equipo, estado, dias_en_taller AS dias
                                  FROM vw_OrdenServicioCompleta WHERE es_final = 0 ORDER BY dias_en_taller DESC`)
     ]);
-    return { kpi: kpi[0], meses, categorias, recientes, vendidos, alertas, taller };
+    return { kpi: kpi[0], meses, categorias: categorias.slice(0, 6), alertas, taller };
   },
 
   'GET /api/catalogos': async () => ({
@@ -196,7 +193,7 @@ const rutas = {
     WHERE dv.id_venta = @id ORDER BY dv.id_detalle_venta`, { id: [sql.Int, +query.id] }),
 
   'POST /api/ventas': async ({ body, user }) => {
-    if (!PUEDE.vender.includes(user.rol)) throw new Error('Tu rol no puede registrar ventas.');
+    exige(user, 'registrar_venta');
     const autoriza = ['Administrador', 'Supervisor'].includes(user.rol) ? user.id_usuario : null;
     const { out } = await sp('usp_RegistrarVenta', {
       id_cliente: [sql.Int, +body.id_cliente],
@@ -210,7 +207,7 @@ const rutas = {
   },
 
   'POST /api/ventas/cancelar': async ({ body, user }) => {
-    if (!PUEDE.cancelar.includes(user.rol)) throw new Error('Solo Supervisor o Administrador pueden cancelar ventas.');
+    exige(user, 'cancelar_venta');
     await q(`EXEC sp_set_session_context N'id_usuario', @u; EXEC usp_CancelarVenta @id, @m;`,
       { u: [sql.Int, user.id_usuario], id: [sql.Int, +body.id_venta], m: [sql.VarChar(200), body.motivo || 'Cancelada desde la vista previa'] });
     return { ok: true };
@@ -231,21 +228,22 @@ const rutas = {
     WHERE h.id_orden = @id ORDER BY h.fecha`, { id: [sql.Int, +query.id] }),
 
   'POST /api/ordenes/estado': async ({ body, user }) => {
-    if (!PUEDE.avanzarOrden.includes(user.rol)) throw new Error('Tu rol no puede cambiar órdenes.');
+    exige(user, 'gestionar_ordenes');
     // SESSION_CONTEXT le dice al trigger qué usuario de la app hizo el cambio
     await q(`EXEC sp_set_session_context N'id_usuario', @u; EXEC usp_CambiarEstadoOrden @id, @e;`,
       { u: [sql.Int, user.id_usuario], e: [sql.Int, +body.id_estado], id: [sql.Int, +body.id_orden] });
     return { ok: true };
   },
 
-  'GET /api/reportes': async ({ query }) => {
+  'GET /api/reportes': async ({ query, user }) => {
+    exige(user, 'ver_reportes');
     const desde = fecha(vacio(query.desde)), hasta = fecha(vacio(query.hasta));
     return {
       resumen: (await sp('usp_ResumenPeriodo', { desde: [sql.Date, desde], hasta: [sql.Date, hasta] })).rows,
       top: await q(`SELECT TOP 10 sku, nombre, categoria, unidades_vendidas, ingresos, utilidad_bruta FROM vw_TopProductos ORDER BY ingresos DESC`),
       categorias: await q(`SELECT * FROM dbo.fn_VentasPorCategoria(@d, @h) ORDER BY ingresos DESC`,
         { d: [sql.Date, desde || new Date('2026-01-01')], h: [sql.Date, hasta || new Date()] }),
-      empleados: await q(`
+      empleados: !user.caps.includes('ver_costos') ? null : await q(`
         SELECT CONCAT(e.nombre,' ',e.apellidos) AS empleado, e.puesto, s.nombre AS sucursal,
                COUNT(DISTINCT v.id_venta) AS ventas, ISNULL(SUM(v.total),0) AS vendido,
                (SELECT COUNT(*) FROM OrdenServicio o WHERE o.id_empleado_tecnico = e.id_empleado) AS ordenes
@@ -264,7 +262,7 @@ const rutas = {
   },
 
   'POST /api/catalogo': async ({ body, user }) => {
-    soloRol(user, ['Administrador'], 'Solo el Administrador modifica catálogos.');
+    exige(user, 'editar_catalogos');
     const c = CATALOGOS[body.tipo];
     if (!c) throw new Error('Catálogo desconocido.');
     const nombre = String(body.nombre || '').trim();
@@ -285,7 +283,7 @@ const rutas = {
   },
 
   'POST /api/catalogo/eliminar': async ({ body, user }) => {
-    soloRol(user, ['Administrador'], 'Solo el Administrador modifica catálogos.');
+    exige(user, 'editar_catalogos');
     const c = CATALOGOS[body.tipo];
     if (!c) throw new Error('Catálogo desconocido.');
     try {
@@ -314,7 +312,7 @@ const rutas = {
     WHERE pp.id_proveedor = @id ORDER BY p.nombre`, { id: [sql.Int, +query.id] }),
 
   'POST /api/proveedores': async ({ body, user }) => {
-    soloRol(user, ['Administrador', 'Supervisor'], 'Solo Supervisor o Administrador modifican proveedores.');
+    exige(user, 'guardar_proveedor');
     await sp('usp_ProveedorGuardar', {
       id_proveedor: [sql.Int, body.id ? +body.id : null],
       razon_social: [sql.VarChar(120), String(body.razon_social || '').trim()],
@@ -337,7 +335,7 @@ const rutas = {
   }),
 
   'POST /api/compras': async ({ body, user }) => {
-    soloRol(user, ['Administrador', 'Supervisor'], 'Solo Supervisor o Administrador registran compras.');
+    exige(user, 'registrar_compra');
     const r = pool.request();
     r.input('u', sql.Int, user.id_usuario);
     r.input('prov', sql.Int, +body.id_proveedor);
@@ -351,7 +349,7 @@ const rutas = {
   },
 
   'GET /api/usuarios': async ({ user }) => {
-    soloRol(user, ['Administrador'], 'Solo el Administrador administra usuarios.');
+    exige(user, 'admin_usuarios');
     return {
       usuarios: await q(`
         SELECT u.id_usuario, u.id_empleado, ur.id_rol, u.nombre_usuario AS usuario,
@@ -370,7 +368,7 @@ const rutas = {
   },
 
   'POST /api/usuarios': async ({ body, user }) => {
-    soloRol(user, ['Administrador'], 'Solo el Administrador administra usuarios.');
+    exige(user, 'admin_usuarios');
     await sp('usp_UsuarioGuardar', {
       id_usuario: [sql.Int, body.id ? +body.id : null],
       id_empleado: [sql.Int, +body.id_empleado],
@@ -384,6 +382,7 @@ const rutas = {
   },
 
   'POST /api/ajustes/stock': async ({ body, user }) => {
+    exige(user, 'ajustar_stock');
     const r = pool.request();
     r.input('u', sql.Int, user.id_usuario);
     r.input('p', sql.Int, +body.id_producto);
@@ -394,6 +393,7 @@ const rutas = {
   },
 
   'POST /api/ajustes/precio': async ({ body, user }) => {
+    exige(user, 'ajustar_precio');
     const r = pool.request();
     r.input('u', sql.Int, user.id_usuario);
     r.input('pct', sql.Decimal(5, 2), +body.porcentaje);
@@ -409,7 +409,7 @@ const rutas = {
   }),
 
   'GET /api/auditoria': async ({ user }) => {
-    if (!['Administrador', 'Supervisor'].includes(user.rol)) throw new Error('Sin permiso para ver la auditoría.');
+    exige(user, 'ver_auditoria');
     return q(`SELECT TOP 300 fecha, usuario_app, usuario, tabla, operacion, id_registro, valor_anterior, valor_nuevo, motivo FROM Auditoria ORDER BY id_auditoria DESC`);
   },
 };
@@ -432,7 +432,9 @@ http.createServer(async (req, res) => {
   const user = sesiones.get(req.headers['x-token']);
   if (url.pathname !== '/api/login' && !user) return send(401, { error: 'Inicia sesión.' });
   try {
-    send(200, await handler({ body: body ? JSON.parse(body) : {}, query: Object.fromEntries(url.searchParams), user }));
+    const datos = await handler({ body: body ? JSON.parse(body) : {}, query: Object.fromEntries(url.searchParams), user });
+    // Sin ver_costos (como tecno_operador en SQL Server) los costos y márgenes no salen del servidor
+    send(200, user && !user.caps.includes('ver_costos') ? sinCostos(datos) : datos);
   } catch (e) {
     // Los THROW de SQL Server llegan aquí con su mensaje (stock insuficiente, permisos, etc.)
     send(400, { error: e.originalError?.info?.message || e.message });

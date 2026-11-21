@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using TecnoStore.Data;
+using TecnoStore.Models;
 using TecnoStore.Utils;
 
 namespace TecnoStore.Forms
@@ -33,23 +34,26 @@ namespace TecnoStore.Forms
             Animacion.Fundido(this);
             Forma.VentanaModerna(this, Tema.Carbon, Color.FromArgb(201, 199, 193));
             var s = Db.Sesion;
-            // Matriz de permisos aplicada al menú (SQL Server la vuelve a validar)
+            // Cada módulo aparece solo si SQL Server le concede la capacidad que lo respalda
+            // (usp_PermisosApp). Lo que nunca podrá usar se oculta; la base lo vuelve a validar.
             Func<bool> todos = () => true;
-            Agregar("dashboard", "Dashboard", "General", null, () => new FrmDashboard(), () => s.Rol != "Operador");
-            Agregar("venta", "Nueva venta", "Ventas", "F5", () => new FrmVenta(), () => s.PuedeOperar);
+            Func<string, Func<bool>> puede = c => () => s.Puede(c);
+            Agregar("dashboard", "Dashboard", "General", null, () => new FrmDashboard(), puede(Capacidad.VerReportes));
+            Agregar("venta", "Nueva venta", "Ventas", "F5", () => new FrmVenta(), puede(Capacidad.RegistrarVenta));
             Agregar("historial", "Historial de ventas", "Ventas", null, () => new FrmHistorialVentas(), todos);
             Agregar("clientes", "Clientes", "Ventas", "F3", () => new FrmClientes(), todos);
-            Agregar("ordenes", "Órdenes de servicio", "Taller", "F6", () => new FrmOrdenes(), () => s.PuedeOperar);
+            Agregar("ordenes", "Órdenes de servicio", "Taller", "F6", () => new FrmOrdenes(), todos);
             Agregar("productos", "Productos", "Inventario", "F2", () => new FrmProductos(), todos);
-            Agregar("compras", "Compras a proveedor", "Inventario", "F7", () => new FrmCompra(), () => s.EsSupervisorOMas);
+            Agregar("compras", "Compras a proveedor", "Inventario", "F7", () => new FrmCompra(), puede(Capacidad.RegistrarCompra));
             Agregar("proveedores", "Proveedores", "Inventario", "F4", () => new FrmProveedores(), todos);
-            Agregar("ajustes", "Ajustes de inventario", "Inventario", null, () => new FrmAjusteStock(), () => s.EsSupervisorOMas);
+            Agregar("ajustes", "Ajustes de inventario", "Inventario", null, () => new FrmAjusteStock(),
+                    () => s.Puede(Capacidad.AjustarStock) || s.Puede(Capacidad.AjustarPrecio));
             Agregar("categorias", "Categorías", "Catálogos", null, () => new FrmCatalogo(TipoCatalogo.Categoria), todos);
             Agregar("marcas", "Marcas", "Catálogos", null, () => new FrmCatalogo(TipoCatalogo.Marca), todos);
             Agregar("tipos", "Tipos de servicio", "Catálogos", null, () => new FrmCatalogo(TipoCatalogo.TipoServicio), todos);
-            Agregar("reportes", "Reportes", "Análisis", null, () => new FrmReportes(), () => s.Rol != "Operador");
-            Agregar("usuarios", "Usuarios y roles", "Administración", null, () => new FrmUsuarios(), () => s.EsAdministrador);
-            Agregar("auditoria", "Auditoría", "Administración", null, () => new FrmAuditoria(), () => s.EsSupervisorOMas);
+            Agregar("reportes", "Reportes", "Análisis", null, () => new FrmReportes(), puede(Capacidad.VerReportes));
+            Agregar("usuarios", "Usuarios y roles", "Administración", null, () => new FrmUsuarios(), puede(Capacidad.AdminUsuarios));
+            Agregar("auditoria", "Auditoría", "Administración", null, () => new FrmAuditoria(), puede(Capacidad.VerAuditoria));
         }
 
         private void Agregar(string clave, string titulo, string grupo, string atajo, Func<Form> crear, Func<bool> visible)
@@ -81,7 +85,9 @@ namespace TecnoStore.Forms
                 using (var linea = new Pen(Tema.LineaSuave)) ev.Graphics.DrawLine(linea, 0, pnlEncabezado.Height - 1, pnlEncabezado.Width, pnlEncabezado.Height - 1);
             };
             ConstruirMenu();
-            Abrir(s.Rol == "Operador" ? "venta" : "dashboard");
+            // Primera pantalla: el Dashboard si lo puede ver; si no, la primera de su menú
+            var inicio = modulos.FirstOrDefault(m => m.Visible());
+            if (inicio != null) Abrir(inicio.Clave);
         }
 
         private void ConstruirMenu()
