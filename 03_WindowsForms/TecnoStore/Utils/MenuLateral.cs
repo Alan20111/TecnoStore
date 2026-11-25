@@ -17,7 +17,7 @@ namespace TecnoStore.Utils
     /// </summary>
     public class MenuLateral : Control
     {
-        private class Item { public string Clave, Texto, Grupo; public char Icono; public RectangleF Area; }
+        private class Item { public string Clave, Texto, Tecla; public char Icono; public RectangleF Area; }
 
         private readonly List<Item> items = new List<Item>();
         private readonly Font fuenteIconos;
@@ -25,7 +25,7 @@ namespace TecnoStore.Utils
         private float pastillaY, pastillaDestino, desplazamiento, alto;
         private Timer anim, ocultarBarra;
         private bool mostrarBarra;
-        private const int AltoItem = 34, AltoGrupo = 30, Margen = 12;
+        private const int AltoItem = 54, Margen = 12;
 
         public event Action<string> Seleccionado;
 
@@ -38,14 +38,14 @@ namespace TecnoStore.Utils
             // Segoe Fluent Icons (Windows 11) o Segoe MDL2 Assets (Windows 10)
             string iconos = FontFamily.Families.Any(f => f.Name == "Segoe Fluent Icons") ? "Segoe Fluent Icons"
                           : FontFamily.Families.Any(f => f.Name == "Segoe MDL2 Assets") ? "Segoe MDL2 Assets" : null;
-            if (iconos != null) fuenteIconos = new Font(iconos, 11F);
+            if (iconos != null) fuenteIconos = new Font(iconos, 16F);
             ocultarBarra = new Timer { Interval = 1200 };
             ocultarBarra.Tick += (s, e) => { mostrarBarra = false; ocultarBarra.Stop(); Invalidate(); };
         }
 
-        public void Agregar(string clave, string texto, string grupo, char icono)
+        public void Agregar(string clave, string texto, string tecla, char icono)
         {
-            items.Add(new Item { Clave = clave, Texto = texto, Grupo = grupo, Icono = icono });
+            items.Add(new Item { Clave = clave, Texto = texto, Tecla = tecla, Icono = icono });
             Acomodar();
         }
 
@@ -53,12 +53,11 @@ namespace TecnoStore.Utils
 
         private void Acomodar()
         {
-            float y = 6; string grupo = null;
+            float y = 6;
             foreach (var it in items)
             {
-                if (it.Grupo != grupo) { grupo = it.Grupo; y += AltoGrupo; }
                 it.Area = new RectangleF(Margen, y, Width - Margen * 2, AltoItem);
-                y += AltoItem + 2;
+                y += AltoItem + 4;
             }
             alto = y + 12;
             Invalidate();
@@ -131,16 +130,8 @@ namespace TecnoStore.Utils
                     g.FillPath(b, path);
             }
 
-            string grupo = null;
-            using (var fuenteGrupo = new Font(Tema.Fuente.FontFamily, 8.25F))
-            {
                 foreach (var it in items)
                 {
-                    if (it.Grupo != grupo)
-                    {
-                        grupo = it.Grupo;
-                        TextRenderer.DrawText(g, grupo, fuenteGrupo, new Point(Margen + 10, (int)it.Area.Y - 20), Tema.Ceniza);
-                    }
                     bool esActivo = it.Clave == activo, esSobre = it.Clave == sobre;
                     if (esSobre && !esActivo)
                         using (var path = Forma.Continua(it.Area, Tema.RadioNav))
@@ -149,19 +140,21 @@ namespace TecnoStore.Utils
 
                     // El texto sigue a la pastilla cuando esta llega (no salta antes)
                     bool cubierto = esActivo && Math.Abs(pastillaY - it.Area.Y) < AltoItem / 2f;
-                    Color color = cubierto ? Color.White : esSobre ? Tema.Texto : Tema.TextoSuave;
-                    int x = (int)it.Area.X + 10;
+                    Color color = cubierto ? Tema.Lateral : Tema.Texto;
+                    int x = (int)it.Area.X + 12;
                     if (fuenteIconos != null)
                     {
                         TextRenderer.DrawText(g, it.Icono.ToString(), fuenteIconos,
-                            new Rectangle(x, (int)it.Area.Y, 20, AltoItem), color, TextFormatFlags.VerticalCenter | TextFormatFlags.HorizontalCenter | TextFormatFlags.NoPadding);
-                        x += 28;
+                            new Rectangle(x, (int)it.Area.Y, 30, AltoItem), color, TextFormatFlags.VerticalCenter | TextFormatFlags.HorizontalCenter | TextFormatFlags.NoPadding);
+                        x += 40;
                     }
-                    TextRenderer.DrawText(g, it.Texto, cubierto ? Tema.FuenteNegrita : Tema.Fuente,
+                    TextRenderer.DrawText(g, it.Texto, Tema.FuenteSubtitulo,
                         new Rectangle(x, (int)it.Area.Y, (int)it.Area.Right - x, AltoItem), color,
                         TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
+                    if (!string.IsNullOrEmpty(it.Tecla))
+                        TextRenderer.DrawText(g, it.Tecla, Tema.FuentePequena, new Rectangle((int)it.Area.Right - 44, (int)it.Area.Y, 32, AltoItem),
+                            cubierto ? Tema.Ceniza : Tema.TextoSuave, TextFormatFlags.VerticalCenter | TextFormatFlags.Right | TextFormatFlags.SingleLine);
                 }
-            }
 
             g.ResetTransform();
             // Indicador de desplazamiento delgado, solo mientras se usa la rueda

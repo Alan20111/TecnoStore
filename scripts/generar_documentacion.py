@@ -209,8 +209,8 @@ except Exception:
 
 PANTALLAS = [
     ('01_login', None, None, 'Inicio de sesión'),
-    ('02_dashboard', 'admin', 'dashboard', 'Dashboard del Administrador: indicadores, gráficas y alertas'),
-    ('03_productos', 'admin', 'productos', 'Productos: búsqueda, alertas de stock y margen'),
+    ('02_dashboard', 'admin', 'dashboard', 'Resumen del Administrador: indicadores, gráficas y alertas'),
+    ('03_productos', 'admin', 'productos', 'Productos: búsqueda, categoría y por resurtir'),
     ('04_clientes', 'admin', 'clientes', 'Clientes: total comprado y nivel calculados con funciones'),
     ('05_proveedores', 'admin', 'proveedores', 'Proveedores y productos que surte (N:M)'),
     ('06_categorias', 'admin', 'categorias', 'Catálogo de categorías'),
@@ -224,8 +224,9 @@ PANTALLAS = [
     ('14_usuarios', 'admin', 'usuarios', 'Usuarios y roles'),
     ('15_ajustes', 'admin', 'ajustes', 'Ajustes de inventario y precios'),
     ('16_auditoria', 'admin', 'auditoria', 'Auditoría'),
-    ('17_inicio_operador', 'loperador', 'venta', 'Menú del Operador: entra a Nueva venta; sin Dashboard, reportes, compras ni auditoría'),
-    ('18_inicio_consulta', 'fconsulta', 'dashboard', 'Menú de Consulta: Dashboard y consultas, solo lectura'),
+    ('17_inicio_operador', 'loperador', 'inicio', 'Inicio del Operador: 5 módulos; sin reportes, compras ni configuración'),
+    ('18_inicio_consulta', 'fconsulta', 'inicio', 'Inicio de Consulta: reportes y consultas, solo lectura'),
+    ('19_inicio_admin', 'admin', 'inicio', 'Inicio del Administrador'),
 ]
 if hay_preview:
     for archivo, usuario, modulo, _ in PANTALLAS:

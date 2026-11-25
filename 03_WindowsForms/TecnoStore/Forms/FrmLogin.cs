@@ -18,13 +18,31 @@ namespace TecnoStore.Forms
         private static readonly string ArchivoServidor = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TecnoStore", "servidor.txt");
 
+        private readonly PanelCampos campos;
+        private readonly Label lblServidorActual = new Label { AutoSize = false, ForeColor = Tema.Navegacion, Cursor = Cursors.Hand, TextAlign = ContentAlignment.MiddleCenter };
+
         public FrmLogin()
         {
             InitializeComponent();
+            AutoScaleMode = AutoScaleMode.None;
+            Controls.Clear();
+            ClientSize = new Size(440, 500);
+            campos = new PanelCampos(1, new Campo("Usuario", txtUsuario), new Campo("Contraseña", txtContrasena), new Campo("Servidor", txtServidor)) { Padding = new Padding(0) };
+            lblTitulo.SetBounds(36, 30, 360, 52);
+            Acomodar(false);
+            Controls.AddRange(new Control[] { lblTitulo, campos, btnIngresar, lblServidorActual, lblAyuda });
+            campos.Mostrar(txtServidor, false);
+            lblServidorActual.Click += (s, e) => MostrarServidor();
+            campos.BackColor = Tema.Tarjeta;
             Tema.Aplicar(this);
+            lblTitulo.Font = Tema.FuenteCifra;
+            btnIngresar.Font = Tema.FuenteSubtitulo;
+            btnIngresar.Text = "Entrar";
+            lblAyuda.Text = "Para probar: admin, csupervisor, loperador o fconsulta\r\nContraseña: 1234";
+            campos.BackColor = Tema.Tarjeta;
             BackColor = Tema.Tarjeta;
             Animacion.Fundido(this);
-            Forma.VentanaModerna(this, Tema.Carbon, Color.FromArgb(201, 199, 193));
+            Forma.VentanaModerna(this, Tema.Carbon, Tema.Texto);
         }
 
         private void FrmLogin_Load(object sender, EventArgs e)
@@ -32,7 +50,30 @@ namespace TecnoStore.Forms
             string guardado = null;
             try { if (File.Exists(ArchivoServidor)) guardado = File.ReadAllText(ArchivoServidor).Trim(); } catch { /* sin servidor guardado */ }
             txtServidor.Text = string.IsNullOrEmpty(guardado) ? Db.ServidorConfigurado() : guardado;
+            lblServidorActual.Text = "Servidor: " + txtServidor.Text + "  (cambiar)";
             txtUsuario.Select();
+        }
+
+        private void Acomodar(bool conServidor)
+        {
+            int alto = conServidor ? 262 : 176;
+            campos.SetBounds(38, 94, 368, alto);
+            btnIngresar.SetBounds(38, 94 + alto + 4, 364, 56);
+            lblServidorActual.SetBounds(38, 94 + alto + 72, 364, 28);
+            lblAyuda.SetBounds(38, 94 + alto + (conServidor ? 76 : 112), 364, 66);
+            lblAyuda.Font = Tema.FuentePequena;
+            lblAyuda.ForeColor = Tema.TextoSuave;
+            ClientSize = new Size(440, 94 + alto + (conServidor ? 160 : 196));
+        }
+
+        /// <summary>El servidor casi nunca cambia: se pide solo al tocarlo o si la conexión falla.</summary>
+        private void MostrarServidor()
+        {
+            campos.Mostrar(txtServidor, true);
+            Acomodar(true);
+            lblServidorActual.Visible = false;
+            txtServidor.Focus();
+            txtServidor.SelectAll();
         }
 
         private void btnIngresar_Click(object sender, EventArgs e)
@@ -68,7 +109,7 @@ namespace TecnoStore.Forms
                     "Revisen el nombre (localhost, .\\SQLEXPRESS o NOMBRE-PC\\INSTANCIA) y que el servicio de SQL Server esté iniciado.";
                 MessageBox.Show(detalle + "\n\nDetalle técnico: " + ex.Message, "No se pudo conectar",
                                 MessageBoxButtons.OK, MessageBoxIcon.Error);
-                txtServidor.Focus();
+                MostrarServidor();
             }
             catch (Exception ex)
             {
@@ -110,7 +151,7 @@ namespace TecnoStore.Forms
                 "escriban esa en Servidor.\n\n" +
                 "¿Quieren crearla ahora en \"" + servidor + "\" con los datos demo? (ejecuta los scripts de 02_SQL; tarda unos segundos)",
                 "Base de datos no encontrada", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1);
-            if (r != DialogResult.Yes) { txtServidor.Focus(); return; }
+            if (r != DialogResult.Yes) { MostrarServidor(); return; }
 
             string textoOriginal = Text;
             try

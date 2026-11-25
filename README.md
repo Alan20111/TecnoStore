@@ -65,12 +65,12 @@ Requiere habilitar en SSMS: clic derecho en el servidor → *Propiedades* → *S
 | # | Módulo | Formulario | Usa |
 |---|---|---|---|
 | 1 | Acceso / sesión | `FrmLogin` | `usp_Login` (hash, bloqueo tras 5 intentos) |
-| 2 | Panel principal por perfil (barra lateral) y Dashboard | `FrmPrincipal`, `FrmDashboard` | Indicadores de 90 días, ingresos por mes, ventas por categoría, alertas y taller (vistas y funciones existentes) |
+| 2 | Ventana principal por perfil, Inicio y Resumen | `FrmPrincipal`, `FrmInicio`, `FrmDashboard` | Indicadores de 90 días, ingresos por mes, ventas por categoría, alertas y taller (vistas y funciones existentes) |
 | 3–5 | Catálogos: categorías, marcas, tipos de servicio | `FrmCatalogo` | INSERT/UPDATE/DELETE parametrizados; DELETE controlado por FK |
 | 6 | Clientes (CRUD + historial) | `FrmClientes` | `usp_ClienteGuardar`, `fn_TotalCompradoCliente`, `fn_ClasificacionCliente`, `vw_VentaCompleta` |
 | 7 | Proveedores (CRUD + productos que surte) | `FrmProveedores` | `usp_ProveedorGuardar`, `ProductoProveedor` |
 | 8 | Productos (CRUD + filtros + existencias) | `FrmProductos` | `usp_ProductoBuscar`, `usp_ProductoGuardar`, trigger de baja lógica |
-| 9 | Proceso principal: venta (maestro-detalle) | `FrmVenta` | `usp_RegistrarVenta` |
+| 9 | Proceso principal: venta (maestro-detalle) | `FrmVenta`, `FrmCobrar` | `usp_RegistrarVenta` |
 | 10 | Proceso secundario: órdenes de taller (maestro-detalle) | `FrmOrdenes` | `usp_RegistrarOrdenServicio`, `usp_OrdenAgregarLinea`, `usp_CambiarEstadoOrden`, `fn_TotalOrden` |
 | — | Compras a proveedor (tercer maestro-detalle) | `FrmCompra` | `usp_RegistrarCompra` |
 | 11–12 | Cancelaciones e historial con filtros | `FrmHistorialVentas` | `vw_VentaCompleta`, `usp_CancelarVenta` |

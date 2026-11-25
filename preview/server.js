@@ -51,11 +51,13 @@ const CATALOGOS = {
     c2: () => sql.Decimal(10, 2),
   },
 };
-// Igual que FrmPrincipal en C#: cada módulo depende de una capacidad que concede SQL Server
+// Igual que FrmPrincipal en C#: cada vista depende de una capacidad que concede SQL Server
+// ([] = todos). Lo que el rol nunca va a usar no aparece.
 const MODULO_REQUIERE = {
-  dashboard: ['ver_reportes'], venta: ['registrar_venta'], ventas: [], clientes: [], ordenes: [], productos: [],
-  compras: ['registrar_compra'], proveedores: [], ajustes: ['ajustar_stock', 'ajustar_precio'], categorias: [], marcas: [],
-  tipos: [], reportes: ['ver_reportes'], usuarios: ['admin_usuarios'], auditoria: ['ver_auditoria'],
+  inicio: [], venta: ['registrar_venta'], ventas: [], ordenes: [], clientes: [], productos: [],
+  compras: ['registrar_compra'], ajustes: ['ajustar_stock', 'ajustar_precio'], proveedores: ['guardar_proveedor', 'ver_costos'],
+  dashboard: ['ver_reportes'], reportes: ['ver_reportes'], auditoria: ['ver_auditoria'],
+  usuarios: ['admin_usuarios'], categorias: ['editar_catalogos'], marcas: ['editar_catalogos'], tipos: ['editar_catalogos'],
 };
 const modulosDe = (caps) => Object.keys(MODULO_REQUIERE).filter((m) => !MODULO_REQUIERE[m].length || MODULO_REQUIERE[m].some((c) => caps.includes(c)));
 const ES_COSTO = /costo|margen|utilidad|valor_inventario/i;
@@ -101,16 +103,14 @@ const rutas = {
     return { token, user };
   },
 
-  'GET /api/inicio': async () => {
-    const [kpi] = await q(`
-      SELECT (SELECT COUNT(*) FROM Venta WHERE estado='Completada' AND fecha >= DATEADD(DAY,-30,SYSDATETIME())) AS ventas30,
-             (SELECT ISNULL(SUM(total),0) FROM Venta WHERE estado='Completada' AND fecha >= DATEADD(DAY,-30,SYSDATETIME())) AS ingresos30,
-             (SELECT COUNT(*) FROM vw_StockBajo) AS alertas,
-             (SELECT COUNT(*) FROM vw_OrdenServicioCompleta WHERE es_final = 0) AS ordenes_abiertas`);
-    const stock = await q(`SELECT TOP 6 sku, nombre, stock_actual, stock_minimo FROM vw_StockBajo ORDER BY faltante DESC`);
-    const ordenes = await q(`SELECT TOP 6 folio, cliente, estado, dias_en_taller FROM vw_OrdenServicioCompleta WHERE es_final = 0 ORDER BY fecha_recepcion`);
-    return { kpi, stock, ordenes };
-  },
+  // Los números del Inicio (sin costos: los puede leer cualquier rol)
+  'GET /api/inicio': async () => (await q(`
+    DECLARE @ini DATE = DATEADD(DAY, -90, CAST(GETDATE() AS DATE));
+    SELECT (SELECT COUNT(*) FROM Venta WHERE estado = 'Completada' AND fecha >= @ini) AS ventas,
+           (SELECT ISNULL(SUM(total), 0) FROM Venta WHERE estado = 'Completada' AND fecha >= @ini) AS ingresos,
+           (SELECT COUNT(*) FROM vw_OrdenServicioCompleta WHERE es_final = 0) AS ordenes_abiertas,
+           (SELECT COUNT(*) FROM vw_OrdenServicioCompleta WHERE estado = 'Lista') AS ordenes_listas,
+           (SELECT COUNT(*) FROM vw_StockBajo) AS alertas_stock`))[0],
 
   // Mismas consultas que Data/DashboardRepository.cs de la app en C#
   'GET /api/dashboard': async ({ user }) => {
@@ -153,6 +153,11 @@ const rutas = {
     clientes: await q(`SELECT id_cliente AS id, CONCAT(nombre,' ',apellidos) AS nombre FROM Cliente WHERE activo = 1 ORDER BY nombre`),
     productos: await q(`SELECT id_producto AS id, sku, nombre, precio_venta, stock_actual, requiere_serie FROM vw_ProductosActivos WHERE stock_actual > 0 ORDER BY nombre`),
     estados: await q(`SELECT id_estado_orden AS id, nombre, es_final FROM EstadoOrden ORDER BY id_estado_orden`),
+    marcas: await q(`SELECT id_marca AS id, nombre FROM Marca ORDER BY nombre`),
+    condiciones: await q(`SELECT id_condicion AS id, nombre FROM Condicion ORDER BY id_condicion`),
+    tecnicos: await q(`SELECT id_empleado AS id, CONCAT(nombre,' ',apellidos) AS nombre FROM Empleado WHERE puesto = 'Técnico' AND activo = 1 ORDER BY nombre`),
+    servicios: await q(`SELECT id_tipo_servicio AS id, CONCAT(nombre, ' (', FORMAT(precio_base, 'C', 'es-MX'), ')') AS nombre FROM TipoServicio ORDER BY nombre`),
+    refacciones: await q(`SELECT id_producto AS id, CONCAT(nombre, ' (quedan ', stock_actual, ')') AS nombre FROM Producto WHERE requiere_serie = 0 AND activo = 1 AND stock_actual > 0 ORDER BY nombre`),
     descuentoMax: (await q(`SELECT valor FROM Configuracion WHERE clave='DESCUENTO_MAX_OPERADOR'`))[0].valor,
   }),
 
@@ -162,15 +167,45 @@ const rutas = {
     solo_alertas: [sql.Bit, query.alertas === '1'],
   })).rows,
 
+  'GET /api/producto': async ({ query }) => (await q('SELECT * FROM Producto WHERE id_producto = @id', { id: [sql.Int, +query.id] }))[0],
+
+  'POST /api/productos': async ({ body, user }) => {
+    exige(user, 'guardar_producto');
+    await q(`EXEC sp_set_session_context N'id_usuario', @u; DECLARE @x INT = @id;
+      EXEC usp_ProductoGuardar @id_producto = @x OUTPUT, @sku = @sku, @nombre = @n, @id_categoria = @cat, @id_marca = @mar, @id_condicion = @con,
+        @precio_venta = @p, @costo = @c, @requiere_serie = @s, @stock_minimo = @m, @activo = @a;`, {
+      u: [sql.Int, user.id_usuario], id: [sql.Int, vacio(body.id)], sku: [sql.VarChar(30), body.sku], n: [sql.VarChar(120), body.nombre],
+      cat: [sql.Int, +body.id_categoria], mar: [sql.Int, +body.id_marca], con: [sql.Int, +body.id_condicion], p: [sql.Decimal(10, 2), +body.precio_venta],
+      c: [sql.Decimal(10, 2), +body.costo], s: [sql.Bit, !!body.requiere_serie], m: [sql.Int, +body.stock_minimo || 0], a: [sql.Bit, !!body.activo] });
+    return { ok: true };
+  },
+
+  'POST /api/productos/eliminar': async ({ body, user }) => {
+    exige(user, 'eliminar_producto');
+    await q(`EXEC sp_set_session_context N'id_usuario', @u; DELETE FROM Producto WHERE id_producto = @id`, { u: [sql.Int, user.id_usuario], id: [sql.Int, +body.id] });
+    return { ok: true };
+  },
+
   'GET /api/clientes': async ({ query }) => q(`
-    SELECT c.id_cliente, CONCAT(c.nombre,' ',c.apellidos) AS cliente, c.correo, c.telefono,
+    SELECT c.id_cliente, c.nombre, c.apellidos, c.correo, c.telefono, c.rfc,
            CAST(c.fecha_registro AS DATE) AS registro, c.activo,
            (SELECT COUNT(*) FROM Venta v WHERE v.id_cliente = c.id_cliente AND v.estado='Completada') AS compras,
            dbo.fn_TotalCompradoCliente(c.id_cliente) AS total_comprado,
            dbo.fn_ClasificacionCliente(c.id_cliente) AS nivel
     FROM Cliente c
     WHERE @t IS NULL OR c.nombre LIKE '%'+@t+'%' OR c.apellidos LIKE '%'+@t+'%' OR c.correo LIKE '%'+@t+'%'
-    ORDER BY total_comprado DESC`, { t: [sql.VarChar(60), vacio(query.texto)] }),
+    ORDER BY c.nombre, c.apellidos`, { t: [sql.VarChar(60), vacio(query.texto)] }),
+
+  'GET /api/clientes/compras': async ({ query }) => q(
+    `SELECT folio, fecha, total, estado FROM vw_VentaCompleta WHERE id_cliente = @id ORDER BY fecha DESC`, { id: [sql.Int, +query.id] }),
+
+  'POST /api/clientes': async ({ body, user }) => {
+    exige(user, 'guardar_cliente');
+    await q(`DECLARE @x INT = @id; EXEC usp_ClienteGuardar @id_cliente = @x OUTPUT, @nombre = @n, @apellidos = @a, @correo = @c, @telefono = @t, @rfc = @r, @activo = @ac;`, {
+      id: [sql.Int, vacio(body.id)], n: [sql.VarChar(60), body.nombre], a: [sql.VarChar(80), body.apellidos], c: [sql.VarChar(100), body.correo],
+      t: [sql.VarChar(20), vacio(body.telefono)], r: [sql.VarChar(13), vacio(body.rfc)], ac: [sql.Bit, !!body.activo] });
+    return { ok: true };
+  },
 
   'GET /api/ventas': async ({ query }) => q(`
     SELECT TOP 200 id_venta, folio, fecha, cliente, vendedor, sucursal, metodo_pago, lineas, subtotal, descuento, total, estado
@@ -214,7 +249,8 @@ const rutas = {
   },
 
   'GET /api/ordenes': async ({ query }) => q(`
-    SELECT id_orden, folio, fecha_recepcion, cliente, tecnico, equipo_descripcion, descripcion_falla, estado, es_final, total, dias_en_taller
+    SELECT id_orden, folio, fecha_recepcion, cliente, tecnico, equipo_descripcion, descripcion_falla, estado, es_final,
+           dbo.fn_TotalOrden(id_orden) AS total, dias_en_taller
     FROM vw_OrdenServicioCompleta
     WHERE (@abiertas = 0 OR es_final = 0)
     ORDER BY fecha_recepcion DESC`, { abiertas: [sql.Bit, query.abiertas === '1'] }),
@@ -226,6 +262,30 @@ const rutas = {
     JOIN EstadoOrden en ON en.id_estado_orden = h.id_estado_nuevo
     LEFT JOIN Usuario u ON u.id_usuario = h.id_usuario
     WHERE h.id_orden = @id ORDER BY h.fecha`, { id: [sql.Int, +query.id] }),
+
+  'GET /api/ordenes/detalle': async ({ query }) => q(`
+    SELECT ISNULL(ts.nombre, p.nombre) AS concepto, d.cantidad, d.subtotal
+    FROM DetalleOrdenServicio d
+    LEFT JOIN TipoServicio ts ON ts.id_tipo_servicio = d.id_tipo_servicio
+    LEFT JOIN Producto p ON p.id_producto = d.id_producto
+    WHERE d.id_orden = @id ORDER BY d.id_detalle_orden`, { id: [sql.Int, +query.id] }),
+
+  'POST /api/ordenes': async ({ body, user }) => {
+    exige(user, 'gestionar_ordenes');
+    const r = await q(`EXEC sp_set_session_context N'id_usuario', @u; DECLARE @o INT, @f VARCHAR(20);
+      EXEC usp_RegistrarOrdenServicio @id_cliente = @c, @id_empleado_tecnico = @t, @equipo_descripcion = @e, @descripcion_falla = @fa,
+        @numero_serie_equipo = @s, @id_orden = @o OUTPUT, @folio = @f OUTPUT; SELECT @f AS folio;`, {
+      u: [sql.Int, user.id_usuario], c: [sql.Int, +body.id_cliente], t: [sql.Int, +body.id_tecnico], e: [sql.VarChar(150), body.equipo],
+      fa: [sql.VarChar(500), body.falla], s: [sql.VarChar(50), vacio(body.serie)] });
+    return r[0];
+  },
+
+  'POST /api/ordenes/linea': async ({ body, user }) => {
+    exige(user, 'gestionar_ordenes');
+    await sp('usp_OrdenAgregarLinea', { id_orden: [sql.Int, +body.id_orden], id_tipo_servicio: [sql.Int, vacio(body.servicio)],
+      id_producto: [sql.Int, vacio(body.refaccion)], cantidad: [sql.Int, +body.cantidad || 1] });
+    return { ok: true };
+  },
 
   'POST /api/ordenes/estado': async ({ body, user }) => {
     exige(user, 'gestionar_ordenes');

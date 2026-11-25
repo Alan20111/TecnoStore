@@ -8,7 +8,7 @@ namespace TecnoStore.Utils
     /// <summary>Panel blanco con esquinas redondeadas y borde suave (tarjetas del Dashboard).</summary>
     public class Tarjeta : Panel
     {
-        [DefaultValue(16)]
+        [DefaultValue(24)]
         public int Radio { get; set; } = Tema.RadioTarjeta;
 
         public Tarjeta()
@@ -27,7 +27,7 @@ namespace TecnoStore.Utils
             var r = new RectangleF(0.5f, 0.5f, Width - 1.5f, Height - 2.5f);
             // Única sombra del sistema: 1 px suave bajo la tarjeta (0 1px 2px rgba(0,0,0,.08))
             using (var sombra = Forma.Continua(new RectangleF(r.X, r.Y + 1.5f, r.Width, r.Height), Radio))
-            using (var bs = new SolidBrush(Color.FromArgb(18, 0, 0, 0)))
+            using (var bs = new SolidBrush(Color.FromArgb(14, 0, 0, 0)))
                 g.FillPath(bs, sombra);
             using (var path = Forma.Continua(r, Radio))
             using (var fondo = new SolidBrush(BackColor))

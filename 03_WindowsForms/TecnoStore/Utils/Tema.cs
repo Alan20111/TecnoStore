@@ -9,61 +9,78 @@ namespace TecnoStore.Utils
 {
     /// <summary>
     /// Sistema de diseño de TecnoStore (ver 01_Documentacion/GuiaDiseno.md):
-    ///  - Perplexity: lienzo pergamino cálido, tinta, línea de lápiz y verde
-    ///    azulado SOLO para navegación y selección.
-    ///  - Brex: tipografía compacta y un solo naranja SOLO para la acción principal.
-    ///  - Apple: esquinas continuas, animaciones con resorte, presión visible,
-    ///    barras de desplazamiento delgadas superpuestas.
+    /// monocromático, al estilo de shadcn/ui. Lienzo gris claro, tarjetas blancas
+    /// con línea fina y radio 24, botones y campos en píldora de radio 18, texto
+    /// en tinta. El rojo es el único color y solo aparece en errores y en acciones
+    /// que eliminan o cancelan. Encima, tamaños grandes: letras, botones y filas.
     /// Se aplica en tiempo de ejecución a cualquier formulario, así los
     /// .Designer.cs siguen siendo editables en Visual Studio.
     /// </summary>
     public static class Tema
     {
-        // ---- Color ----
-        public static readonly Color Fondo = Color.FromArgb(250, 248, 245);        // pergamino
-        public static readonly Color Tarjeta = Color.FromArgb(253, 251, 250);      // papel
-        public static readonly Color Lateral = Color.FromArgb(243, 240, 234);      // barra lateral
-        public static readonly Color Linea = Color.FromArgb(209, 209, 205);        // línea de lápiz
-        public static readonly Color LineaSuave = Color.FromArgb(231, 228, 222);
-        public static readonly Color Ceniza = Color.FromArgb(146, 145, 139);
-        public static readonly Color TextoSuave = Color.FromArgb(114, 112, 107);   // grafito
-        public static readonly Color Texto = Color.FromArgb(39, 37, 30);           // tinta
-        public static readonly Color Navegacion = Color.FromArgb(1, 106, 113);     // verde azulado
-        public static readonly Color NavegacionSuave = Color.FromArgb(229, 240, 241);
-        public static readonly Color Accion = Color.FromArgb(255, 89, 0);          // brasa
-        public static readonly Color AccionHover = Color.FromArgb(232, 81, 0);
-        public static readonly Color Carbon = Color.FromArgb(21, 25, 30);          // barra de título
-        public static readonly Color Verde = Color.FromArgb(47, 158, 90);
-        public static readonly Color Rojo = Color.FromArgb(214, 64, 47);
-        public static readonly Color Ambar = Color.FromArgb(183, 121, 31);
-
-        // Compatibilidad con pantallas anteriores
-        public static Color Acento => Navegacion;
-        public static Color Borde => LineaSuave;
-        public static Color Seleccion => NavegacionSuave;
-        public static Color LateralActivo => Navegacion;
+        // ---- Color (tres tonos de superficie, tinta y un solo rojo) ----
+        public static readonly Color Fondo = Color.FromArgb(245, 245, 245);        // canvas
+        public static readonly Color Tarjeta = Color.White;                        // paper
+        public static readonly Color Lateral = Color.FromArgb(250, 250, 250);      // surface alt
+        public static readonly Color Linea = Color.FromArgb(229, 229, 229);        // hairline
+        public static readonly Color LineaSuave = Linea;
+        public static readonly Color Anillo = Color.FromArgb(115, 115, 115);       // foco (más visible que la línea fina)
+        public static readonly Color Ceniza = Color.FromArgb(163, 163, 163);       // solo lo deshabilitado
+        public static readonly Color TextoSuave = Color.FromArgb(115, 115, 115);   // mid gray
+        public static readonly Color Texto = Color.FromArgb(10, 10, 10);           // ink
+        public static readonly Color Navegacion = Color.FromArgb(23, 23, 23);      // ink soft: dónde estás
+        public static readonly Color NavegacionSuave = Color.FromArgb(245, 245, 245);
+        public static readonly Color Accion = Color.FromArgb(10, 10, 10);          // botón principal
+        public static readonly Color AccionHover = Color.FromArgb(38, 38, 38);
+        public static readonly Color Carbon = Color.White;                         // barra de título
+        public static readonly Color Verde = TextoSuave;                           // "todo bien" no necesita color
+        public static readonly Color Ambar = Texto;                                // "ojo": tinta, más fuerte que el gris
+        public static readonly Color Rojo = Color.FromArgb(231, 0, 11);            // ember: errores y eliminar
+        public static readonly Color ErrorFondo = Color.FromArgb(255, 245, 245);
 
         // ---- Tipografía: Segoe UI Variable en Windows 11, Segoe UI en Windows 10 ----
-        private static readonly string Familia = Existe("Segoe UI Variable Text") ? "Segoe UI Variable Text" : "Segoe UI";
-        private static readonly string FamiliaDisplay = Existe("Segoe UI Variable Display") ? "Segoe UI Variable Display" : "Segoe UI";
-        private static readonly string FamiliaFuerte = Existe("Segoe UI Variable Display Semib") ? "Segoe UI Variable Display Semib"
+        // (Geist o Inter si la PC las tiene instaladas, que es la letra del estilo)
+        private static readonly string Familia = Existe("Geist") ? "Geist" : Existe("Inter") ? "Inter" : Existe("Segoe UI Variable Text") ? "Segoe UI Variable Text" : "Segoe UI";
+        private static readonly string FamiliaDisplay = Existe("Geist") ? "Geist" : Existe("Inter") ? "Inter" : Existe("Segoe UI Variable Display") ? "Segoe UI Variable Display" : "Segoe UI";
+        private static readonly string FamiliaFuerte = Existe("Geist SemiBold") ? "Geist SemiBold" : Existe("Inter SemiBold") ? "Inter SemiBold" : Existe("Segoe UI Variable Display Semib") ? "Segoe UI Variable Display Semib"
                                                      : Existe("Segoe UI Semibold") ? "Segoe UI Semibold" : "Segoe UI";
-        public static readonly Font Fuente = new Font(Familia, 9.75F);
-        public static readonly Font FuentePequena = new Font(Familia, 8.75F);
-        public static readonly Font FuenteNegrita = new Font(FamiliaFuerte, 9.75F);
-        public static readonly Font FuenteTitulo = new Font(FamiliaFuerte, 18F);
+        // Letras grandes: se leen de lejos
+        public static readonly Font Fuente = new Font(Familia, 11F);
+        public static readonly Font FuentePequena = new Font(Familia, 9.5F);
+        public static readonly Font FuenteNegrita = new Font(FamiliaFuerte, 11F);
+        public static readonly Font FuenteBoton = new Font(FamiliaFuerte, 11.5F);
+        public static readonly Font FuenteCampo = new Font(Familia, 13F);
+        public static readonly Font FuenteSubtitulo = new Font(FamiliaFuerte, 14F);
+        public static readonly Font FuenteTitulo = new Font(FamiliaFuerte, 20F);
         public static readonly Font FuenteKpi = new Font(FamiliaFuerte, 20F);
+        public static readonly Font FuenteCifra = new Font(FamiliaFuerte, 28F);
+        public static readonly Font FuenteTotal = new Font(FamiliaFuerte, 34F);
         public static readonly Font FuenteDisplay = new Font(FamiliaDisplay, 15F);
+
+        // Fuente de íconos de Windows (Segoe Fluent Icons en 11, MDL2 Assets en 10); null si no hay
+        private static readonly string FamiliaIconos = Existe("Segoe Fluent Icons") ? "Segoe Fluent Icons"
+                                                     : Existe("Segoe MDL2 Assets") ? "Segoe MDL2 Assets" : null;
+        private static readonly System.Collections.Generic.Dictionary<float, Font> iconos = new System.Collections.Generic.Dictionary<float, Font>();
+        public static Font FuenteIconos(float tamano)
+        {
+            if (FamiliaIconos == null) return null;
+            Font f;
+            if (!iconos.TryGetValue(tamano, out f)) iconos[tamano] = f = new Font(FamiliaIconos, tamano);
+            return f;
+        }
+
+        /// <summary>Alto de botones: cómodo para el dedo y el mouse (44 px como mínimo en Apple; aquí 48).</summary>
+        public const int AltoBoton = 48;
 
         private static bool Existe(string familia) =>
             FontFamily.Families.Any(f => string.Equals(f.Name, familia, StringComparison.OrdinalIgnoreCase));
 
         // ---- Forma ----
-        public const int RadioTarjeta = 16, RadioCampo = 12, RadioBoton = 12, RadioNav = 10;
+        public const int RadioTarjeta = 24, RadioCampo = 18, RadioBoton = 18, RadioNav = 18;
 
-        // Botones con la acción principal de su pantalla (la brasa)
+        // Botones con la acción principal de su pantalla (tinta sobre blanco)
         private static readonly string[] Primarios =
-            { "btnGuardar", "btnIngresar", "btnBuscar", "btnRegistrar", "btnGenerar", "btnAplicar", "btnAgregar" };
+            { "btnGuardar", "btnIngresar", "btnRegistrar", "btnAplicarStock", "btnNuevo", "btnCobrar", "btnRecibir", "btnSiguiente" };
 
         public static void Aplicar(Control raiz)
         {
@@ -74,6 +91,14 @@ namespace TecnoStore.Utils
                 f.ForeColor = Texto;
             }
             foreach (Control c in raiz.Controls) Estilo(c);
+        }
+
+        /// <summary>Un campo va en gris sobre una superficie blanca y en blanco sobre el lienzo gris.</summary>
+        public static Color FondoCampo(Control c)
+        {
+            var p = c.Parent;
+            while (p is Caja) p = p.Parent;
+            return p != null && p.BackColor.ToArgb() == Tarjeta.ToArgb() ? Fondo : Tarjeta;
         }
 
         private static void Estilo(Control c)
@@ -87,18 +112,22 @@ namespace TecnoStore.Utils
                     Tabla(g);
                     break;
                 case TextBox t:
-                    t.BorderStyle = BorderStyle.FixedSingle;
-                    t.BackColor = Tarjeta;
-                    t.Font = Fuente;
+                    t.BorderStyle = t.Parent is Caja ? BorderStyle.None : BorderStyle.FixedSingle;
+                    t.BackColor = FondoCampo(t);
+                    t.Font = FuenteCampo;
                     break;
                 case ComboBox cb:
                     cb.FlatStyle = FlatStyle.Flat;
-                    cb.BackColor = Tarjeta;
-                    cb.Font = Fuente;
+                    cb.BackColor = FondoCampo(cb);
+                    cb.Font = FuenteCampo;
                     break;
                 case NumericUpDown n:
-                    n.BorderStyle = BorderStyle.FixedSingle;
-                    n.BackColor = Tarjeta;
+                    n.BorderStyle = n.Parent is Caja ? BorderStyle.None : BorderStyle.FixedSingle;
+                    n.BackColor = FondoCampo(n);
+                    n.Font = FuenteCampo;
+                    break;
+                case DateTimePicker dt:
+                    dt.Font = FuenteCampo;
                     break;
                 case CheckBox ch:
                     ch.FlatStyle = FlatStyle.Flat;
@@ -129,7 +158,7 @@ namespace TecnoStore.Utils
         // ================= Botones dibujados (esquina continua + animación) =================
         private class EstadoBoton
         {
-            public bool Primario;
+            public bool Primario, Peligro;
             public double Hover;       // 0 → 1, se anima
             public bool Presionado;
             public bool Teclado;       // el foco llegó con Tab, no con el mouse
@@ -138,7 +167,8 @@ namespace TecnoStore.Utils
 
         public static void Boton(Button b, bool primario)
         {
-            if (b.Tag is EstadoBoton) return;
+            if (b is BotonGrande) return;   // se dibuja solo
+            if (b.Tag is EstadoBoton ya) { ya.Primario |= primario; b.Invalidate(); return; }
             var st = new EstadoBoton { Primario = primario };
             b.Tag = st;
             b.FlatStyle = FlatStyle.Flat;
@@ -146,9 +176,9 @@ namespace TecnoStore.Utils
             b.FlatAppearance.MouseOverBackColor = Color.Transparent;
             b.FlatAppearance.MouseDownBackColor = Color.Transparent;
             b.Cursor = Cursors.Hand;
-            b.Font = primario ? FuenteNegrita : Fuente;
+            b.Font = FuenteBoton;
             b.UseVisualStyleBackColor = false;
-            if (b.Height < 32) b.Height = 32;
+            if (b.Height < AltoBoton) b.Height = AltoBoton;
 
             // Transición de color al entrar/salir (no un salto brusco)
             void AnimarHover(double destino)
@@ -168,6 +198,14 @@ namespace TecnoStore.Utils
             b.Paint += PintarBoton;
         }
 
+        /// <summary>Acción que deshace o elimina: letra roja, sin relleno.</summary>
+        public static void Peligro(Button b)
+        {
+            Boton(b, false);
+            ((EstadoBoton)b.Tag).Peligro = true;
+            b.Invalidate();
+        }
+
         private static void PintarBoton(object sender, PaintEventArgs e)
         {
             var b = (Button)sender;
@@ -178,16 +216,20 @@ namespace TecnoStore.Utils
             g.Clear(b.Parent?.BackColor ?? Fondo);
 
             Color fondo, texto, borde;
-            if (!b.Enabled) { fondo = Color.FromArgb(242, 240, 236); texto = Ceniza; borde = LineaSuave; }
+            Color atras = b.Parent?.BackColor ?? Fondo;
+            bool sobreBlanco = atras.ToArgb() == Tarjeta.ToArgb();
+            if (!b.Enabled) { fondo = sobreBlanco ? Fondo : Lateral; texto = Ceniza; borde = sobreBlanco ? fondo : Linea; }
             else if (st.Primario)
             {
                 fondo = Animacion.Mezclar(Accion, AccionHover, st.Hover);
-                texto = Color.White; borde = fondo;
+                texto = Lateral; borde = fondo;
             }
             else
             {
-                fondo = Animacion.Mezclar(Tarjeta, Color.FromArgb(245, 242, 237), st.Hover);
-                texto = Texto; borde = Animacion.Mezclar(Linea, Color.FromArgb(189, 188, 182), st.Hover);
+                // Sobre una tarjeta: gris sin borde. Sobre el lienzo: papel con línea fina.
+                fondo = sobreBlanco ? Animacion.Mezclar(Fondo, Linea, st.Hover) : Animacion.Mezclar(Tarjeta, Lateral, st.Hover);
+                texto = st.Peligro ? Rojo : Texto;
+                borde = sobreBlanco ? fondo : Animacion.Mezclar(Linea, Color.FromArgb(212, 212, 212), st.Hover);
             }
 
             // Al presionar se "hunde" 1 px y se oscurece un poco (equivale a la escala 0.97 de iOS)
@@ -200,12 +242,9 @@ namespace TecnoStore.Utils
             {
                 g.FillPath(relleno, path);
                 if (!st.Primario || !b.Enabled) g.DrawPath(linea, path);
-                if (st.Primario && b.Enabled)   // brillo superior sutil
-                    using (var brillo = new Pen(Color.FromArgb(55, 255, 255, 255)))
-                        g.DrawLine(brillo, r.Left + RadioBoton, r.Top + 1, r.Right - RadioBoton, r.Top + 1);
             }
             if (b.Focused && b.FindForm()?.ActiveControl == b && (Control.ModifierKeys & Keys.Alt) == 0 && st.Teclado)   // anillo de foco (solo al navegar con teclado)
-                using (var anillo = new Pen(Color.FromArgb(90, Navegacion), 2f))
+                using (var anillo = new Pen(Anillo, 2f))
                 using (var p2 = Forma.Continua(new RectangleF(1, 1, b.Width - 3, b.Height - 3), RadioBoton + 1))
                     g.DrawPath(anillo, p2);
 
@@ -218,26 +257,28 @@ namespace TecnoStore.Utils
         {
             g.BorderStyle = BorderStyle.None;
             g.BackgroundColor = Tarjeta;
-            g.GridColor = Color.FromArgb(241, 238, 233);
+            g.GridColor = Fondo;
             g.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
             g.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
             g.EnableHeadersVisualStyles = false;
             g.ColumnHeadersDefaultCellStyle.BackColor = Tarjeta;
             g.ColumnHeadersDefaultCellStyle.ForeColor = TextoSuave;
             g.ColumnHeadersDefaultCellStyle.Font = Fuente;
+            g.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.False;
+            g.DefaultCellStyle.WrapMode = DataGridViewTriState.False;
             g.ColumnHeadersDefaultCellStyle.SelectionBackColor = Tarjeta;
-            g.ColumnHeadersDefaultCellStyle.Padding = new Padding(6, 0, 6, 0);
+            g.ColumnHeadersDefaultCellStyle.Padding = new Padding(8, 0, 8, 0);
             g.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            g.ColumnHeadersHeight = 38;
+            g.ColumnHeadersHeight = g.Name == "compacta" ? 36 : 44;
             g.RowHeadersVisible = false;
-            g.RowTemplate.Height = 32;
+            g.RowTemplate.Height = g.Name == "compacta" ? 34 : 46;
             g.DefaultCellStyle.BackColor = Tarjeta;
             g.DefaultCellStyle.Font = Fuente;
             g.DefaultCellStyle.ForeColor = Texto;
-            g.DefaultCellStyle.Padding = new Padding(6, 0, 6, 0);
+            g.DefaultCellStyle.Padding = new Padding(8, 0, 8, 0);
             g.DefaultCellStyle.SelectionBackColor = NavegacionSuave;
             g.DefaultCellStyle.SelectionForeColor = Texto;
-            g.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(249, 247, 243);
+            g.AlternatingRowsDefaultCellStyle.BackColor = Tarjeta;
             BarraDelgada.Instalar(g);
         }
     }

@@ -35,6 +35,10 @@ namespace TecnoStore.Utils
         public static void Info(string msg, string titulo = "TecnoStore") =>
             MessageBox.Show(msg, titulo, MessageBoxButtons.OK, MessageBoxIcon.Information);
 
+        /// <summary>Aviso breve que no interrumpe (la ventana principal lo muestra y se va solo).</summary>
+        public static Action<string> MostrarAviso;
+        public static void Aviso(string msg) { if (MostrarAviso != null) MostrarAviso(msg); else Info(msg); }
+
         public static bool Confirmar(string msg, string titulo = "Confirmar") =>
             MessageBox.Show(msg, titulo, MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
 
@@ -43,8 +47,14 @@ namespace TecnoStore.Utils
         {
             bool vacio = c is ComboBox cb ? cb.SelectedItem == null : string.IsNullOrWhiteSpace(c.Text);
             ep.SetError(c, vacio ? mensaje : "");
-            c.BackColor = vacio ? Color.MistyRose : SystemColors.Window;
+            c.BackColor = vacio ? Tema.ErrorFondo : Tema.FondoCampo(c);
             return !vacio;
+        }
+
+        /// <summary>Quita las marcas de error de varios controles.</summary>
+        public static void SinErrores(ErrorProvider ep, params Control[] controles)
+        {
+            foreach (var c in controles) { ep.SetError(c, ""); if (c is TextBox || c is ComboBox) c.BackColor = Tema.FondoCampo(c); }
         }
 
         /// <summary>Formato estándar para los DataGridView de solo lectura.</summary>
@@ -55,10 +65,18 @@ namespace TecnoStore.Utils
             g.AllowUserToDeleteRows = false;
             g.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             g.MultiSelect = false;
-            g.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
+            g.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+            g.SizeChanged += (s, e) => Repartir(g);   // ocupa todo el ancho, sin barra horizontal
             g.RowHeadersWidth = 24;
             g.BackgroundColor = SystemColors.Window;
+            g.AllowUserToResizeRows = false;
             g.DataBindingComplete += (s, e) => Formatear(g);
+            g.Paint += (s, e) =>   // estado vacío
+            {
+                if (g.Rows.Count > 0) return;
+                TextRenderer.DrawText(e.Graphics, "No hay nada que mostrar", Tema.FuenteSubtitulo, g.ClientRectangle, Tema.Ceniza,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            };
         }
 
         /// <summary>
@@ -85,6 +103,10 @@ namespace TecnoStore.Utils
             ["unidades_vendidas"] = "Unidades", ["utilidad_bruta"] = "Utilidad", ["stock"] = "Stock", ["minimo"] = "Mínimo",
         };
 
+        // Columnas de texto largo: se llevan el espacio que sobra
+        private static readonly System.Collections.Generic.HashSet<string> Anchas = new System.Collections.Generic.HashSet<string>
+            { "nombre", "producto", "cliente", "razon_social", "equipo_descripcion", "concepto", "correo", "empleado", "proveedor", "categoria", "campo2", "proveedor_sugerido" };
+
         /// <summary>Encabezados legibles y formato de moneda/fecha según el nombre de columna.</summary>
         public static void Formatear(DataGridView g)
         {
@@ -99,7 +121,7 @@ namespace TecnoStore.Utils
                 if (oculta) { col.Visible = false; continue; }
                 col.Visible = true;
                 int i = claves?.IndexOf(n) ?? -1;
-                if (i >= 0) col.DisplayIndex = Math.Min(i, g.Columns.Count - 1);
+                col.Tag = Anchas.Contains(n) ? 240 : n.Contains("fecha") || n == "motivo" || n.StartsWith("valor_") ? 150 : n == "importe" || n == "subtotal" || n.Contains("total") ? 125 : 100;
                 string propio = i >= 0 && mostrar[i].Contains("=") ? mostrar[i].Split('=')[1] : null;
                 string conocido;
                 col.HeaderText = propio ?? (Encabezados.TryGetValue(n, out conocido) ? conocido : Titulo(col.DataPropertyName));
@@ -112,6 +134,31 @@ namespace TecnoStore.Utils
                 }
                 else if (n.Contains("fecha") || n == "registro" || n.Contains("hasta"))
                     col.DefaultCellStyle.Format = n.Contains("fecha") && n != "fecha_fin" ? "dd/MM/yyyy HH:mm" : "dd/MM/yyyy";
+            }
+            // El orden pedido, de izquierda a derecha (de una en una para que no se empujen entre sí)
+            if (claves != null)
+                for (int i = 0, destino = 0; i < claves.Count; i++)
+                {
+                    var col = g.Columns.Cast<DataGridViewColumn>().FirstOrDefault(c => c.DataPropertyName.ToLowerInvariant() == claves[i]);
+                    if (col != null) col.DisplayIndex = destino++;
+                }
+            Repartir(g);
+        }
+
+        /// <summary>Reparte el ancho de la tabla entre las columnas visibles según su peso.</summary>
+        private static void Repartir(DataGridView g)
+        {
+            var cols = g.Columns.Cast<DataGridViewColumn>().Where(c => c.Visible).OrderBy(c => c.DisplayIndex).ToList();
+            int ancho = g.ClientSize.Width - (g.RowHeadersVisible ? g.RowHeadersWidth : 0) - 2;
+            if (cols.Count == 0 || ancho < 50) return;
+            float total = cols.Sum(c => c.Tag is int ? (int)c.Tag : 100);
+            int usado = 0;
+            for (int i = 0; i < cols.Count; i++)
+            {
+                int w = i == cols.Count - 1 ? ancho - usado : (int)(ancho * (cols[i].Tag is int ? (int)cols[i].Tag : 100) / total);
+                cols[i].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+                cols[i].Width = Math.Max(30, w);
+                usado += w;
             }
         }
 

@@ -8,53 +8,54 @@ using TecnoStore.Utils;
 namespace TecnoStore.Forms
 {
     /// <summary>
-    /// Módulo 7 · Proveedores: CRUD con usp_ProveedorGuardar y sus relaciones
-    /// (productos que surte por la tabla N:M ProductoProveedor y compras).
-    /// Supervisor y Administrador modifican; los demás consultan.
+    /// Módulo 7 · Proveedores: lista con buscador; la ficha muestra sus datos y
+    /// los productos que surte (tabla N:M ProductoProveedor). usp_ProveedorGuardar.
     /// </summary>
-    public partial class FrmProveedores : Form
+    public partial class FrmProveedores : Form, IRefrescable
     {
         private int? idActual;
-        private bool editando;
+        private readonly Ficha ficha;
+        private readonly PanelCampos campos;
+        private readonly Panel zonaProductos;
 
         public FrmProveedores()
         {
             InitializeComponent();
+            bool puede = Db.Sesion.Puede(Capacidad.GuardarProveedor);
             Ui.Grid(dgvProveedores);
             Ui.Grid(dgvProductos);
-            Ui.Mostrar(dgvProveedores, "razon_social", "rfc", "telefono", "productos=Productos");
+            Ui.Mostrar(dgvProveedores, "razon_social", "telefono", "correo", "productos=Productos");
             Ui.Mostrar(dgvProductos, "nombre=Producto", "costo_proveedor", "stock_actual");
-            btnNuevo.Visible = btnEditar.Visible = btnGuardar.Visible = btnCancelar.Visible = Db.Sesion.Puede(Capacidad.GuardarProveedor);
+
+            btnNuevo.Text = "Nuevo proveedor";
+            btnEditar.Text = "Abrir";
+            btnCancelar.Text = puede ? "Cancelar" : "Cerrar";
+            Sencillo.Vaciar(this);
+            Sencillo.Pista(txtBuscar, "Buscar proveedor…");
+            Sencillo.BuscarAlEscribir(txtBuscar, Buscar);
+            Sencillo.Barra(pnlFiltros, new Control[] { txtBuscar }, puede ? new[] { btnNuevo, btnEditar } : new[] { btnEditar });
+            Sencillo.Armar(this, dgvProveedores, pnlFiltros);
+            Sencillo.Abrir(dgvProveedores, Abrir, btnEditar);
+
+            chkActivo.Text = "Proveedor activo";
+            campos = new PanelCampos(1, new Campo("Razón social *", txtRazonSocial), new Campo("RFC *", txtRfc),
+                new Campo("Correo", txtCorreo), new Campo("Teléfono", txtTelefono), new Campo(null, chkActivo)) { Enabled = puede };
+            zonaProductos = Sencillo.EnTarjeta(dgvProductos, "Productos que surte");
+            ficha = new Ficha(980, 580, Sencillo.DosZonas(campos, 360, zonaProductos), puede ? btnGuardar : null, btnCancelar);
+            Disposed += (s, e) => ficha.Dispose();
         }
 
-        private void FrmProveedores_Load(object sender, EventArgs e) { Buscar(); Estado(false); }
+        private void FrmProveedores_Load(object sender, EventArgs e) => Buscar();
+        public void Refrescar() => Buscar();
 
         private void Buscar()
         {
-            try
-            {
-                dgvProveedores.DataSource = ProveedorRepository.Buscar(txtBuscar.Text);
-                lblConteo.Text = dgvProveedores.Rows.Count + " proveedor(es)";
-            }
+            try { dgvProveedores.DataSource = ProveedorRepository.Buscar(txtBuscar.Text); }
             catch (Exception ex) { Ui.Error(ex); }
         }
 
-        private void Estado(bool edicion)
+        private void Abrir()
         {
-            editando = edicion;
-            bool puede = Db.Sesion.Puede(Capacidad.GuardarProveedor);
-            grpDatos.Enabled = edicion;
-            btnNuevo.Enabled = !edicion && puede;
-            btnEditar.Enabled = !edicion && puede && idActual != null;
-            btnGuardar.Enabled = edicion;
-            btnCancelar.Enabled = edicion;
-            dgvProveedores.Enabled = !edicion;
-            grpDatos.Text = !edicion ? "Datos del proveedor (lectura)" : idActual == null ? "Nuevo proveedor" : "Editando proveedor";
-        }
-
-        private void dgvProveedores_SelectionChanged(object sender, EventArgs e)
-        {
-            if (editando || dgvProveedores.CurrentRow == null) return;
             var r = dgvProveedores.CurrentRow;
             idActual = (int)r.Cells["id_proveedor"].Value;
             txtRazonSocial.Text = Convert.ToString(r.Cells["razon_social"].Value);
@@ -62,46 +63,36 @@ namespace TecnoStore.Forms
             txtCorreo.Text = Convert.ToString(r.Cells["correo"].Value);
             txtTelefono.Text = Convert.ToString(r.Cells["telefono"].Value);
             chkActivo.Checked = (bool)r.Cells["activo"].Value;
-            try
-            {
-                dgvProductos.DataSource = ProveedorRepository.ProductosQueSurte(idActual.Value);
-                grpProductos.Text = "Productos que surte (" + dgvProductos.Rows.Count + ")";
-            }
-            catch (Exception ex) { Ui.Error(ex); }
-            Estado(false);
+            try { dgvProductos.DataSource = ProveedorRepository.ProductosQueSurte(idActual.Value); }
+            catch (Exception ex) { Ui.Error(ex); return; }
+            MostrarFicha(txtRazonSocial.Text);
         }
-
-        private void dgvProveedores_RowPrePaint(object sender, DataGridViewRowPrePaintEventArgs e)
-        {
-            var row = dgvProveedores.Rows[e.RowIndex];
-            if (!(bool)row.Cells["activo"].Value) row.DefaultCellStyle.ForeColor = SystemColors.GrayText;
-        }
-
-        private void btnBuscar_Click(object sender, EventArgs e) => Buscar();
-        private void txtBuscar_KeyDown(object sender, KeyEventArgs e) { if (e.KeyCode == Keys.Enter) Buscar(); }
 
         private void btnNuevo_Click(object sender, EventArgs e)
         {
             idActual = null;
             txtRazonSocial.Clear(); txtRfc.Clear(); txtCorreo.Clear(); txtTelefono.Clear(); chkActivo.Checked = true;
-            dgvProductos.DataSource = null;
-            Estado(true);
-            txtRazonSocial.Focus();
+            MostrarFicha("Nuevo proveedor");
         }
 
-        private void btnEditar_Click(object sender, EventArgs e) { Estado(true); txtRazonSocial.Focus(); }
-
-        private void btnCancelar_Click(object sender, EventArgs e)
+        private void MostrarFicha(string titulo)
         {
-            errorProvider.Clear();
-            Estado(false);
-            dgvProveedores_SelectionChanged(null, null);
+            Ui.SinErrores(errorProvider, txtRazonSocial, txtRfc);
+            campos.Mostrar(chkActivo, idActual != null);
+            zonaProductos.Visible = idActual != null;
+            ficha.Abrir(this, titulo);
+        }
+
+        private void dgvProveedores_RowPrePaint(object sender, DataGridViewRowPrePaintEventArgs e)
+        {
+            var row = dgvProveedores.Rows[e.RowIndex];
+            if (!(bool)row.Cells["activo"].Value) row.DefaultCellStyle.ForeColor = Tema.Ceniza;
         }
 
         private void btnGuardar_Click(object sender, EventArgs e)
         {
-            bool ok = Ui.Requerido(txtRazonSocial, errorProvider, "Obligatorio")
-                    & Ui.Requerido(txtRfc, errorProvider, "Obligatorio");
+            bool ok = Ui.Requerido(txtRazonSocial, errorProvider, "Falta la razón social")
+                    & Ui.Requerido(txtRfc, errorProvider, "Falta el RFC");
             if (ok && txtRfc.Text.Trim().Length < 12) { errorProvider.SetError(txtRfc, "El RFC tiene 12 o 13 caracteres"); ok = false; }
             if (!ok) return;
             btnGuardar.Enabled = false;
@@ -109,11 +100,12 @@ namespace TecnoStore.Forms
             {
                 bool nuevo = idActual == null;
                 ProveedorRepository.Guardar(idActual, txtRazonSocial.Text, txtRfc.Text, txtCorreo.Text.Trim(), txtTelefono.Text.Trim(), chkActivo.Checked);
-                Ui.Info(nuevo ? "Proveedor registrado." : "Cambios guardados.");
-                Estado(false);
+                ficha.Listo();
+                Ui.Aviso(nuevo ? "Proveedor registrado" : "Cambios guardados");
                 Buscar();
             }
-            catch (Exception ex) { Ui.Error(ex, "No se guardó"); btnGuardar.Enabled = true; }
+            catch (Exception ex) { Ui.Error(ex, "No se guardó"); }
+            finally { btnGuardar.Enabled = true; }
         }
     }
 }

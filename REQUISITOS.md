@@ -112,7 +112,7 @@ Mapa de cada requisito del [documento del proyecto](<Contexto/ProyectoFinal8Sema
 | REVOKE | [demostración](02_SQL/07_Seguridad.sql#L135) |
 | Sin db_owner | [administrador por esquema](02_SQL/07_Seguridad.sql#L128) |
 | EXECUTE AS / REVERT | [demostraciones](02_SQL/07_Seguridad.sql#L197) |
-| La interfaz sigue los permisos | [usp_PermisosApp](02_SQL/07_Seguridad.sql#L152) (EXECUTE AS USER + HAS_PERMS_BY_NAME) → [CargarPermisos](03_WindowsForms/TecnoStore/Data/Repositorios.cs#L39) · [Guía de diseño §4](01_Documentacion/GuiaDiseno.md) |
+| La interfaz sigue los permisos | [usp_PermisosApp](02_SQL/07_Seguridad.sql#L152) (EXECUTE AS USER + HAS_PERMS_BY_NAME) → [CargarPermisos](03_WindowsForms/TecnoStore/Data/Repositorios.cs#L39) · [Guía de diseño §3](01_Documentacion/GuiaDiseno.md) |
 | Login de la app con hash | [usp_Login](02_SQL/08_StoredProcedures.sql#L34) |
 
 ## 9 · Transacciones — [11_Transacciones.sql](02_SQL/11_Transacciones.sql)
@@ -178,14 +178,14 @@ Todos funcionan con varias filas (`inserted`/`deleted` como conjuntos).
 | # | Módulo | Formulario | |
 |---|---|---|---|
 | 1 | Acceso / sesión | [FrmLogin](03_WindowsForms/TecnoStore/Forms/FrmLogin.cs) | ✅ |
-| 2 | Panel principal por perfil (barra lateral) y Dashboard | [FrmPrincipal](03_WindowsForms/TecnoStore/Forms/FrmPrincipal.cs), [FrmDashboard](03_WindowsForms/TecnoStore/Forms/FrmDashboard.cs) | ✅ |
+| 2 | Ventana principal por perfil, Inicio con botones grandes y Resumen (KPIs y gráficas) | [FrmPrincipal](03_WindowsForms/TecnoStore/Forms/FrmPrincipal.cs), [FrmInicio](03_WindowsForms/TecnoStore/Forms/FrmInicio.cs), [FrmDashboard](03_WindowsForms/TecnoStore/Forms/FrmDashboard.cs) | ✅ |
 | 3–5 | Catálogos: Categorías, Marcas, Tipos de servicio (CRUD con INSERT/UPDATE/DELETE parametrizados) | [FrmCatalogo](03_WindowsForms/TecnoStore/Forms/FrmCatalogo.cs) · [CatalogoCrudRepository](03_WindowsForms/TecnoStore/Data/RepositoriosAdmin.cs#L18) | ✅ |
 | 6 | Clientes CRUD + historial | [FrmClientes](03_WindowsForms/TecnoStore/Forms/FrmClientes.cs) | ✅ |
 | 7 | Proveedores (CRUD + productos que surte) | [FrmProveedores](03_WindowsForms/TecnoStore/Forms/FrmProveedores.cs) | ✅ |
 | 8 | Productos CRUD + filtros | [FrmProductos](03_WindowsForms/TecnoStore/Forms/FrmProductos.cs) | ✅ |
-| 9 | Proceso principal (venta) | [FrmVenta](03_WindowsForms/TecnoStore/Forms/FrmVenta.cs) | ✅ |
+| 9 | Proceso principal (venta) | [FrmVenta](03_WindowsForms/TecnoStore/Forms/FrmVenta.cs), [FrmCobrar](03_WindowsForms/TecnoStore/Forms/FrmCobrar.cs) | ✅ |
 | 10 | Proceso secundario (órdenes de taller) | [FrmOrdenes](03_WindowsForms/TecnoStore/Forms/FrmOrdenes.cs) | ✅ |
-| 11 | Cancelaciones / ajustes | [FrmHistorialVentas](03_WindowsForms/TecnoStore/Forms/FrmHistorialVentas.cs#L59), [FrmAjusteStock](03_WindowsForms/TecnoStore/Forms/FrmAjusteStock.cs) | ✅ |
+| 11 | Cancelaciones / ajustes | [FrmHistorialVentas](03_WindowsForms/TecnoStore/Forms/FrmHistorialVentas.cs#L92), [FrmAjusteStock](03_WindowsForms/TecnoStore/Forms/FrmAjusteStock.cs) | ✅ |
 | 12 | Historial con filtros | [FrmHistorialVentas](03_WindowsForms/TecnoStore/Forms/FrmHistorialVentas.cs) | ✅ |
 | 13 | Reportes (5) | [FrmReportes](03_WindowsForms/TecnoStore/Forms/FrmReportes.cs) | ✅ |
 | 14 | Administración: usuarios y roles, auditoría | [FrmUsuarios](03_WindowsForms/TecnoStore/Forms/FrmUsuarios.cs), [FrmAuditoria](03_WindowsForms/TecnoStore/Forms/FrmAuditoria.cs) | ✅ |
@@ -203,7 +203,7 @@ Todos funcionan con varias filas (`inserted`/`deleted` como conjuntos).
 | ≥ 4 SP consumidos | 11 (ver tabla de la sección 10) |
 | ≥ 3 vistas consumidas | vw_ProductosActivos, vw_VentaCompleta, vw_OrdenServicioCompleta, vw_StockBajo, vw_TopProductos |
 | ≥ 1 función en consulta | [fn_TotalCompradoCliente en ClienteRepository](03_WindowsForms/TecnoStore/Data/Repositorios.cs#L121) |
-| Evitar doble ejecución | [btnGuardar deshabilitado](03_WindowsForms/TecnoStore/Forms/FrmVenta.cs#L94) |
+| Evitar doble ejecución | [btnCobrar deshabilitado](03_WindowsForms/TecnoStore/Forms/FrmVenta.cs#L131) |
 
 ## 14 · Reglas de negocio
 

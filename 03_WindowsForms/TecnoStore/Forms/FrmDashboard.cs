@@ -17,10 +17,10 @@ namespace TecnoStore.Forms
     /// pastel ni dona) y dos listas de "requiere atención" con 5 filas.
     /// El detalle vive en Reportes. Solo lectura; usa vistas y funciones existentes.
     /// </summary>
-    public partial class FrmDashboard : Form
+    public partial class FrmDashboard : Form, IRefrescable
     {
         private static readonly CultureInfo Mx = new CultureInfo("es-MX");
-        private static readonly Color ColumnaClara = Color.FromArgb(201, 223, 225);
+        private static readonly Color ColumnaClara = Color.FromArgb(212, 212, 212);
 
         private Chart chtIngresos, chtCategorias;
         private DataGridView dgvAlertas, dgvOrdenes;
@@ -30,11 +30,13 @@ namespace TecnoStore.Forms
         public FrmDashboard()
         {
             InitializeComponent();
+            AutoScaleMode = AutoScaleMode.None;
+            BackColor = Tema.Fondo;
             Construir();
         }
 
         private void FrmDashboard_Load(object sender, EventArgs e) => Cargar();
-        private void btnActualizar_Click(object sender, EventArgs e) => Cargar();
+        public void Refrescar() => Cargar();
 
         private void Construir()
         {
@@ -43,11 +45,11 @@ namespace TecnoStore.Forms
             for (int i = 0; i < 4; i++)
             {
                 var t = new Tarjeta { Dock = DockStyle.Fill, Margin = new Padding(6) };
-                var lt = new Label { Text = titulos[i], AutoSize = true, ForeColor = Tema.TextoSuave, Font = Tema.Fuente, Location = new Point(16, 14) };
+                var lt = new Label { Text = titulos[i], AutoSize = true, ForeColor = Tema.TextoSuave, Font = Tema.Fuente, Location = new Point(16, 12) };
                 kpiValor[i] = new Label { Text = "—", AutoSize = true, ForeColor = Tema.Texto, Font = Tema.FuenteKpi, Location = new Point(13, 36) };
                 kpiNota[i] = new Label { Text = "", AutoSize = true, ForeColor = Tema.TextoSuave, Font = Tema.FuentePequena, Location = new Point(16, 78) };
                 t.Controls.AddRange(new Control[] { lt, kpiValor[i], kpiNota[i] });
-                tlpDashboard.Controls.Add(t, i, 1);
+                tlpDashboard.Controls.Add(t, i, 0);
             }
 
             chtIngresos = NuevaGrafica();
@@ -60,7 +62,7 @@ namespace TecnoStore.Forms
             serie.LabelFormat = "$#,##0,K";
             serie.Font = Tema.FuentePequena;
             serie.LabelForeColor = Tema.TextoSuave;
-            AgregarAncho(Contenedor("Ingresos por mes", chtIngresos), 0, 2);
+            AgregarAncho(Contenedor("Ingresos por mes", chtIngresos), 0, 1);
 
             // Categorías en barras horizontales: se comparan mejor que en una dona
             chtCategorias = NuevaGrafica();
@@ -75,14 +77,14 @@ namespace TecnoStore.Forms
             barras.LabelFormat = "$#,##0,K";
             barras.Font = Tema.FuentePequena;
             barras.LabelForeColor = Tema.TextoSuave;
-            AgregarAncho(Contenedor("Ventas por categoría · 90 días", chtCategorias), 2, 2);
+            AgregarAncho(Contenedor("Ventas por categoría · 90 días", chtCategorias), 2, 1);
 
             dgvAlertas = NuevaTabla();
             dgvOrdenes = NuevaTabla();
             Ui.Mostrar(dgvAlertas, "producto", "stock", "minimo");
             Ui.Mostrar(dgvOrdenes, "equipo", "estado", "dias");
-            AgregarAncho(Contenedor("Requiere atención · productos por resurtir", dgvAlertas), 0, 3);
-            AgregarAncho(Contenedor("Requiere atención · equipos en el taller", dgvOrdenes), 2, 3);
+            AgregarAncho(Contenedor("Por resurtir", dgvAlertas), 0, 2);
+            AgregarAncho(Contenedor("Equipos en el taller", dgvOrdenes), 2, 2);
             dgvAlertas.RowPrePaint += (s, e) =>
             {
                 var row = dgvAlertas.Rows[e.RowIndex];
@@ -98,7 +100,7 @@ namespace TecnoStore.Forms
 
         private static Tarjeta Contenedor(string titulo, Control contenido)
         {
-            var t = new Tarjeta { Dock = DockStyle.Fill, Margin = new Padding(6), Padding = new Padding(14, 40, 14, 12) };
+            var t = new Tarjeta { Dock = DockStyle.Fill, Margin = new Padding(6), Padding = new Padding(14, 44, 14, 12) };
             t.Controls.Add(new Label { Text = titulo, AutoSize = true, Font = Tema.FuenteNegrita, ForeColor = Tema.Texto, Location = new Point(16, 13) });
             contenido.Dock = DockStyle.Fill;
             t.Controls.Add(contenido);
@@ -115,7 +117,7 @@ namespace TecnoStore.Forms
             a.AxisX.LabelStyle.Font = Tema.FuentePequena;
             a.AxisX.LabelStyle.ForeColor = Tema.TextoSuave;
             a.AxisX.Interval = 1;
-            a.AxisY.MajorGrid.LineColor = Color.FromArgb(239, 236, 230);
+            a.AxisY.MajorGrid.LineColor = Color.FromArgb(245, 245, 245);
             a.AxisY.LineColor = Tema.Tarjeta;
             a.AxisY.MajorTickMark.Enabled = false;
             a.AxisY.LabelStyle.Font = Tema.FuentePequena;
@@ -126,10 +128,9 @@ namespace TecnoStore.Forms
 
         private static DataGridView NuevaTabla()
         {
-            var g = new DataGridView();
+            var g = new DataGridView { Name = "compacta" };
             Ui.Grid(g);
             Tema.Tabla(g);
-            g.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             return g;
         }
 
@@ -138,10 +139,6 @@ namespace TecnoStore.Forms
             Cursor = Cursors.WaitCursor;
             try
             {
-                var s = Db.Sesion;
-                lblSaludo.Text = Saludo() + ", " + s.Nombre.Split(' ')[0];
-                lblFecha.Text = Mx.TextInfo.ToTitleCase(DateTime.Today.ToString("dddd d 'de' MMMM 'de' yyyy", Mx)) + " · " + s.Sucursal;
-
                 var k = DashboardRepository.Indicadores();
                 decimal ingresos = (decimal)k["ingresos_mes"], ingresosAnt = (decimal)k["ingresos_ant"];
                 int ventas = (int)k["ventas_mes"], ventasAnt = (int)k["ventas_ant"];
@@ -152,7 +149,7 @@ namespace TecnoStore.Forms
                 int agotados = (int)k["agotados"];
                 Kpi(3, (int)k["alertas_stock"], entero, agotados > 0 ? agotados + " agotado(s)" : "ninguno agotado", agotados > 0 ? Tema.Rojo : Tema.Verde);
 
-                // Ingresos por mes: meses sin ventas en 0; el actual en verde azulado
+                // Ingresos por mes: meses sin ventas en 0; el actual en tinta
                 var meses = DashboardRepository.IngresosPorMes().Rows.Cast<DataRow>()
                     .ToDictionary(r => (string)r["mes"], r => (decimal)r["ingresos"]);
                 var pts = chtIngresos.Series[0].Points;
@@ -176,7 +173,6 @@ namespace TecnoStore.Forms
 
                 dgvAlertas.DataSource = Primeras(DashboardRepository.AlertasStock(), 5);
                 dgvOrdenes.DataSource = Primeras(DashboardRepository.OrdenesAbiertas(), 5);
-                lblActualizado.Text = "Actualizado a las " + DateTime.Now.ToString("HH:mm");
             }
             catch (Exception ex) { Ui.Error(ex, "No se pudo cargar el dashboard"); }
             finally { Cursor = Cursors.Default; }
@@ -219,12 +215,6 @@ namespace TecnoStore.Forms
             if (anterior == 0) return Tuple.Create(actual > 0 ? "sin datos del periodo anterior" : "sin movimientos", Tema.TextoSuave);
             decimal pct = (actual - anterior) * 100 / anterior;
             return Tuple.Create((pct >= 0 ? "▲ " : "▼ ") + Math.Abs(pct).ToString("0.#", Mx) + " % vs. 90 días previos", pct >= 0 ? Tema.Verde : Tema.Rojo);
-        }
-
-        private static string Saludo()
-        {
-            int h = DateTime.Now.Hour;
-            return h < 12 ? "Buenos días" : h < 19 ? "Buenas tardes" : "Buenas noches";
         }
     }
 }

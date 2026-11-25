@@ -7,7 +7,7 @@ stock_antes stock_despues
 7 6
 id_detalle_venta numero_serie estado garantia_hasta
 ---------------- ------------ ------ --------------
-123 SGS-24-256-002 Vendida 2027-11-21
+123 SGS-24-256-002 Vendida 2027-11-25
 === Proceso 1 · venta fallida: la segunda línea no tiene stock
 Error capturado: Stock insuficiente para uno o más productos.
 venta
@@ -38,7 +38,7 @@ OK: la refacción no entró
 === Proceso 3 · cancelación correcta de la venta recién hecha
 folio estado fecha_cancelacion motivo_cancelacion
 ----- ------ ----------------- ------------------
-V-01046 Cancelada 2026-11-21 06:17:36.8291682 Prueba de cancelación
+V-01046 Cancelada 2026-11-25 04:03:56.6017945 Prueba de cancelación
 stock_antes stock_despues
 ----------- -------------
 6 7

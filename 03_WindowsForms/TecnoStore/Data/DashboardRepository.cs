@@ -6,6 +6,19 @@ namespace TecnoStore.Data
     /// <summary>Consultas del Dashboard (solo lectura, sobre vistas y funciones existentes).</summary>
     public static class DashboardRepository
     {
+        /// <summary>Los números del Inicio (sin costos: los puede leer cualquier rol).</summary>
+        public static DataRow Inicio()
+        {
+            return Db.Consulta(@"
+                DECLARE @ini DATE = DATEADD(DAY, -90, CAST(GETDATE() AS DATE));
+                SELECT
+                  (SELECT COUNT(*) FROM Venta WHERE estado = 'Completada' AND fecha >= @ini) AS ventas,
+                  (SELECT ISNULL(SUM(total), 0) FROM Venta WHERE estado = 'Completada' AND fecha >= @ini) AS ingresos,
+                  (SELECT COUNT(*) FROM vw_OrdenServicioCompleta WHERE es_final = 0) AS ordenes_abiertas,
+                  (SELECT COUNT(*) FROM vw_OrdenServicioCompleta WHERE estado = 'Lista') AS ordenes_listas,
+                  (SELECT COUNT(*) FROM vw_StockBajo) AS alertas_stock").Rows[0];
+        }
+
         /// <summary>Indicadores de los últimos 90 días comparados con los 90 anteriores.</summary>
         public static DataRow Indicadores()
         {
@@ -43,22 +56,6 @@ namespace TecnoStore.Data
         {
             return Db.Consulta(@"SELECT categoria, ingresos FROM dbo.fn_VentasPorCategoria(DATEADD(DAY, -90, GETDATE()), GETDATE())
                                  ORDER BY ingresos DESC");
-        }
-
-        public static DataTable VentasRecientes()
-        {
-            return Db.Consulta(@"SELECT TOP 8 folio, fecha, cliente, sucursal, total, estado FROM vw_VentaCompleta ORDER BY fecha DESC");
-        }
-
-        public static DataTable MasVendidos()
-        {
-            return Db.Consulta(@"
-                SELECT TOP 6 p.nombre AS producto, SUM(dv.cantidad) AS unidades, SUM(dv.subtotal) AS importe
-                FROM DetalleVenta dv
-                JOIN Venta v ON v.id_venta = dv.id_venta AND v.estado = 'Completada'
-                JOIN Producto p ON p.id_producto = dv.id_producto
-                WHERE v.fecha >= DATEADD(DAY, -90, GETDATE())
-                GROUP BY p.nombre ORDER BY unidades DESC, importe DESC");
         }
 
         public static DataTable AlertasStock()

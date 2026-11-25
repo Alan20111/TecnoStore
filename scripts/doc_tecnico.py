@@ -55,7 +55,7 @@ POR_QUE_TRIGGER = {
 
 MODULOS = [
     (1, 'Acceso / sesión', 'FrmLogin', 'usp_Login'),
-    (2, 'Panel principal por perfil (barra lateral) y Dashboard', 'FrmPrincipal, FrmDashboard', 'Matriz de permisos; vw_ResumenMensual, fn_VentasPorCategoria, vw_StockBajo, vw_VentaCompleta, vw_OrdenServicioCompleta'),
+    (2, 'Ventana principal por perfil, Inicio con botones grandes y Resumen', 'FrmPrincipal, FrmInicio, FrmDashboard', 'Matriz de permisos; vw_ResumenMensual, fn_VentasPorCategoria, vw_StockBajo, vw_VentaCompleta, vw_OrdenServicioCompleta'),
     (3, 'Catálogo 1: Categorías', 'FrmCatalogo', 'INSERT/UPDATE/DELETE parametrizados'),
     (4, 'Catálogo 2: Marcas', 'FrmCatalogo', 'INSERT/UPDATE/DELETE parametrizados'),
     (5, 'Catálogo 3: Tipos de servicio', 'FrmCatalogo', 'INSERT/UPDATE/DELETE parametrizados'),
@@ -172,9 +172,9 @@ se pone en el lugar de su usuario de base de datos con <code>EXECUTE AS USER</co
 Con esas 15 capacidades (ver costos, registrar venta, cancelar venta, ajustar inventario…) se muestran u ocultan módulos del menú, botones,
 paneles y columnas de costo. Si cambia un GRANT o DENY, la interfaz cambia sola; y aunque alguien llame la operación, SQL Server la rechaza.
 Las pruebas P33 y P34 comprueban la matriz del Operador y del Supervisor.</p>
-<p><b>Menos información por pantalla.</b> Siguiendo divulgación progresiva (NN/g), las leyes de Hick y Miller y el diseño de dashboards de Stephen Few:
-tablas de 5 a 7 columnas, búsqueda con 2 o 3 filtros y el resto en «Más filtros», un solo botón principal por pantalla, Dashboard de 4 indicadores,
-sin gráficas de pastel y sin nombres técnicos en la interfaz. Detalle y fuentes en <b>GuiaDiseno.md §4</b>.</p>
+<p><b>Interfaz sencilla.</b> Pocos módulos (de 5 a 7 según el rol, F1 a F7), un Inicio con botones grandes, una sola tarea por pantalla, búsqueda al escribir
+y fichas para capturar. Se apoya en divulgación progresiva (NN/g), las leyes de Hick y Miller y el diseño de tableros de Stephen Few. El estilo es monocromático:
+el negro marca la acción principal y el rojo solo aparece en errores y en acciones que eliminan o cancelan. Detalle y fuentes en <b>GuiaDiseno.md</b>.</p>
 <p>Además, las contraseñas de la aplicación se guardan como <code>HASHBYTES('SHA2_256')</code>, nunca en texto plano; tras 5 intentos
 fallidos el usuario se bloquea y solo un Administrador lo reactiva.</p>
 
@@ -311,16 +311,16 @@ gráficas en la aplicación; y uso de async/await en las consultas largas para q
         ['<code>Forms/</code>', 'Un formulario por módulo con su archivo .Designer.cs (editable en el diseñador de Visual Studio).'],
         ['<code>Models/</code>', 'Clases de entidades y de sesión (UsuarioSesion, LineaVenta, Opcion para ComboBox…).'],
         ['<code>Data/</code>', '<code>Db</code> (conexión centralizada y parámetros) y repositorios por módulo con todo el SQL.'],
-        ['<code>Utils/</code>', '<code>Ui</code>: mensajes, validación visual y formato de DataGridView. <code>Tema</code>: colores, fuentes y estilo de botones y tablas, aplicado a todas las pantallas en un solo lugar. <code>Tarjeta</code>: panel con esquinas redondeadas del Dashboard.'],
+        ['<code>Utils/</code>', '<code>Ui</code>: mensajes, validación visual y formato de DataGridView. <code>Tema</code>: colores, letras y tamaños en un solo lugar. <code>Sencillo</code>: fichas, campos grandes, selectores y buscador. <code>Tarjeta</code>: panel con esquinas redondeadas.'],
         ['<code>App.config</code>', 'Cadenas de conexión (única o una por rol) y modo de conexión.'],
     ])
     resumen_pruebas = tabla(['Caso', 'Tipo', 'Descripción', 'Resultado'], [
         [e(p['caso']), e(p['tipo']), e(p['descripcion']),
          '<span class="%s">%s</span>' % ('ok' if p['resultado'] == 'PASA' else 'no', e(p['resultado']))] for p in d['PRUEBAS']])
     capturas = ''.join(figura(a, p) for a, p in [
-        ('01_login', 'Inicio de sesión'), ('02_dashboard', 'Dashboard del Administrador'), ('09_nueva_venta', 'Nueva venta'),
+        ('01_login', 'Inicio de sesión'), ('19_inicio_admin', 'Inicio del Administrador'), ('17_inicio_operador', 'Inicio del Operador'), ('02_dashboard', 'Resumen'), ('09_nueva_venta', 'Nueva venta'),
         ('10_ordenes', 'Órdenes de servicio'), ('11_compras', 'Compras a proveedor'), ('13_reportes', 'Reportes'),
-        ('16_auditoria', 'Auditoría'), ('18_inicio_consulta', 'Menú del perfil Consulta')])
+        ('16_auditoria', 'Auditoría'), ('18_inicio_consulta', 'Inicio del perfil Consulta')])
     sp_app = ['usp_Login', 'usp_ProductoBuscar', 'usp_ProductoGuardar', 'usp_ClienteGuardar', 'usp_ProveedorGuardar', 'usp_UsuarioGuardar',
               'usp_RegistrarVenta', 'usp_RegistrarCompra', 'usp_RegistrarOrdenServicio', 'usp_OrdenAgregarLinea', 'usp_CambiarEstadoOrden',
               'usp_CancelarVenta', 'usp_AjustarStock', 'usp_AjustarPrecio', 'usp_ResumenPeriodo', 'usp_ActividadEmpleados']
@@ -360,82 +360,75 @@ botones; antes de entregar, sustituyan las imágenes por capturas de la aplicaci
 %s
 <h2>3. Conceptos comunes de todas las pantallas</h2>
 <ul>
-<li><b>Lectura y edición:</b> al seleccionar un registro de la tabla, sus datos aparecen a la derecha en modo lectura. <b>Nuevo</b> limpia el
-formulario; <b>Editar</b> habilita los campos; <b>Guardar</b> confirma; <b>Cancelar</b> descarta.</li>
+<li><b>Módulos:</b> a la izquierda, de F1 a F7. Si un módulo tiene varias vistas, se cambian con los botones de arriba. <b>Esc</b> regresa al Inicio.</li>
+<li><b>Buscar:</b> se escribe y la lista se filtra sola.</li>
+<li><b>Abrir:</b> doble clic en un renglón, Enter o el botón <b>Abrir</b> muestran su ficha. Ahí se cambia y se <b>Guarda</b>; <b>Cancelar</b> o Esc descartan.</li>
+<li><b>Botón negro:</b> lo principal de cada pantalla. <b>Letra roja:</b> elimina o cancela.</li>
 <li><b>Campos obligatorios</b> llevan asterisco (*). Si falta uno, se marca en rojo y no se guarda.</li>
 <li><b>Listas desplegables:</b> clientes, productos, proveedores y demás se eligen de una lista; nunca se escribe un número de id.</li>
 <li><b>Mensajes de SQL Server:</b> si la base rechaza algo (stock insuficiente, permiso, duplicado), el mensaje lo explica y no se guarda nada.</li>
 <li><b>Bajas:</b> clientes, productos y proveedores con historial no se borran: se desmarcan como "Activo".</li>
-<li><b>Atajos:</b> F2 Productos · F3 Clientes · F4 Proveedores · F5 Nueva venta · F6 Órdenes · F7 Compras · Enter busca en los filtros.</li>
 </ul>
 """ % (d['HOY'], tabla(['Usuario', 'Contraseña', 'Perfil', 'Qué ve'], [
         ['admin', '1234', 'Administrador', 'Todo'],
         ['csupervisor', '1234', 'Supervisor', 'Todo menos usuarios'],
-        ['loperador', '1234', 'Operador', 'Ventas, clientes, órdenes, catálogos en lectura'],
+        ['loperador', '1234', 'Operador', 'Vender, taller, clientes y productos (sin costos)'],
         ['fconsulta', '1234', 'Consulta', 'Solo lectura y reportes'],
     ]))
     h += seccion('4. Iniciar sesión', '01_login', 'Inicio de sesión', [
-        'Escribir usuario y contraseña y presionar <b>Ingresar</b> (o Enter).',
-        'Si la contraseña es incorrecta 5 veces seguidas, el usuario se bloquea; un Administrador lo reactiva en Usuarios.',
-        'La barra lateral izquierda muestra solo los módulos de su perfil, agrupados por área. <b>Cerrar sesión</b> (arriba a la derecha) vuelve a esta pantalla.'])
-    h += seccion('5. Dashboard', '02_dashboard', 'Dashboard', [
-        'Es la primera pantalla del Administrador, el Supervisor y Consulta (el Operador entra directo a Nueva venta).',
-        'Las tarjetas de arriba muestran ingresos, ventas, ticket promedio y unidades de los <b>últimos 90 días</b> comparados con los 90 anteriores (▲ verde sube, ▼ rojo baja), más órdenes en taller, alertas de stock, clientes activos y valor del inventario.',
-        'La gráfica de columnas muestra los ingresos de los últimos 6 meses (el mes actual en azul) y la dona reparte las ventas de los últimos 90 días por categoría.',
-        'Abajo: ventas recientes, productos más vendidos, productos por resurtir (en rojo los agotados) y equipos que siguen en el taller.',
-        '<b>Actualizar</b> vuelve a leer los datos de SQL Server.'])
-    h += seccion('6. Productos', '03_productos', 'Productos', [
-        'Buscar por nombre o SKU, filtrar por categoría o marcar <b>Solo con alerta de stock</b> y presionar <b>Buscar</b>.',
-        'Supervisor o Administrador: <b>Nuevo</b> o <b>Editar</b>, llenar los datos y <b>Guardar</b>. El precio no puede ser menor al costo.',
-        'El stock no se edita aquí: entra por <b>Compras</b> y se corrige en <b>Ajustes de inventario</b>.',
-        'Administrador: <b>Eliminar</b> borra un producto sin movimientos; si ya tuvo ventas o compras, solo lo desactiva.'])
-    h += seccion('7. Clientes', '04_clientes', 'Clientes', [
-        'Buscar por nombre, apellidos o correo. Al seleccionar un cliente se ve su historial de compras abajo.',
-        '<b>Nuevo</b> / <b>Editar</b> → nombre, apellidos y correo obligatorios; RFC opcional (12 o 13 caracteres).',
-        'Para dar de baja, desmarcar <b>Activo</b>: el cliente ya no aparece al vender, pero su historial se conserva.',
-        'La columna <b>Nivel</b> (Oro, Plata, Bronce) la calcula SQL Server según el total comprado.'])
-    h += seccion('8. Proveedores', '05_proveedores', 'Proveedores', [
-        'Al seleccionar un proveedor se ven los productos que surte y a qué costo.',
-        'Supervisor o Administrador pueden dar de alta o editar; el RFC no se puede repetir.'])
-    h += seccion('9. Catálogos: categorías, marcas y tipos de servicio', '06_categorias', 'Categorías', [
-        'Las tres pantallas funcionan igual (sección <b>Catálogos</b> de la barra lateral). Solo el Administrador modifica; los demás consultan.',
-        'En <b>Tipos de servicio</b> se captura el precio base de la mano de obra.',
-        '<b>Eliminar</b> solo funciona si nadie lo usa; si hay productos u órdenes con ese registro, el sistema lo impide.'])
-    h += seccion('10. Nueva venta', '09_nueva_venta', 'Nueva venta', [
-        'Elegir el <b>cliente</b> y el <b>método de pago</b>.',
-        'Elegir un producto, la cantidad y presionar <b>Agregar</b>. Repetir por cada producto. <b>Quitar línea</b> elimina la seleccionada.',
-        'Descuento: hasta 10 % cualquier vendedor; más de 10 % solo si quien está en sesión es Supervisor o Administrador.',
-        'Presionar <b>Guardar venta</b> y confirmar. Aparece el folio. Si algo falla (por ejemplo, ya no hay stock), no se guarda nada.',
-        'Los equipos con número de serie toman automáticamente una pieza disponible y generan su garantía.'])
-    h += seccion('11. Órdenes de servicio (taller)', '10_ordenes', 'Órdenes de servicio', [
-        '<b>Recibir equipo:</b> elegir cliente y técnico, describir equipo y falla, y <b>Registrar orden</b>. Se agrega el diagnóstico.',
-        'Seleccionar una orden para ver su detalle y su historial de estados.',
-        '<b>Mano de obra:</b> elegir el servicio y <b>Agregar</b>. Solo se permite si el técnico está habilitado para ese servicio.',
-        '<b>Refacción:</b> elegir la pieza y la cantidad y <b>Agregar</b>; sale del almacén en ese momento.',
-        '<b>Cambiar estado:</b> la orden avanza un paso a la vez (Recibida → En diagnóstico → En reparación → Lista → Entregada) o se cancela. '
-        'Una orden Entregada o Cancelada ya no cambia.'])
-    h += seccion('12. Compras a proveedor', '11_compras', 'Compras', [
-        'Solo Supervisor y Administrador. Elegir el <b>proveedor</b>.',
-        'Elegir producto, cantidad y costo unitario. Si el producto lleva número de serie, escribir un número por renglón (tantos como piezas).',
-        '<b>Agregar</b> cada producto y al final <b>Guardar compra</b>. El stock y las piezas entran al guardar; si un número de serie ya existe, no se guarda nada.'])
-    h += seccion('13. Historial de ventas y cancelaciones', '12_historial', 'Historial de ventas', [
-        'Filtrar por rango de fechas, estado y folio o cliente; seleccionar una venta para ver su detalle, números de serie y garantías.',
-        'Supervisor o Administrador: <b>Cancelar venta…</b>, escribir el motivo y confirmar. Solo ventas de los últimos 30 días; el stock regresa al almacén.'])
-    h += seccion('14. Reportes', '13_reportes', 'Reportes', [
-        'Elegir el rango de fechas y presionar <b>Generar</b>.',
-        'Pestañas: Resumen por periodo, Top 10 productos, Actividad por empleado, Stock bajo y Ventas por categoría.',
-        '<b>Exportar CSV</b> guarda la pestaña visible para abrirla en Excel.'])
-    h += seccion('15. Usuarios y roles', '14_usuarios', 'Usuarios', [
-        'Solo Administrador. <b>Nuevo</b>: elegir el empleado, escribir el usuario, el rol y la contraseña (8+ caracteres con un número).',
-        '<b>Editar</b>: cambiar rol o bloquear (desmarcar Activo). Dejar la contraseña vacía conserva la actual.',
-        'Reactivar un usuario bloqueado reinicia sus intentos fallidos. Nadie puede quitarse a sí mismo el rol de Administrador.'])
-    h += seccion('16. Ajustes de inventario y precios', '15_ajustes', 'Ajustes', [
+        'Escribir usuario y contraseña y presionar <b>Entrar</b> (o Enter).',
+        'Si hay que cambiar el servidor de SQL Server, tocar <b>Servidor (cambiar)</b>.',
+        'Si la contraseña es incorrecta 5 veces seguidas, el usuario se bloquea; un Administrador lo reactiva en Configuración → Usuarios.',
+        '<b>Salir</b> (arriba a la derecha) cierra la sesión.'])
+    h += seccion('5. Inicio', '19_inicio_admin', 'Inicio', [
+        'Los botones grandes son lo que cada perfil hace todos los días: Nueva venta, Recibir equipo, Llegó mercancía, Buscar producto…',
+        'Los números de abajo también son botones: llevan a su pantalla.'])
+    h += seccion('6. Vender', '09_nueva_venta', 'Ventas → Vender', [
+        'Escribir o escanear el producto y tocarlo: pasa a la cuenta. Tocarlo otra vez suma una pieza; <b>+</b> y <b>−</b> cambian la cantidad.',
+        'Elegir el <b>cliente</b> y presionar <b>COBRAR</b>.',
+        'Elegir forma de pago y descuento (hasta 10 % cualquier vendedor; más, solo Supervisor o Administrador) y confirmar con <b>Cobrar $…</b>.',
+        'Si algo falla (por ejemplo, ya no hay stock), no se guarda nada. Los equipos con número de serie toman una pieza disponible y generan su garantía.'])
+    h += seccion('7. Ventas hechas y cancelaciones', '12_historial', 'Ventas → Ventas hechas', [
+        'Buscar por folio o cliente, o filtrar Completadas / Canceladas. <b>Fechas</b> cambia el periodo.',
+        'Abrir una venta muestra productos, números de serie y garantías.',
+        'Supervisor o Administrador: <b>Cancelar venta</b>, escribir el motivo y confirmar. Solo ventas de los últimos 30 días; los productos regresan al almacén.'])
+    h += seccion('8. Taller', '10_ordenes', 'Taller', [
+        '<b>Recibir equipo:</b> cliente, equipo, qué le pasa y técnico.',
+        'Abrir una orden muestra los trabajos y su historial. <b>Agregar servicio</b> (si el técnico está habilitado) o <b>Agregar refacción</b> (sale del almacén en ese momento).',
+        'El botón negro avanza la orden un paso: En diagnóstico → En reparación → Lista → <b>Entregar al cliente</b>. <b>Cancelar orden</b> regresa las refacciones.',
+        'Una orden entregada o cancelada ya no cambia.'])
+    h += seccion('9. Clientes', '04_clientes', 'Clientes', [
+        'Al abrir un cliente se ven sus datos y sus compras. Nombre, apellidos y correo son obligatorios.',
+        'Para dar de baja, desmarcar <b>Cliente activo</b>: ya no aparece al vender, pero su historial se conserva.',
+        'El <b>Nivel</b> (Oro, Plata, Bronce) lo calcula SQL Server según el total comprado.'])
+    h += seccion('10. Productos', '03_productos', 'Inventario → Productos', [
+        'Buscar, elegir categoría o ver solo lo que está <b>Por resurtir</b>.',
+        'Supervisor o Administrador: <b>Nuevo producto</b> o abrir uno para cambiarlo. El precio no puede ser menor al costo.',
+        'El stock no se edita aquí: entra por <b>Compras</b> y se corrige en <b>Ajustes</b>.',
+        'Administrador: <b>Eliminar</b> borra un producto sin movimientos; si ya tuvo, solo lo desactiva.'])
+    h += seccion('11. Compras', '11_compras', 'Inventario → Compras', [
+        'Solo Supervisor y Administrador. Elegir proveedor, producto, piezas y costo, y <b>Agregar a la compra</b>.',
+        'Si el producto lleva número de serie, aparece un campo para escribir uno por renglón.',
+        '<b>Guardar compra</b>: el inventario sube en ese momento; si un número de serie ya existe, no se guarda nada.'])
+    h += seccion('12. Ajustes', '15_ajustes', 'Inventario → Ajustes', [
         'Solo Supervisor y Administrador.',
-        '<b>Inventario:</b> elegir el producto, la cantidad (+ entra, − sale, máximo 20) y el motivo; <b>Aplicar ajuste</b>.',
-        '<b>Precios:</b> elegir la categoría y el porcentaje (máximo ±30 %); <b>Aplicar precios</b>. Si algún precio quedara debajo del costo, no se cambia ninguno.'])
-    h += seccion('17. Auditoría', '16_auditoria', 'Auditoría', [
-        'Solo Supervisor y Administrador. Muestra cada cambio de precio, de stock y de estado de ventas: fecha, usuario, valor anterior, valor nuevo y motivo.',
-        'Es de solo lectura: nadie puede editarla ni borrarla.'])
+        '<b>Corregir el inventario:</b> producto, piezas (máximo ±20) y motivo.',
+        '<b>Cambiar precios:</b> categoría y porcentaje (máximo ±30 %). Si algún precio quedara debajo del costo, no se cambia ninguno.'])
+    h += seccion('13. Proveedores', '05_proveedores', 'Inventario → Proveedores', [
+        'Al abrir un proveedor se ven sus datos y los productos que surte. Supervisor o Administrador pueden dar de alta o cambiar.'])
+    h += seccion('14. Resumen y reportes', '02_dashboard', 'Reportes → Resumen', [
+        'El <b>Resumen</b> muestra ingresos y ventas de 90 días comparados con los 90 anteriores, ingresos por mes, ventas por categoría y lo pendiente.',
+        '<b>Reportes:</b> elegir el reporte y el periodo (Este mes, 3 meses, 6 meses u Otro con fechas). <b>Exportar a Excel</b> guarda el que se ve.'],
+        figura('13_reportes', 'Reportes', '92%%'.replace('%%', '%')))
+    h += seccion('15. Auditoría', '16_auditoria', 'Reportes → Auditoría', [
+        'Solo Supervisor y Administrador. Cada cambio de precio, inventario o venta: quién, antes, después y motivo. Nadie puede editarla ni borrarla.'])
+    h += seccion('16. Usuarios', '14_usuarios', 'Configuración → Usuarios', [
+        'Solo Administrador. <b>Nuevo usuario</b>: empleado, usuario, rol y contraseña (8 o más caracteres con un número).',
+        'Desmarcar <b>Puede entrar al sistema</b> lo bloquea; marcarlo lo reactiva. Dejar la contraseña vacía conserva la actual.',
+        'Nadie puede quitarse a sí mismo el rol de Administrador.'])
+    h += seccion('17. Categorías, marcas y servicios', '06_categorias', 'Configuración → Categorías', [
+        'Solo Administrador. Las tres pantallas funcionan igual; en Servicios se captura el precio base.',
+        '<b>Eliminar</b> solo funciona si nadie lo usa.'])
     h += ('<h2>18. Mensajes frecuentes</h2>' + tabla(['Mensaje', 'Qué significa', 'Qué hacer'], [
         ['Stock insuficiente para uno o más productos', 'Alguien vendió las piezas o no hay suficientes', 'Bajar la cantidad o registrar una compra'],
         ['Un descuento mayor al permitido requiere autorización…', 'El operador no puede dar más de 10 %', 'Pedir a un supervisor que haga la venta'],

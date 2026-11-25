@@ -1,16 +1,19 @@
 // Vista previa de la app Windows Forms de TecnoStore.
-// Cada pantalla corresponde a un formulario/UserControl que se hará en C#.
+// Mismas pantallas, textos y permisos que 03_WindowsForms, conectada a SQL Server.
 'use strict';
 
 const $app = document.getElementById('app');
-const state = { token: null, user: null, modulo: 'inicio', cat: null };
+const state = { token: null, user: null, cat: null, vista: 'inicio', ultimas: {} };
 
 /* ---------- utilidades ---------- */
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const money = (v) => (v == null ? '' : Number(v).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }));
-const date = (v) => (v ? new Date(v).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' }) : '');
+const money = (v, d = 2) => (v == null ? '' : Number(v).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: d, maximumFractionDigits: d }));
 const datetime = (v) => (v ? new Date(v).toLocaleString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) : '');
+const isoDia = (d) => d.toISOString().slice(0, 10);
+const haceMeses = (n) => { const d = new Date(); d.setMonth(d.getMonth() - n); return isoDia(d); };
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
+const options = (list, sel, empty) => (empty ? `<option value="">${esc(empty)}</option>` : '') +
+  list.map((o) => `<option value="${o.id}" ${String(o.id) === String(sel) ? 'selected' : ''}>${esc(o.nombre)}</option>`).join('');
 
 async function api(path, body) {
   const res = await fetch(path, {
@@ -23,918 +26,646 @@ async function api(path, body) {
   return data;
 }
 
-// MessageBox.Show(...)
-function messageBox(text, { title = 'TecnoStore', icon = 'info', buttons = ['Aceptar'] } = {}) {
-  return new Promise((resolve) => {
-    const glyph = { info: 'i', error: '✕', question: '?', ok: '✓' }[icon];
-    const el = h(`<div class="overlay"><div class="msgbox">
-      <div class="titlebar"><span class="title" style="padding-left:12px">${esc(title)}</span><div class="caption"><span class="close">✕</span></div></div>
-      <div class="msg"><div class="ico ${icon}">${glyph}</div><div>${esc(text).replace(/\n/g, '<br>')}</div></div>
-      <div class="buttons">${buttons.map((b, i) => `<button data-i="${i}" ${i === 0 ? 'class="primary"' : ''}>${esc(b)}</button>`).reverse().join('')}</div>
-    </div></div>`);
-    const close = (v) => { el.remove(); resolve(v); };
-    el.querySelectorAll('button').forEach((b) => b.onclick = () => close(buttons[+b.dataset.i]));
-    el.querySelector('.close').onclick = () => close(null);
-    document.body.appendChild(el);
-    (el.querySelector('.buttons button.primary') || el.querySelector('button')).focus();
-  });
-}
-const showError = (e) => messageBox(e.message || e, { icon: 'error', title: 'Error' });
-
 // Capacidades que SQL Server concede al rol (usp_PermisosApp); la interfaz solo muestra lo que se puede usar
 const tiene = (cap) => !!state.user?.caps?.includes(cap);
 const ES_COSTO = /costo|margen|utilidad|valor_inventario/i;
-const vacia = '<div class="empty">No hay resultados. Prueba con otra búsqueda o quita filtros.</div>';
 
-// DataGridView: pocas columnas; las de costo desaparecen si el rol no puede verlas
-function grid(cols, rows, { onSelect, rowClass, cls = '' } = {}) {
-  if (!tiene('ver_costos')) cols = cols.filter((x) => !ES_COSTO.test(x.k));
-  const el = h(`<div class="grid ${cls}"></div>`);
-  if (!rows.length) { el.innerHTML = vacia; return el; }
-  el.innerHTML = `<table><thead><tr><th class="rowheader"></th>${cols.map((c) => `<th>${esc(c.t)}</th>`).join('')}</tr></thead>
-    <tbody>${rows.map((r, i) => `<tr data-i="${i}" class="${rowClass ? rowClass(r) : ''}"><td class="rowheader"></td>${cols.map((c) => {
-      const v = c.f ? c.f(r[c.k], r) : esc(r[c.k]);
-      return `<td class="${c.num ? 'num' : ''}">${v}</td>`;
-    }).join('')}</tr>`).join('')}</tbody></table>`;
-  el.querySelectorAll('tbody tr').forEach((tr) => tr.onclick = () => {
-    el.querySelectorAll('tr.sel').forEach((x) => x.classList.remove('sel'));
-    tr.classList.add('sel');
-    onSelect?.(rows[+tr.dataset.i]);
-  });
+/* ---------- piezas (equivalen a Utils/Sencillo.cs) ---------- */
+// Aviso breve que no interrumpe
+function aviso(texto) {
+  document.querySelector('.aviso')?.remove();
+  const el = h(`<div class="aviso" role="status">${esc(texto)}</div>`);
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2600);
+}
+
+// Ventana de una sola tarea: título, contenido y botones grandes. botones: [texto, clase, acción]
+// (la acción devuelve true para cerrar). Esc cierra.
+function ficha(titulo, cuerpo, botones, { ancha = false } = {}) {
+  const el = h(`<div class="overlay"><div class="ficha ${ancha ? 'ancha' : ''}" role="dialog" aria-label="${esc(titulo)}"><h2>${esc(titulo)}</h2><div class="cuerpo"></div><div class="pie"></div></div></div>`);
+  if (typeof cuerpo === 'string') el.querySelector('.cuerpo').innerHTML = cuerpo; else el.querySelector('.cuerpo').append(cuerpo);
+  const pie = el.querySelector('.pie');
+  const cerrar = () => { el.remove(); document.removeEventListener('keydown', tecla, true); };
+  const tecla = (e) => { if (e.key === 'Escape' && el === [...document.querySelectorAll('.overlay')].pop()) { e.stopPropagation(); cerrar(); el.alCerrar?.(); } };
+  document.addEventListener('keydown', tecla, true);
+  const peligro = botones.filter((b) => b[1] === 'peligro'), resto = botones.filter((b) => b[1] !== 'peligro');
+  const poner = ([t, clase, accion]) => {
+    const b = h(`<button class="${clase || ''}">${esc(t)}</button>`);
+    b.onclick = async () => { b.disabled = true; try { if (!accion || await accion()) cerrar(); } catch (e) { error(e); } finally { b.disabled = false; } };
+    pie.append(b);
+  };
+  peligro.forEach(poner); pie.append(h('<span class="spacer"></span>')); resto.forEach(poner);
+  document.body.append(el);
+  (el.querySelector('.cuerpo input:not([disabled]), .cuerpo select:not([disabled])') || el.querySelector('.primary') || pie.lastElementChild)?.focus();
+  el.cerrar = cerrar;
   return el;
 }
-const M = (k) => (v) => money(v);
-const pillEstado = (v) => `<span class="pill ${v === 'Cancelada' ? 'roja' : 'verde'}">${esc(v)}</span>`;
-const N = (v) => esc(v);
-const options = (list, sel, empty) => (empty ? `<option value="">${esc(empty)}</option>` : '') +
-  list.map((o) => `<option value="${o.id}" ${String(o.id) === String(sel) ? 'selected' : ''}>${esc(o.nombre)}</option>`).join('');
+const error = (e) => ficha('No se pudo', `<div class="mensaje">${esc(e.message || e)}</div>`, [['Entendido', 'primary']]);
+const informar = (t) => ficha('TecnoStore', `<div class="mensaje">${esc(t)}</div>`, [['Entendido', 'primary']]);
+const confirmar = (t, boton = 'Sí') => new Promise((ok) => {
+  const el = ficha('Confirmar', `<div class="mensaje">${esc(t)}</div>`, [['No', '', () => { ok(false); return true; }], [boton, 'primary', () => { ok(true); return true; }]]);
+  el.alCerrar = () => ok(false);
+});
+const preguntar = (titulo, etiqueta, boton) => new Promise((ok) => {
+  const el = ficha(titulo, `<div class="field"><span>${esc(etiqueta)}</span><input maxlength="200"></div>`, [['Regresar', '', () => { ok(null); return true; }], [boton, 'primary', () => {
+    const i = el.querySelector('input'); if (!i.value.trim()) { i.classList.add('invalid'); return false; } ok(i.value.trim()); return true; }]]);
+  el.alCerrar = () => ok(null);
+});
 
-function titlebar(title) {
-  return `<div class="titlebar"><div class="icon">T</div><div class="title">${esc(title)}</div>
-    <div class="caption"><span data-win="min" title="Minimizar">─</span><span data-win="max" title="Maximizar">☐</span><span data-win="close" class="close" title="Cerrar">✕</span></div></div>`;
+// Campos: { k, t, tipo: text|number|select|check|password|textarea, req, opciones, ancho, oculto }
+function campos(lista, valores = {}, { una = false, lectura = false } = {}) {
+  const el = h(`<div class="campos ${una ? 'una' : ''}"></div>`);
+  for (const f of lista) {
+    if (f.oculto) continue;
+    const at = `name="${f.k}" ${lectura ? 'disabled' : ''} maxlength="${f.max || 200}"`;
+    const v = valores[f.k] ?? f.defecto ?? '';
+    el.append(h(f.tipo === 'check' ? `<label class="check ${f.ancho ? 'ancho' : ''}"><input type="checkbox" ${at} ${v ? 'checked' : ''}> ${esc(f.t)}</label>`
+      : f.tipo === 'texto' ? `<div class="ayuda ${f.ancho ? 'ancho' : ''}">${esc(f.t)}</div>`
+      : `<div class="field ${f.ancho ? 'ancho' : ''}" data-campo="${f.k}"><span>${esc(f.t)}</span>${f.tipo === 'select' ? `<select ${at}>${options(f.opciones, v, f.vacio)}</select>`
+        : f.tipo === 'textarea' ? `<textarea ${at}>${esc(v)}</textarea>`
+        : `<input ${at} type="${f.tipo || 'text'}" ${f.tipo === 'number' ? 'step="any"' : ''} value="${esc(v)}" ${f.min != null ? `min="${f.min}" max="${f.maxn}"` : ''}>`}</div>`));
+  }
+  el.leer = () => {
+    const d = {}; let ok = true;
+    for (const f of lista) {
+      const c = el.querySelector(`[name="${f.k}"]`); if (!c) continue;
+      d[f.k] = f.tipo === 'check' ? c.checked : c.value.trim();
+      const falta = f.req && !d[f.k]; c.classList.toggle('invalid', !!falta); if (falta) ok = false;
+    }
+    return ok ? d : null;
+  };
+  el.c = (k) => el.querySelector(`[name="${k}"]`);
+  return el;
 }
 
-// Botones ─ ☐ ✕ de la ventana: minimizar deja solo la barra de título,
-// maximizar ocupa toda la pantalla y cerrar ejecuta la acción de salida.
-function ventana(el, alCerrar) {
-  el.querySelector('[data-win=min]').onclick = () => el.classList.toggle('min');
-  el.querySelector('[data-win=max]').onclick = () => el.classList.toggle('max');
-  el.querySelector('.titlebar .title').ondblclick = () => el.classList.toggle('max');
-  el.querySelector('[data-win=close]').onclick = alCerrar;
+// Selector de vistas o filtros con botones grandes
+function seg(opciones, activo, alElegir) {
+  const el = h(`<div class="seg">${opciones.map((o, i) => `<button class="${i === activo ? 'on' : ''}">${esc(o)}</button>`).join('')}</div>`);
+  el.activo = activo;
+  [...el.children].forEach((b, i) => b.onclick = () => { el.activo = i; [...el.children].forEach((x, k) => x.classList.toggle('on', k === i)); alElegir?.(i); });
+  return el;
 }
 
-const salirApp = () => messageBox('En la aplicación de Windows Forms este botón cierra el programa.\nEn la vista previa no hay nada que cerrar.', { title: 'Salir' });
+// Tabla: pocas columnas; las de costo desaparecen si el rol no puede verlas
+function grid(cols, rows, { onSelect, onOpen, rowClass, cls = '' } = {}) {
+  if (!tiene('ver_costos')) cols = cols.filter((x) => !ES_COSTO.test(x.k));
+  const el = h(`<div class="grid ${cls}"></div>`);
+  if (!rows.length) { el.innerHTML = '<div class="empty">No hay nada que mostrar</div>'; return el; }
+  el.innerHTML = `<table><thead><tr>${cols.map((c) => `<th class="${c.num ? 'num' : ''}">${esc(c.t)}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map((r, i) => `<tr data-i="${i}" class="${rowClass ? rowClass(r) : ''}">${cols.map((c) =>
+      `<td class="${c.num ? 'num' : ''}">${c.f ? c.f(r[c.k], r) : esc(r[c.k])}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  const elegir = (i) => {
+    el.querySelectorAll('tr.sel').forEach((x) => x.classList.remove('sel'));
+    el.querySelector(`tr[data-i="${i}"]`).classList.add('sel');
+    el.sel = rows[i]; onSelect?.(rows[i]);
+  };
+  el.querySelectorAll('tbody tr').forEach((tr) => {
+    tr.onclick = () => elegir(+tr.dataset.i);
+    if (onOpen) tr.ondblclick = () => onOpen(rows[+tr.dataset.i]);
+  });
+  if (onOpen || onSelect) { el.sel = rows[0]; el.querySelector('tbody tr').classList.add('sel'); }
+  return el;
+}
+const $$ = () => (v) => money(v);
+
+// Pantalla de lista: buscador que busca solo, filtros y botones; doble clic abre
+function lista(c, { pista, filtros = [], botones = [], abrir, textoAbrir = 'Abrir', datos, cols, rowClass }) {
+  c.innerHTML = '<div class="barra"></div><div class="card tabla"></div>';
+  const barra = c.firstElementChild, zona = c.lastElementChild;
+  let t, actual;
+  const buscar = pista ? h(`<input class="buscar" placeholder="${esc(pista)}">`) : null;
+  const cargar = async () => {
+    try { actual = grid(cols, await datos(buscar?.value || ''), { onOpen: abrir, rowClass }); zona.replaceChildren(actual); } catch (e) { error(e); }
+  };
+  if (buscar) { barra.append(buscar); buscar.oninput = () => { clearTimeout(t); t = setTimeout(cargar, 300); }; }
+  filtros.forEach((f) => barra.append(f));
+  barra.append(h('<span class="spacer"></span>'));
+  if (abrir) { const b = h(`<button>${esc(textoAbrir)}</button>`); b.onclick = () => actual?.sel && abrir(actual.sel); barra.append(b); }
+  botones.forEach(([texto, accion, clase]) => { const b = h(`<button class="${clase || ''}">${esc(texto)}</button>`); b.onclick = accion; barra.append(b); });
+  return { cargar, barra, cargado: cargar() };
+}
+const tarjeta = (titulo, contenido) => { const el = h(`<div class="card">${titulo ? `<h3>${esc(titulo)}</h3>` : ''}</div>`); el.append(contenido); return el; };
+const dosZonas = (izq, der) => { const el = h('<div class="dos"></div>'); el.append(izq, der); return el; };
 
 /* ---------- FrmLogin ---------- */
 function renderLogin() {
   $app.innerHTML = '';
-  const el = h(`<div class="form dialog">
-    ${titlebar('Iniciar sesión — TecnoStore')}
-    <form class="login" autocomplete="off">
-      <div class="logo"><div class="icon">T</div><div><b>TecnoStore</b><span style="color:#5f5f5f">Sistema Integral de Gestión</span></div></div>
-      <div class="field"><span>Servidor (localhost, .\\SQLEXPRESS…):</span><input value="localhost" disabled title="En la vista previa siempre es el SQL Server de Docker"></div>
-      <div class="field"><span>Usuario:</span><input name="usuario" required></div>
-      <div class="field"><span>Contraseña:</span><input name="contrasena" type="password" required></div>
-      <div class="error-label"></div>
-      <div class="row"><span class="spacer"></span><button type="submit" class="primary">Ingresar</button><button type="button" data-salir-app>Salir</button></div>
-      <div class="hint">Usuarios demo (contraseña <code data-p>1234</code>):<br>
-        <code data-u>admin</code> Administrador · <code data-u>csupervisor</code> Supervisor<br>
-        <code data-u>loperador</code> Operador · <code data-u>fconsulta</code> Consulta</div>
-    </form></div>`);
+  const el = h(`<div class="login"><form autocomplete="off"><h1>TecnoStore</h1>
+    <div class="field"><span>Usuario</span><input name="usuario" required></div>
+    <div class="field"><span>Contraseña</span><input name="contrasena" type="password" required></div>
+    <div class="error"></div><button class="primary">Entrar</button>
+    <div class="ayuda">Para probar: <code>admin</code>, <code>csupervisor</code>, <code>loperador</code> o <code>fconsulta</code><br>Contraseña: 1234</div></form></div>`);
   const form = el.querySelector('form');
-  el.querySelectorAll('[data-u]').forEach((c) => c.onclick = () => { form.usuario.value = c.textContent; form.contrasena.value = '1234'; });
-  el.querySelector('[data-p]').onclick = () => { form.contrasena.value = '1234'; };
-  el.querySelector('[data-salir-app]').onclick = salirApp;
-  ventana(el, salirApp);
+  el.querySelectorAll('code').forEach((x) => x.onclick = () => { form.usuario.value = x.textContent; form.contrasena.value = '1234'; });
   form.onsubmit = async (ev) => {
     ev.preventDefault();
-    const btn = form.querySelector('button[type=submit]');
-    btn.disabled = true;
+    const btn = form.querySelector('button'); btn.disabled = true;
     try {
       const r = await api('/api/login', { usuario: form.usuario.value.trim(), contrasena: form.contrasena.value });
-      state.token = r.token; state.user = r.user; state.modulo = 'inicio';
+      state.token = r.token; state.user = r.user; state.vista = 'inicio'; state.ultimas = {};
       state.cat = await api('/api/catalogos');
       renderMain();
-    } catch (e) {
-      el.querySelector('.error-label').textContent = e.message;
-      form.contrasena.classList.add('invalid');
-    } finally { btn.disabled = false; }
+    } catch (e) { el.querySelector('.error').textContent = e.message; form.contrasena.value = ''; } finally { btn.disabled = false; }
   };
-  $app.appendChild(el);
-  form.usuario.focus();
+  $app.append(el); form.usuario.focus();
 }
 
-/* ---------- FrmPrincipal: panel con barra lateral ---------- */
-// [clave, título, grupo, atajo, render] — mismo orden y grupos que FrmPrincipal en C#
-const MODULOS_LISTA = [
-  ['dashboard', 'Dashboard', 'General', null, renderDashboard],
-  ['venta', 'Nueva venta', 'Ventas', 'F5', renderVenta],
-  ['ventas', 'Historial de ventas', 'Ventas', null, renderVentas],
-  ['clientes', 'Clientes', 'Ventas', 'F3', renderClientes],
-  ['ordenes', 'Órdenes de servicio', 'Taller', 'F6', renderOrdenes],
-  ['productos', 'Productos', 'Inventario', 'F2', renderProductos],
-  ['compras', 'Compras a proveedor', 'Inventario', 'F7', renderCompras],
-  ['proveedores', 'Proveedores', 'Inventario', 'F4', renderProveedores],
-  ['ajustes', 'Ajustes de inventario', 'Inventario', null, renderAjustes],
-  ['categorias', 'Categorías', 'Catálogos', null, (c) => renderCatalogo(c, 'categorias')],
-  ['marcas', 'Marcas', 'Catálogos', null, (c) => renderCatalogo(c, 'marcas')],
-  ['tipos', 'Tipos de servicio', 'Catálogos', null, (c) => renderCatalogo(c, 'tipos')],
-  ['reportes', 'Reportes', 'Análisis', null, renderReportes],
-  ['usuarios', 'Usuarios y roles', 'Administración', null, renderUsuarios],
-  ['auditoria', 'Auditoría', 'Administración', null, renderAuditoria],
+/* ---------- FrmPrincipal ---------- */
+// Un módulo = un enfoque: [clave, título, vistas: [clave, título, pantalla]]
+const MODULOS = [
+  ['inicio', 'Inicio', [['inicio', 'Inicio', renderInicio]]],
+  ['ventas', 'Ventas', [['venta', 'Vender', renderVenta], ['ventas', 'Ventas hechas', renderVentas]]],
+  ['taller', 'Taller', [['ordenes', 'Órdenes', renderOrdenes]]],
+  ['clientes', 'Clientes', [['clientes', 'Clientes', renderClientes]]],
+  ['inventario', 'Inventario', [['productos', 'Productos', renderProductos], ['compras', 'Compras', renderCompras], ['ajustes', 'Ajustes', renderAjustes], ['proveedores', 'Proveedores', renderProveedores]]],
+  ['reportes', 'Reportes', [['dashboard', 'Resumen', renderDashboard], ['reportes', 'Reportes', renderReportes], ['auditoria', 'Auditoría', renderAuditoria]]],
+  ['config', 'Configuración', [['usuarios', 'Usuarios', renderUsuarios], ['categorias', 'Categorías', (c) => renderCatalogo(c, 'categorias')], ['marcas', 'Marcas', (c) => renderCatalogo(c, 'marcas')], ['tipos', 'Servicios', (c) => renderCatalogo(c, 'tipos')]]],
 ];
+const modulosDelRol = () => MODULOS.map(([k, t, v]) => [k, t, v.filter((x) => state.user.modulos.includes(x[0]))]).filter((m) => m[2].length);
 const ICONOS = {
-  dashboard: '<rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/>',
-  venta: '<path d="M6 7h12l-1 13H7z"/><path d="M9 7a3 3 0 0 1 6 0"/>',
-  ventas: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  inicio: '<path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/>',
+  ventas: '<path d="M6 7h12l1 13H5z"/><path d="M9 7a3 3 0 0 1 6 0"/>',
+  taller: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3 17.8V21h3.2l6.3-6.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>',
   clientes: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 20a6.5 6.5 0 0 0-3-5.5"/>',
-  ordenes: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3 17.8V21h3.2l6.3-6.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>',
-  productos: '<path d="M21 8 12 3 3 8l9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
-  compras: '<path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6"/><circle cx="10" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/>',
-  proveedores: '<path d="M3 17V7h11v10"/><path d="M14 10h4l3 3v4h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
-  ajustes: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
-  categorias: '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',
-  marcas: '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
-  tipos: '<path d="M9 4h6M10 4v4l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V4"/>',
+  inventario: '<path d="M21 8 12 3 3 8l9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
   reportes: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
-  usuarios: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
-  auditoria: '<path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
+  config: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+  compras: '<path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6"/><circle cx="10" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/>',
 };
-const icono = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONOS[k] || ''}</svg>`;
-
-// Material: "vidrio" (Liquid Glass aproximado) u "opaco" (iOS 16); se recuerda en este navegador
-function leerMaterial() { try { return localStorage.getItem('material') || 'vidrio'; } catch (e) { return 'vidrio'; } }
-function ponerMaterial(m) {
-  document.documentElement.dataset.material = m;
-  try { localStorage.setItem('material', m); } catch (e) { /* sin almacenamiento */ }
-}
-ponerMaterial(leerMaterial());
-
-// Control segmentado con "pulgar" que se desliza (segmented control de Apple)
-function segmentado(contenedor, selector, activo) {
-  let pulgar = contenedor.querySelector('.pulgar');
-  if (!pulgar) { pulgar = document.createElement('span'); pulgar.className = 'pulgar'; contenedor.prepend(pulgar); }
-  const b = contenedor.querySelector(selector + '.' + activo) || contenedor.querySelector(selector);
-  if (!b) return;
-  pulgar.style.left = b.offsetLeft + 'px';
-  pulgar.style.width = b.offsetWidth + 'px';
-}
-
-// Números que cuentan hasta su valor (como los widgets de Apple)
-function contar(el, final, formato, ms = 700) {
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('sin-animacion')) { el.textContent = formato(final); return; }
-  const t0 = performance.now();
-  const paso = (t) => {
-    const p = Math.min(1, (t - t0) / ms), e = 1 - Math.pow(1 - p, 3);
-    el.textContent = formato(final * e);
-    if (p < 1) requestAnimationFrame(paso);
-  };
-  requestAnimationFrame(paso);
-}
-
-const MODULOS = Object.fromEntries(MODULOS_LISTA.map(([k, t, g, a, r]) => [k, [t, r, g, a]]));
+const icono = (k) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONOS[k] || ''}</svg>`;
 const iniciales = (n) => (n || '?').split(' ').filter(Boolean).slice(0, 2).map((x) => x[0]).join('').toUpperCase();
 
 function renderMain() {
-  const u = state.user;
+  const u = state.user, mods = modulosDelRol();
   $app.innerHTML = '';
-  let grupo = null, nav = '';
-  for (const [k, t, g] of MODULOS_LISTA) {
-    if (!u.modulos.includes(k)) continue;
-    if (g !== grupo) { grupo = g; nav += `<div class="grupo">${esc(g)}</div>`; }
-    nav += `<button data-m="${k}">${icono(k)}<span>${esc(t)}</span></button>`;
-  }
-  const el = h(`<div class="form app">
-    ${titlebar('TecnoStore — Panel de administración')}
-    <div class="body">
-      <aside class="lateral">
-        <div class="marca"><div class="sello">T</div><div><b>TecnoStore</b><small>Panel de administración</small></div></div>
-        <nav><span class="indicador"></span>${nav}</nav>
-      </aside>
-      <div class="principal">
-        <header class="encabezado">
-          <h2 class="titulo"></h2><span class="atajo"></span><span class="spacer"></span>
-          <div class="segmentado material" title="Material de la interfaz"><button data-mat="vidrio">Vidrio líquido</button><button data-mat="opaco">Opaco</button></div>
-          <div class="avatar">${esc(iniciales(u.nombre))}</div>
-          <div class="quien"><b>${esc(u.nombre)}</b><small>${esc(u.rol)} · ${esc(u.sucursal)}</small></div>
-          <button data-salir>Cerrar sesión</button>
-        </header>
-        <div class="content"></div>
-      </div>
-    </div></div>`);
-  const cerrarSesion = async () => {
-    if (await messageBox('¿Deseas cerrar la sesión?', { icon: 'question', buttons: ['Sí', 'No'] }) === 'Sí') { state.token = null; renderLogin(); }
-  };
-  el.querySelectorAll('[data-m]').forEach((b) => b.onclick = () => abrir(b.dataset.m));
-  el.querySelector('[data-salir]').onclick = cerrarSesion;
-  ventana(el, cerrarSesion);
-  const seg = el.querySelector('.material');
-  const pintarMaterial = () => {
-    const m = leerMaterial();
-    seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.mat === m));
-    segmentado(seg, 'button', 'on');
-  };
-  seg.querySelectorAll('button').forEach((b) => b.onclick = () => { ponerMaterial(b.dataset.mat); pintarMaterial(); });
-  requestAnimationFrame(pintarMaterial);
+  const el = h(`<div class="app"><aside class="lateral"><div class="marca">TecnoStore</div>
+      ${mods.map(([k, t], i) => `<button data-m="${k}">${icono(k)}<span>${esc(t)}</span><kbd>F${i + 1}</kbd></button>`).join('')}</aside>
+    <div class="principal"><header class="encabezado"><h2></h2><span class="spacer"></span><div class="avatar">${esc(iniciales(u.nombre))}</div>
+      <div class="quien"><b>${esc(u.nombre)}</b><small>${esc(u.rol)} · ${esc(u.sucursal)}</small></div><button data-salir>Salir</button></header>
+      <div class="vistas"></div><div class="content"></div></div></div>`);
+  el.querySelectorAll('[data-m]').forEach((b) => b.onclick = () => abrirModulo(b.dataset.m));
+  el.querySelector('[data-salir]').onclick = async () => { if (await confirmar('¿Cerrar la sesión?', 'Salir')) { state.token = state.user = null; document.onkeydown = null; renderLogin(); } };
   document.onkeydown = (ev) => {
-    const tecla = { F2: 'productos', F3: 'clientes', F4: 'proveedores', F5: 'venta', F6: 'ordenes', F7: 'compras' }[ev.key];
-    if (tecla && state.user?.modulos.includes(tecla) && !document.querySelector('.overlay')) { ev.preventDefault(); abrir(tecla); }
+    if (document.querySelector('.overlay')) return;
+    const n = /^F(\d)$/.exec(ev.key);
+    if (n && mods[n[1] - 1]) { ev.preventDefault(); abrirModulo(mods[n[1] - 1][0]); }
+    else if (ev.key === 'Escape' && state.vista !== 'inicio' && !document.activeElement?.value) abrir('inicio');
   };
-  $app.appendChild(el);
-  abrir(u.modulos.includes(state.modulo) ? state.modulo : u.modulos[0]);
+  $app.append(el);
+  abrir(u.modulos.includes(state.vista) ? state.vista : 'inicio');
+}
+const abrirModulo = (k) => { const m = modulosDelRol().find((x) => x[0] === k); if (m) abrir(state.ultimas[k] || m[2][0][0]); };
+
+async function abrir(vista, parametro) {
+  const m = modulosDelRol().find((x) => x[2].some((v) => v[0] === vista));
+  if (!m) return;
+  state.vista = vista; state.ultimas[m[0]] = vista;
+  document.querySelectorAll('.lateral [data-m]').forEach((b) => b.classList.toggle('active', b.dataset.m === m[0]));
+  document.querySelector('.encabezado h2').textContent = m[1];
+  const barra = document.querySelector('.vistas');
+  barra.replaceChildren(...(m[2].length > 1 ? [seg(m[2].map((v) => v[1]), m[2].findIndex((v) => v[0] === vista), (i) => abrir(m[2][i][0]))] : []));
+  barra.style.display = m[2].length > 1 ? '' : 'none';
+  const viejo = document.querySelector('.content'), c = h('<div class="content"></div>');
+  viejo.replaceWith(c);
+  try { await m[2].find((v) => v[0] === vista)[2](c, parametro); } catch (e) { error(e); }
 }
 
-const acercaDe = () => messageBox('TecnoStore — Panel de administración\nProyecto final de Taller de Bases de Datos\n\nVista previa conectada a SQL Server. La aplicación real es la solución de Windows Forms en 03_WindowsForms.', { title: 'Acerca de' });
-
-// La pastilla verde azulado se desliza hasta el módulo activo
-function moverIndicador() {
-  const ind = document.querySelector('.lateral .indicador'), b = document.querySelector('.lateral [data-m].active');
-  if (!ind || !b) return;
-  ind.style.top = b.offsetTop + 'px';
-  ind.style.height = b.offsetHeight + 'px';
-}
-
-async function abrir(m) {
-  state.modulo = m;
-  document.querySelectorAll('.lateral [data-m]').forEach((b) => b.classList.toggle('active', b.dataset.m === m));
-  moverIndicador();
-  document.querySelector('.encabezado .titulo').textContent = MODULOS[m][0];
-  document.querySelector('.encabezado .atajo').textContent = MODULOS[m][3] ? 'Atajo: ' + MODULOS[m][3] : '';
-  const content = document.querySelector('.content');
-  content.innerHTML = '<div class="sub">Cargando…</div>';
-  content.scrollTop = 0;
-  try { await MODULOS[m][1](content); } catch (e) { content.innerHTML = ''; showError(e); }
-}
-
-/* ---------- FrmDashboard ---------- */
-// Una sola pantalla (Stephen Few): 4 indicadores, 2 gráficas de barras y 2 listas cortas.
-// El detalle vive en Reportes.
-const mx = (v, d = 0) => Number(v).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: d, minimumFractionDigits: d });
-const miles = (v) => (v ? '$' + Math.round(v / 1000) + 'K' : '0');
-
-function variacion(actual, anterior) {
-  if (!anterior) return [actual ? 'sin datos del periodo anterior' : 'sin movimientos', ''];
-  const pct = (actual - anterior) * 100 / anterior;
-  return [`${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct).toFixed(1)} % vs. 90 días previos`, pct >= 0 ? 'sube' : 'baja'];
-}
-
-// Gráfica de columnas en SVG (equivale al Chart de tipo Column en C#)
-function columnas(datos) {
-  const W = 560, H = 230, iz = 52, ab = 26, ar = 22, max = Math.max(1, ...datos.map((d) => d.v)) * 1.12;
-  const paso = (W - iz - 10) / datos.length, ancho = paso * 0.55;
-  const y = (v) => ar + (H - ar - ab) * (1 - v / max);
-  const lineas = [0, 0.5, 1].map((f) => {
-    const v = max * f, yy = y(v);
-    return `<line x1="${iz}" x2="${W - 6}" y1="${yy}" y2="${yy}" class="rejilla"/><text x="${iz - 8}" y="${yy + 4}" class="eje" text-anchor="end">${miles(v)}</text>`;
-  }).join('');
-  const barras = datos.map((d, i) => {
-    const x = iz + paso * i + (paso - ancho) / 2, yy = y(d.v);
-    return `<rect x="${x}" y="${yy}" width="${ancho}" height="${H - ab - yy}" rx="4" class="barra${i === datos.length - 1 ? ' actual' : ''}"><title>${esc(d.t)}: ${esc(mx(d.v))}</title></rect>
-      <text x="${x + ancho / 2}" y="${yy - 6}" class="valor" text-anchor="middle">${d.v ? miles(d.v) : ''}</text>
-      <text x="${x + ancho / 2}" y="${H - 8}" class="eje" text-anchor="middle">${esc(d.t)}</text>`;
-  }).join('');
-  return `<svg viewBox="0 0 ${W} ${H}" class="grafica">${lineas}${barras}</svg>`;
-}
-
-// Barras horizontales: comparar categorías es más fácil que en una dona (Chart tipo Bar en C#)
-function barrasH(datos) {
-  if (!datos.length) return vacia;
-  const max = Math.max(1, ...datos.map((d) => d.v));
-  return `<div class="barrasH">${datos.map((d) => `<div class="bh" title="${esc(d.t)}: ${esc(mx(d.v))}"><span>${esc(d.t)}</span>
-    <div><i style="width:${(d.v / max) * 100}%"></i></div><b>${esc(miles(d.v))}</b></div>`).join('')}</div>`;
-}
-
-async function renderDashboard(c) {
-  const d = await api('/api/dashboard');
-  const k = d.kpi, u = state.user;
+/* ---------- FrmInicio: lo de todos los días en botones grandes ---------- */
+async function renderInicio(c) {
+  const k = await api('/api/inicio'), ver = tiene('ver_reportes');
   const hora = new Date().getHours();
-  const saludo = hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches';
-  const fecha = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  const [vi, ci] = variacion(k.ingresos_mes, k.ingresos_ant), [vv, cv] = variacion(k.ventas_mes, k.ventas_ant);
-  // Lo más importante arriba a la izquierda
-  const tarjetas = [
-    ['Ingresos · 90 días', k.ingresos_mes, vi, ci, true],
-    ['Ventas · 90 días', k.ventas_mes, vv, cv],
-    ['Equipos en taller', k.ordenes_abiertas, `${k.ordenes_listas} listos para entregar`, ''],
-    ['Productos por resurtir', k.alertas_stock, k.agotados ? `${k.agotados} agotado(s)` : 'ninguno agotado', k.agotados ? 'baja' : 'sube'],
-  ];
-  const meses = [];
-  for (let i = 5; i >= 0; i--) {
-    const f = new Date(); f.setDate(1); f.setMonth(f.getMonth() - i);
-    const clave = f.toISOString().slice(0, 7);
-    const fila = d.meses.find((m) => m.mes === clave);
-    const t = f.toLocaleDateString('es-MX', { month: 'short' }).replace('.', '');
-    meses.push({ t: t[0].toUpperCase() + t.slice(1), v: fila ? fila.ingresos : 0 });
-  }
-  c.innerHTML = `<div class="dash">
-    <div class="dash-saludo"><div><h1>${saludo}, ${esc(u.nombre.split(' ')[0])}</h1>
-      <div class="sub">${esc(fecha[0].toUpperCase() + fecha.slice(1))} · ${esc(u.sucursal)}</div></div>
-      <span class="spacer"></span><span class="sub">Actualizado a las ${new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>
-      <button data-actualizar>Actualizar</button></div>
-    <div class="kpis">${tarjetas.map(([t, , n, cls], i) => `<div class="card kpi"><span>${esc(t)}</span><b data-kpi="${i}">—</b><small class="${cls}">${esc(n)}</small></div>`).join('')}</div>
-    <div class="fila2">
-      <div class="card"><h3>Ingresos por mes</h3>${columnas(meses)}</div>
-      <div class="card"><h3>Ventas por categoría · 90 días</h3>${barrasH(d.categorias.map((x) => ({ t: x.categoria, v: x.ingresos })))}</div>
-    </div>
-    <div class="fila2">
-      <div class="card"><h3>Requiere atención · productos por resurtir</h3><div data-g="alertas"></div></div>
-      <div class="card"><h3>Requiere atención · equipos en el taller</h3><div data-g="taller"></div></div>
-    </div></div>`;
-  const poner = (k2, el) => c.querySelector(`[data-g=${k2}]`).replaceWith(el);
-  poner('alertas', grid([{ t: 'Producto', k: 'producto' }, { t: 'Stock', k: 'stock', num: 1, f: (v) => `<span class="${v === 0 ? 'texto-rojo' : ''}">${v}</span>` }, { t: 'Mínimo', k: 'minimo', num: 1 }], d.alertas, { cls: 'compacta' }));
-  poner('taller', grid([{ t: 'Folio', k: 'folio' }, { t: 'Equipo', k: 'equipo' }, { t: 'Estado', k: 'estado', f: (v) => `<span class="pill azul">${esc(v)}</span>` }, { t: 'Días', k: 'dias', num: 1 }], d.taller, { cls: 'compacta' }));
-  c.querySelector('[data-actualizar]').onclick = () => renderDashboard(c).catch(showError);
-  c.querySelectorAll('[data-kpi]').forEach((el) => {
-    const [, valor, , , dinero] = tarjetas[+el.dataset.kpi];
-    contar(el, Number(valor) || 0, dinero ? (v) => mx(v) : (v) => Math.round(v).toLocaleString('es-MX'));
-  });
+  const acciones = [
+    tiene('registrar_venta') && ['ventas', 'Nueva venta', 'cobrar a un cliente', () => abrir('venta'), 'primary'],
+    tiene('gestionar_ordenes') && ['taller', 'Recibir equipo', 'entra al taller', () => abrir('ordenes', 'recibir')],
+    tiene('registrar_compra') && ['compras', 'Llegó mercancía', 'compra a proveedor', () => abrir('compras')],
+    !tiene('registrar_venta') && ver && ['reportes', 'Ver reportes', 'ventas e inventario', () => abrir('reportes'), 'primary'],
+    ['inventario', 'Buscar producto', 'precio y existencias', () => abrir('productos')],
+    !tiene('registrar_compra') && ['clientes', 'Clientes', 'datos y compras', () => abrir('clientes')],
+  ].filter(Boolean);
+  const numeros = [
+    ver && ['Ingresos', money(k.ingresos, 0), 'últimos 90 días', () => abrir('dashboard')],
+    ver && ['Ventas', k.ventas, 'últimos 90 días', () => abrir('ventas')],
+    ['En taller', k.ordenes_abiertas, 'equipos por atender', () => abrir('ordenes')],
+    !ver && ['Listos', k.ordenes_listas, 'para entregar', () => abrir('ordenes')],
+    ['Por resurtir', k.alertas_stock, 'productos', () => abrir('productos', 'alertas')],
+  ].filter(Boolean);
+  c.innerHTML = `<h1 class="saludo">${hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches'}, ${esc(state.user.nombre.split(' ')[0])}</h1>
+    <div class="fila" style="flex:1.2">${acciones.map(([i, t, n, , cl]) => `<button class="grande ${cl || ''}">${icono(i)}<b>${esc(t)}</b><small>${esc(n)}</small></button>`).join('')}</div>
+    <div class="fila">${numeros.map(([t, v, n]) => `<button class="grande"><span class="et">${esc(t)}</span><span class="cifra">${esc(v)}</span><small>${esc(n)}</small></button>`).join('')}</div>`;
+  const [f1, f2] = c.querySelectorAll('.fila');
+  [...f1.children].forEach((b, i) => b.onclick = acciones[i][3]);
+  [...f2.children].forEach((b, i) => b.onclick = numeros[i][3]);
 }
 
-/* ---------- FrmProductos ---------- */
-async function renderProductos(c) {
-  c.innerHTML = `<h1>Productos</h1><div class="sub">Busca por nombre o SKU. Los que necesitan resurtirse aparecen resaltados.</div>
-    <fieldset class="groupbox"><legend>Filtros</legend><div class="row">
-      <div class="field"><span>Buscar (nombre o SKU):</span><input name="texto" style="width:220px"></div>
-      <div class="field"><span>Categoría:</span><select name="categoria">${options(state.cat.categorias, '', '(Todas)')}</select></div>
-      <label style="margin-top:14px"><input type="checkbox" name="alertas"> Solo con alerta de stock</label>
-      <span class="spacer"></span>
-      <button class="primary" data-buscar style="margin-top:14px">Buscar</button><button data-limpiar style="margin-top:14px">Limpiar</button>
-    </div></fieldset><div class="slot" style="flex:1;display:flex;min-height:0"></div><div class="sub count"></div>`;
-  const f = (n) => c.querySelector(`[name=${n}]`);
-  const cargar = async () => {
-    const qs = new URLSearchParams({ texto: f('texto').value, categoria: f('categoria').value, alertas: f('alertas').checked ? '1' : '' });
-    const rows = await api('/api/productos?' + qs);
-    c.querySelector('.slot').replaceChildren(grid([
-      { t: 'SKU', k: 'sku' }, { t: 'Producto', k: 'nombre' }, { t: 'Categoría', k: 'categoria' },
-      { t: 'Precio', k: 'precio_venta', num: 1, f: M() }, { t: 'Stock', k: 'stock_actual', num: 1 },
-      { t: 'Alerta', k: 'alerta_stock', f: (v) => (v === 'OK' || !v ? '' : `<span class="pill ${v === 'Agotado' ? 'roja' : 'ambar'}">${esc(v)}</span>`) },
-    ], rows, { rowClass: (r) => ({ Agotado: 'danger', 'Stock bajo': 'warn' }[r.alerta_stock] || '') }));
-    c.querySelector('.count').textContent = `${rows.length} registro(s)`;
-  };
-  c.querySelector('[data-buscar]').onclick = () => cargar().catch(showError);
-  c.querySelector('[data-limpiar]').onclick = () => { f('texto').value = ''; f('categoria').value = ''; f('alertas').checked = false; cargar().catch(showError); };
-  f('texto').onkeydown = (e) => { if (e.key === 'Enter') cargar().catch(showError); };
-  await cargar();
-}
-
-/* ---------- FrmClientes ---------- */
-async function renderClientes(c) {
-  c.innerHTML = `<h1>Clientes</h1><div class="sub">El nivel depende de cuánto ha comprado cada cliente.</div>
-    <fieldset class="groupbox"><legend>Búsqueda</legend><div class="row">
-      <div class="field"><span>Nombre, apellidos o correo:</span><input name="texto" style="width:260px"></div>
-      <button class="primary" data-buscar style="margin-top:14px">Buscar</button>
-    </div></fieldset><div class="slot" style="flex:1;display:flex;min-height:0"></div><div class="sub count"></div>`;
-  const cargar = async () => {
-    const rows = await api('/api/clientes?' + new URLSearchParams({ texto: c.querySelector('[name=texto]').value }));
-    c.querySelector('.slot').replaceChildren(grid([
-      { t: 'Cliente', k: 'cliente' }, { t: 'Correo', k: 'correo' },
-      { t: 'Compras', k: 'compras', num: 1 }, { t: 'Total comprado', k: 'total_comprado', num: 1, f: M() },
-      { t: 'Nivel', k: 'nivel', f: (v) => (v === 'Sin compras' ? '<span style="color:#888">Sin compras</span>' : `<span class="badge ${esc(v)}">${esc(v)}</span>`) },
-    ], rows, { rowClass: (r) => (r.activo ? '' : 'danger') }));
-    c.querySelector('.count').textContent = `${rows.length} cliente(s)`;
-  };
-  c.querySelector('[data-buscar]').onclick = () => cargar().catch(showError);
-  c.querySelector('[name=texto]').onkeydown = (e) => { if (e.key === 'Enter') cargar().catch(showError); };
-  await cargar();
-}
-
-/* ---------- FrmVenta (maestro-detalle) ---------- */
+/* ---------- FrmVenta: buscar, tocar, cobrar ---------- */
 async function renderVenta(c) {
   state.cat = await api('/api/catalogos');
-  const lineas = [];
-  const prod = (id) => state.cat.productos.find((p) => p.id === +id);
-  c.innerHTML = `<h1>Nueva venta</h1><div class="sub">Elige cliente y productos, y guarda. Si algo no cuadra (stock, descuento) no se guarda nada.</div>
-    <fieldset class="groupbox"><legend>Encabezado</legend><div class="row">
-      <div class="field"><span>Cliente: *</span><select name="cliente" style="width:240px">${options(state.cat.clientes, '', '(Selecciona)')}</select></div>
-      <div class="field"><span>Método de pago: *</span><select name="metodo">${options(state.cat.metodos, 1)}</select></div>
-      <div class="field"><span>Descuento %:</span><input name="desc" type="number" min="0" max="50" step="1" value="0" style="width:70px"></div>
-      <div class="field"><span>Vendedor:</span><input value="${esc(state.user.nombre)}" disabled style="width:180px"></div>
-    </div><div class="sub" style="margin-top:6px">${tiene('cancelar_venta') ? 'Puedes autorizar descuentos de hasta 50 %.' : `Descuentos mayores a ${esc(state.cat.descuentoMax)} % los autoriza un Supervisor.`}</div></fieldset>
-    <fieldset class="groupbox"><legend>Agregar producto</legend><div class="row">
-      <div class="field"><span>Producto:</span><select name="producto" style="width:380px">${state.cat.productos.map((p) =>
-        `<option value="${p.id}">${esc(p.sku)} — ${esc(p.nombre)} (${money(p.precio_venta)} · stock ${p.stock_actual})</option>`).join('')}</select></div>
-      <div class="field"><span>Cantidad:</span><input name="cant" type="number" min="1" value="1" style="width:70px"></div>
-      <button data-agregar style="margin-top:14px">Agregar ↓</button><button data-quitar style="margin-top:14px">Quitar línea</button>
-    </div></fieldset>
-    <div class="slot" style="flex:1;display:flex;min-height:0"></div>
-    <div class="row"><div class="totals"></div><span class="spacer"></span>
-      <button data-limpiar>Limpiar</button><button class="primary" data-guardar>Guardar venta</button></div>`;
-  const f = (n) => c.querySelector(`[name=${n}]`);
-  let sel = null;
+  const lineas = []; let sel = null;
+  c.innerHTML = `<div class="vender"><div><input class="buscar" placeholder="Escribe o escanea el producto…"><div class="card tabla"></div></div>
+    <div class="card cuenta"><div class="field"><span>Cliente</span><select name="cliente">${options(state.cat.clientes, '', 'Elige un cliente')}</select></div>
+      <div class="lineas" style="flex:1;min-height:90px;overflow:auto"></div>
+      <div class="row"><button class="mini" data-menos>−</button><button class="mini" data-mas>+</button><span class="spacer"></span><button class="peligro" data-vaciar>Vaciar</button></div>
+      <div class="total">$0.00</div><button class="primary cobrar">COBRAR</button></div></div>`;
+  const $ = (s) => c.querySelector(s), buscar = $('.buscar');
+  const total = () => lineas.reduce((a, l) => a + l.precio_venta * l.cantidad, 0);
+  const filtrados = () => { const p = buscar.value.trim().toLowerCase().split(/\s+/).filter(Boolean); return state.cat.productos.filter((x) => p.every((w) => (x.nombre + ' ' + x.sku).toLowerCase().includes(w))); };
   const pintar = () => {
-    sel = null;
-    c.querySelector('.slot').replaceChildren(grid([
-      { t: 'Producto', k: 'nombre' }, { t: 'Cantidad', k: 'cantidad', num: 1 },
-      { t: 'Precio', k: 'precio_venta', num: 1, f: M() }, { t: 'Importe', k: 'importe', num: 1, f: M() },
-    ], lineas.map((l) => ({ ...l, importe: l.precio_venta * l.cantidad })), { onSelect: (r) => sel = r }));
-    const sub = lineas.reduce((a, l) => a + l.precio_venta * l.cantidad, 0);
-    const desc = Math.round(sub * (+f('desc').value || 0)) / 100;
-    c.querySelector('.totals').innerHTML = `<span>Subtotal:</span><span>${money(sub)}</span><span>Descuento:</span><span>${money(desc)}</span>
-      <span><b>Total:</b></span><b>${money(sub - desc)}</b>`;
+    const g = grid([{ t: 'Producto', k: 'nombre' }, { t: 'Pzas.', k: 'cantidad', num: 1 }, { t: 'Importe', k: 'importe', num: 1, f: $$() }],
+      lineas.map((l) => ({ ...l, importe: l.precio_venta * l.cantidad })), { onSelect: (r) => sel = r.id });
+    $('.lineas').replaceChildren(g); sel = lineas.some((l) => l.id === sel) ? sel : lineas[0]?.id;
+    g.querySelectorAll('tbody tr').forEach((tr, i) => tr.classList.toggle('sel', lineas[i].id === sel));
+    $('.total').textContent = money(total());
+    ['[data-menos]', '[data-mas]', '[data-vaciar]', '.cobrar'].forEach((s) => $(s).disabled = !lineas.length);
   };
-  f('desc').oninput = pintar;
-  c.querySelector('[data-agregar]').onclick = () => {
-    const p = prod(f('producto').value), cant = parseInt(f('cant').value, 10);
-    if (!(cant > 0)) { f('cant').classList.add('invalid'); return messageBox('La cantidad debe ser mayor a cero.', { icon: 'error' }); }
-    f('cant').classList.remove('invalid');
-    const ya = lineas.find((l) => l.id === p.id);
-    if (ya) ya.cantidad += cant; else lineas.push({ ...p, cantidad: cant });
-    pintar();
+  const agregar = (p) => {
+    const l = lineas.find((x) => x.id === p.id);
+    if ((l?.cantidad || 0) + 1 > p.stock_actual) return aviso(`Solo hay ${p.stock_actual} pieza(s) de ${p.nombre}`);
+    if (l) l.cantidad++; else lineas.push({ ...p, cantidad: 1 });
+    sel = p.id; pintar();
   };
-  c.querySelector('[data-quitar]').onclick = () => { if (sel) { lineas.splice(lineas.findIndex((l) => l.id === sel.id), 1); pintar(); } };
-  c.querySelector('[data-limpiar]').onclick = () => renderVenta(c).catch(showError);
-  const guardar = c.querySelector('[data-guardar]');
-  guardar.onclick = async () => {
-    f('cliente').classList.toggle('invalid', !f('cliente').value);
-    if (!f('cliente').value) return messageBox('Selecciona un cliente.', { icon: 'error' });
-    if (!lineas.length) return messageBox('Agrega al menos un producto.', { icon: 'error' });
-    const total = c.querySelector('.totals b:last-child').textContent;
-    if (await messageBox(`¿Registrar la venta por ${total}?`, { icon: 'question', buttons: ['Sí', 'No'], title: 'Confirmar venta' }) !== 'Sí') return;
-    guardar.disabled = true;   // evita doble ejecución
-    try {
-      const r = await api('/api/ventas', {
-        id_cliente: f('cliente').value, id_metodo_pago: f('metodo').value, descuento_pct: f('desc').value,
-        lineas: lineas.map((l) => ({ id_producto: l.id, cantidad: l.cantidad })),
-      });
-      await messageBox(`Venta ${r.folio} registrada correctamente.`, { icon: 'ok', title: 'Venta registrada' });
-      await renderVenta(c);
-    } catch (e) {
-      guardar.disabled = false;
-      showError(new Error(`La venta no se guardó:\n\n${e.message}`));
-    }
+  const productos = () => {
+    const rows = filtrados();
+    const g = grid([{ t: 'Producto', k: 'nombre' }, { t: 'Precio', k: 'precio_venta', num: 1, f: $$() }, { t: 'Quedan', k: 'stock_actual', num: 1 }], rows);
+    g.querySelectorAll('tbody tr').forEach((tr) => tr.onclick = () => agregar(rows[+tr.dataset.i]));
+    $('.tabla').replaceChildren(g);
   };
-  pintar();
+  buscar.oninput = productos;
+  buscar.onkeydown = (e) => {
+    if (e.key !== 'Enter' || !buscar.value.trim()) return;
+    const p = state.cat.productos.find((x) => x.sku.toLowerCase() === buscar.value.trim().toLowerCase()) || filtrados()[0];
+    if (p) { agregar(p); buscar.value = ''; productos(); }
+  };
+  $('[data-mas]').onclick = () => { const p = state.cat.productos.find((x) => x.id === sel); if (p) agregar(p); };
+  $('[data-menos]').onclick = () => { const i = lineas.findIndex((x) => x.id === sel); if (i < 0) return; if (lineas[i].cantidad > 1) lineas[i].cantidad--; else lineas.splice(i, 1); pintar(); };
+  $('[data-vaciar]').onclick = async () => { if (await confirmar('¿Vaciar la venta?', 'Vaciar')) { lineas.length = 0; pintar(); } };
+  $('.cobrar').onclick = () => {
+    const cli = $('[name=cliente]');
+    cli.classList.toggle('invalid', !cli.value);
+    if (!cli.value) return cli.focus();
+    cobrar(total(), async (metodo, desc) => {
+      const r = await api('/api/ventas', { id_cliente: cli.value, id_metodo_pago: metodo, descuento_pct: desc, lineas: lineas.map((l) => ({ id_producto: l.id, cantidad: l.cantidad })) });
+      aviso(`Venta ${r.folio} registrada`);
+      abrir('venta');
+      return true;
+    });
+  };
+  productos(); pintar(); buscar.focus();
+}
+
+// FrmCobrar: total grande, forma de pago y descuento; es también la confirmación
+function cobrar(subtotal, guardar) {
+  const cuerpo = h('<div><div class="total" style="text-align:center"></div><div class="ayuda" style="text-align:center;min-height:24px"></div></div>');
+  const pago = seg(state.cat.metodos.map((m) => m.nombre), 0), otro = h('<input type="number" min="0" max="50" value="0" style="width:110px;display:none">');
+  const desc = seg(['Sin descuento', '5 %', '10 %', 'Otro'], 0, (i) => { otro.style.display = i === 3 ? '' : 'none'; pintar(); });
+  const pct = () => [0, 5, 10, +otro.value || 0][desc.activo];
+  const fila = h('<div class="row"></div>'); fila.append(desc, otro); otro.oninput = () => pintar();
+  cuerpo.append(h('<div class="field"><span style="margin:12px 0 6px">Forma de pago</span></div>'), pago, h('<div class="field"><span style="margin:18px 0 6px">Descuento</span></div>'), fila,
+    h(`<div class="ayuda" style="margin-top:8px">${tiene('cancelar_venta') ? 'Puedes autorizar hasta 50 %.' : `Más de ${esc(state.cat.descuentoMax)} % lo autoriza un Supervisor.`}</div>`));
+  const el = ficha('Cobrar', cuerpo, [['Regresar', ''], ['Cobrar', 'primary', () => guardar(state.cat.metodos[pago.activo].id, pct())]], { ancha: true });
+  const boton = el.querySelector('.pie .primary'); boton.style.cssText = 'flex:2;min-height:64px;font-size:19px';
+  function pintar() {
+    const d = Math.round(subtotal * pct()) / 100;
+    cuerpo.children[0].textContent = money(subtotal - d);
+    cuerpo.children[1].textContent = d ? `Antes ${money(subtotal)} · descuento ${money(d)}` : '';
+    boton.textContent = 'Cobrar ' + money(subtotal - d);
+  }
+  pintar(); boton.focus();
 }
 
 /* ---------- FrmHistorialVentas ---------- */
-async function renderVentas(c) {
-  const puedeCancelar = tiene('cancelar_venta');
-  c.innerHTML = `<h1>Historial de ventas</h1><div class="sub">Selecciona una venta para ver qué se vendió.</div>
-    <fieldset class="groupbox"><legend>Buscar</legend><div class="row">
-      <div class="field"><span>Folio o cliente:</span><input name="texto" style="width:220px"></div>
-      <div class="field"><span>Estado:</span><select name="estado"><option value="">(Todos)</option><option>Completada</option><option>Cancelada</option></select></div>
-      <button class="primary" data-buscar style="margin-top:14px">Buscar</button>
-      <details class="mas"><summary>Más filtros</summary>
-        <div class="field"><span>Desde:</span><input type="date" name="desde" value="2026-01-01"></div>
-        <div class="field"><span>Hasta:</span><input type="date" name="hasta" value="${new Date().toISOString().slice(0, 10)}"></div></details>
-      <span class="spacer"></span>
-      ${puedeCancelar ? '<button data-cancelar style="margin-top:14px">Cancelar venta…</button>' : ''}
-    </div></fieldset>
-    <div class="slot" style="flex:1;display:flex;min-height:0"></div>
-    <fieldset class="groupbox"><legend>Detalle de la venta seleccionada</legend><div class="det"><div class="sub">Selecciona una venta.</div></div></fieldset>`;
-  const f = (n) => c.querySelector(`[name=${n}]`);
-  let sel = null;
-  const cargar = async () => {
-    sel = null;
-    const qs = new URLSearchParams({ desde: f('desde').value, hasta: f('hasta').value, estado: f('estado').value, texto: f('texto').value });
-    const rows = await api('/api/ventas?' + qs);
-    c.querySelector('.slot').replaceChildren(grid([
-      { t: 'Folio', k: 'folio' }, { t: 'Fecha', k: 'fecha', f: datetime }, { t: 'Cliente', k: 'cliente' },
-      { t: 'Total', k: 'total', num: 1, f: M() }, { t: 'Estado', k: 'estado', f: pillEstado },
-    ], rows, {
-      rowClass: (r) => (r.estado === 'Cancelada' ? 'danger' : ''),
-      onSelect: async (r) => {
-        sel = r;
-        const det = await api('/api/ventas/detalle?id=' + r.id_venta);
-        c.querySelector('.det').replaceChildren(grid([
-          { t: 'Producto', k: 'nombre' }, { t: 'No. de serie', k: 'numero_serie' }, { t: 'Cant.', k: 'cantidad', num: 1 },
-          { t: 'Importe', k: 'subtotal', num: 1, f: M() }, { t: 'Garantía', k: 'garantia' },
-        ], det, { cls: 'short' }));
-      },
-    }));
-  };
-  c.querySelector('[data-buscar]').onclick = () => cargar().catch(showError);
-  if (puedeCancelar) c.querySelector('[data-cancelar]').onclick = async () => {
-    if (!sel) return messageBox('Selecciona una venta.', { icon: 'info' });
-    if (sel.estado === 'Cancelada') return messageBox(`La venta ${sel.folio} ya está cancelada.`, { icon: 'info' });
-    const motivo = await inputBox(`Motivo de la cancelación de ${sel.folio}:`, 'Cancelar venta');
-    if (!motivo) return;
-    if (await messageBox(`¿Cancelar la venta ${sel.folio} por ${money(sel.total)}?\nSe reintegrará el stock y se liberarán las piezas con número de serie.`, { icon: 'question', buttons: ['Sí', 'No'] }) !== 'Sí') return;
-    try { await api('/api/ventas/cancelar', { id_venta: sel.id_venta, motivo }); await messageBox(`Venta ${sel.folio} cancelada.`, { icon: 'ok' }); await cargar(); }
-    catch (e) { showError(e); }
-  };
-  await cargar();
-}
-
-/* ---------- FrmOrdenesServicio ---------- */
-async function renderOrdenes(c) {
-  const estados = state.cat.estados;
-  const gestiona = tiene('gestionar_ordenes');
-  c.innerHTML = `<h1>Órdenes de servicio (taller)</h1><div class="sub">Las órdenes entregadas o canceladas ya no cambian de estado.</div>
-    <div class="row"><label><input type="checkbox" name="abiertas" checked> Solo órdenes abiertas</label></div>
-    <div class="slot" style="flex:1;display:flex;min-height:0"></div>
-    <div class="${gestiona ? 'two' : ''}">
-      <fieldset class="groupbox"><legend>Historial de estados</legend><div class="hist"><div class="sub">Selecciona una orden.</div></div></fieldset>
-      ${gestiona ? `<fieldset class="groupbox"><legend>Cambiar estado</legend>
-        <div class="row"><div class="field"><span>Orden:</span><input name="folio" disabled style="width:110px"></div>
-        <div class="field"><span>Nuevo estado:</span><select name="estado">${options(estados)}</select></div>
-        <button class="primary" data-aplicar style="margin-top:14px">Aplicar</button></div>
-      </fieldset>` : ''}</div>`;
-  let sel = null;
-  const cargar = async () => {
-    const rows = await api('/api/ordenes?abiertas=' + (c.querySelector('[name=abiertas]').checked ? '1' : ''));
-    c.querySelector('.slot').replaceChildren(grid([
-      { t: 'Folio', k: 'folio' }, { t: 'Equipo', k: 'equipo_descripcion' }, { t: 'Cliente', k: 'cliente' },
-      { t: 'Estado', k: 'estado', f: (v) => `<span class="pill ${v === 'Cancelada' ? 'roja' : v === 'Lista' ? 'verde' : 'azul'}">${esc(v)}</span>` },
-      { t: 'Días', k: 'dias_en_taller', num: 1 },
-    ], rows, {
-      rowClass: (r) => (r.estado === 'Cancelada' ? 'danger' : ''),
-      onSelect: async (r) => {
-        sel = r;
-        if (gestiona) {
-          c.querySelector('[name=folio]').value = r.folio;
-          const cur = estados.find((e) => e.nombre === r.estado);
-          c.querySelector('[name=estado]').value = Math.min(cur.id + 1, 5);
-        }
-        const hist = await api('/api/ordenes/historial?id=' + r.id_orden);
-        c.querySelector('.hist').replaceChildren(grid([
-          { t: 'Fecha', k: 'fecha', f: datetime }, { t: 'De', k: 'de_estado', f: (v) => esc(v || '(alta)') }, { t: 'A', k: 'a_estado' }, { t: 'Usuario', k: 'usuario' },
-        ], hist, { cls: 'short' }));
-      },
-    }));
-  };
-  c.querySelector('[name=abiertas]').onchange = () => cargar().catch(showError);
-  if (gestiona) c.querySelector('[data-aplicar]').onclick = async () => {
-    if (!sel) return messageBox('Selecciona una orden.', { icon: 'info' });
-    const nuevo = estados.find((e) => e.id === +c.querySelector('[name=estado]').value);
-    try {
-      await api('/api/ordenes/estado', { id_orden: sel.id_orden, id_estado: nuevo.id });
-      await messageBox(`Orden ${sel.folio} → ${nuevo.nombre}.`, { icon: 'ok' });
-      await cargar();
-    } catch (e) { showError(e); }
-  };
-  await cargar();
-}
-
-/* ---------- FrmReportes ---------- */
-async function renderReportes(c) {
-  c.innerHTML = `<h1>Reportes</h1><div class="sub">Las fechas aplican al resumen y a las ventas por categoría.</div>
-    <div class="row">
-      <div class="field"><span>Desde:</span><input type="date" name="desde" value="2026-01-01"></div>
-      <div class="field"><span>Hasta:</span><input type="date" name="hasta" value="${new Date().toISOString().slice(0, 10)}"></div>
-      <button class="primary" data-gen style="margin-top:14px">Generar</button><span class="spacer"></span>
-      <button data-csv style="margin-top:14px">Exportar CSV</button>
-    </div>
-    <div class="tabs"></div><div class="tabpage"></div>`;
-  const TABS = [
-    ['resumen', 'Resumen por periodo', [{ t: 'Mes', k: 'mes' }, { t: 'Ventas', k: 'ventas', num: 1 }, { t: 'Ingresos', k: 'ingresos', num: 1, f: M() }, { t: 'Ticket promedio', k: 'ticket_promedio', num: 1, f: M() }]],
-    ['top', 'Top 10 productos', [{ t: 'Producto', k: 'nombre' }, { t: 'Categoría', k: 'categoria' }, { t: 'Unidades', k: 'unidades_vendidas', num: 1 }, { t: 'Ingresos', k: 'ingresos', num: 1, f: M() }, { t: 'Utilidad bruta', k: 'utilidad_bruta', num: 1, f: M() }]],
-    ['empleados', 'Actividad por empleado', [{ t: 'Empleado', k: 'empleado' }, { t: 'Puesto', k: 'puesto' }, { t: 'Sucursal', k: 'sucursal' }, { t: 'Ventas', k: 'ventas', num: 1 }, { t: 'Vendido', k: 'vendido', num: 1, f: M() }, { t: 'Órdenes taller', k: 'ordenes', num: 1 }]],
-    ['stock', 'Stock bajo', [{ t: 'Producto', k: 'nombre' }, { t: 'Stock', k: 'stock_actual', num: 1 }, { t: 'Mínimo', k: 'stock_minimo', num: 1 }, { t: 'Faltante', k: 'faltante', num: 1 }, { t: 'Proveedor más barato', k: 'proveedor_sugerido' }]],
-    ['categorias', 'Ventas por categoría', [{ t: 'Categoría', k: 'categoria' }, { t: 'Ventas', k: 'ventas', num: 1 }, { t: 'Unidades', k: 'unidades', num: 1 }, { t: 'Ingresos', k: 'ingresos', num: 1, f: M() }]],
-  ];
-  let data = null, tab = 'resumen';
-  const pintar = () => {
-    const tabsEl = c.querySelector('.tabs');
-    if (!tabsEl.querySelector('[data-t]')) {   // se arman una vez para que el pulgar se deslice
-      tabsEl.innerHTML = TABS.map(([k, t]) => `<button data-t="${k}">${t}</button>`).join('');
-      tabsEl.querySelectorAll('[data-t]').forEach((b) => b.onclick = () => { tab = b.dataset.t; pintar(); });
-    }
-    tabsEl.querySelectorAll('[data-t]').forEach((b) => b.classList.toggle('active', b.dataset.t === tab));
-    requestAnimationFrame(() => segmentado(tabsEl, 'button', 'active'));
-    const [, , cols] = TABS.find((t) => t[0] === tab);
-    const page = c.querySelector('.tabpage');
-    page.replaceChildren();
-    if (tab === 'resumen' || tab === 'categorias') {
-      const key = tab === 'resumen' ? 'mes' : 'categoria';
-      const max = Math.max(1, ...data[tab].map((r) => r.ingresos));
-      page.appendChild(h(`<div class="chart">${data[tab].map((r) => `<div class="bar" title="${esc(money(r.ingresos))}"><i style="height:${(r.ingresos / max) * 100}%"></i><span>${esc(r[key])}</span></div>`).join('')}</div>`));
-    }
-    page.appendChild(grid(cols, data[tab], { rowClass: tab === 'stock' ? (r) => (r.stock_actual === 0 ? 'danger' : 'warn') : null }));
-  };
-  const cargar = async () => {
-    data = await api('/api/reportes?' + new URLSearchParams({ desde: c.querySelector('[name=desde]').value, hasta: c.querySelector('[name=hasta]').value }));
-    // Sin permiso para ver costos, la pestaña de empleados no existe (igual que en la app de C#)
-    if (!data.empleados) { const i = TABS.findIndex((t) => t[0] === 'empleados'); if (i >= 0) TABS.splice(i, 1); }
-    pintar();
-  };
-  c.querySelector('[data-gen]').onclick = () => cargar().catch(showError);
-  c.querySelector('[data-csv]').onclick = () => {
-    const [, nombre, cols] = TABS.find((t) => t[0] === tab);
-    const csv = [cols.map((x) => x.t).join(','), ...data[tab].map((r) => cols.map((x) => `"${String(r[x.k] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' }));
-    a.download = `${nombre}.csv`; a.click();
-  };
-  await cargar();
-}
-
-/* ---------- FrmAuditoria ---------- */
-async function renderAuditoria(c) {
-  const rows = await api('/api/auditoria');
-  c.innerHTML = `<h1>Auditoría</h1><div class="sub">Se registra sola cada vez que cambia un precio, el inventario o una venta. Nadie puede editarla ni borrarla.</div>
-    ${rows.length ? '' : '<div class="banner">Aún no hay cambios auditados: registra o cancela una venta y vuelve aquí.</div>'}
-    <div class="slot" style="flex:1;display:flex;min-height:0"></div>`;
-  c.querySelector('.slot').appendChild(grid([
-    { t: 'Fecha', k: 'fecha', f: datetime }, { t: 'Usuario', k: 'usuario_app' }, { t: 'Qué cambió', k: 'tabla' },
-    { t: 'Antes', k: 'valor_anterior' }, { t: 'Después', k: 'valor_nuevo' }, { t: 'Motivo', k: 'motivo' },
-  ], rows));
-}
-
-// InputBox (Microsoft.VisualBasic.Interaction.InputBox en la app de C#)
-function inputBox(text, title = 'TecnoStore') {
-  return new Promise((resolve) => {
-    const el = h(`<div class="overlay"><div class="msgbox">
-      <div class="titlebar"><span class="title" style="padding-left:12px">${esc(title)}</span><div class="caption"><span class="close">✕</span></div></div>
-      <div class="msg" style="flex-direction:column;align-items:stretch;gap:8px"><div>${esc(text)}</div><input maxlength="200"></div>
-      <div class="buttons"><button class="primary" data-ok>Aceptar</button><button data-no>Cancelar</button></div>
-    </div></div>`);
-    const input = el.querySelector('input');
-    const close = (v) => { el.remove(); resolve(v); };
-    el.querySelector('[data-ok]').onclick = () => close(input.value.trim() || null);
-    el.querySelector('[data-no]').onclick = () => close(null);
-    el.querySelector('.close').onclick = () => close(null);
-    input.onkeydown = (e) => { if (e.key === 'Enter') close(input.value.trim() || null); if (e.key === 'Escape') close(null); };
-    document.body.appendChild(el);
-    input.focus();
+function renderVentas(c) {
+  const estado = seg(['Todas', 'Completadas', 'Canceladas'], 0, () => L.cargar());
+  const fechas = h(`<div class="barra" style="display:none"><span class="suave">Desde</span><input type="date" value="${haceMeses(6)}"><span class="suave">hasta</span><input type="date" value="${isoDia(new Date())}"></div>`);
+  const [desde, hasta] = fechas.querySelectorAll('input');
+  const L = lista(c, {
+    pista: 'Folio o cliente…', filtros: [estado], textoAbrir: 'Ver venta', abrir: ver,
+    botones: [['Fechas', () => { fechas.style.display = fechas.style.display ? '' : 'none'; }]],
+    datos: (texto) => api('/api/ventas?' + new URLSearchParams({ texto, desde: desde.value, hasta: hasta.value, estado: ['', 'Completada', 'Cancelada'][estado.activo] })),
+    cols: [{ t: 'Folio', k: 'folio' }, { t: 'Fecha', k: 'fecha', f: datetime }, { t: 'Cliente', k: 'cliente' }, { t: 'Total', k: 'total', num: 1, f: $$() },
+      { t: 'Estado', k: 'estado', f: (v) => `<span class="${v === 'Cancelada' ? 'rojo' : 'suave'}">${esc(v)}</span>` }],
   });
+  L.barra.after(fechas); desde.onchange = hasta.onchange = L.cargar;
+  async function ver(r) {
+    const det = await api('/api/ventas/detalle?id=' + r.id_venta);
+    const cuerpo = h(`<div><div class="ayuda" style="margin-bottom:12px">${esc(r.cliente)} · ${datetime(r.fecha)}<br>Atendió ${esc(r.vendedor)} · ${esc(r.metodo_pago)}${r.descuento > 0 ? ' · Descuento ' + money(r.descuento) : ''}</div></div>`);
+    cuerpo.append(grid([{ t: 'Producto', k: 'nombre' }, { t: 'No. de serie', k: 'numero_serie' }, { t: 'Pzas.', k: 'cantidad', num: 1 }, { t: 'Importe', k: 'subtotal', num: 1, f: $$() }, { t: 'Garantía', k: 'garantia' }], det));
+    ficha(`${r.folio}   ${money(r.total)}${r.estado === 'Cancelada' ? '   (cancelada)' : ''}`, cuerpo, [
+      ...(tiene('cancelar_venta') && r.estado !== 'Cancelada' ? [['Cancelar venta', 'peligro', async () => {
+        const motivo = await preguntar('Cancelar ' + r.folio, '¿Por qué se cancela?', 'Continuar');
+        if (!motivo || !await confirmar(`¿Cancelar la venta ${r.folio} por ${money(r.total)}?\nLos productos regresan al almacén.`, 'Cancelar venta')) return false;
+        await api('/api/ventas/cancelar', { id_venta: r.id_venta, motivo });
+        aviso(`Venta ${r.folio} cancelada`); L.cargar(); return true;
+      }]] : []), ['Cerrar', '']], { ancha: true });
+  }
+  return L.cargado;
 }
 
-// Pantalla de alta/edición con estados lectura → edición (patrón de los CRUD en C#)
-function crud(c, { campos, puede, alGuardar, alEliminar }) {
-  const panel = c.querySelector('.crud');
-  panel.innerHTML = `<fieldset class="groupbox"><legend>Datos (lectura)</legend><div class="campos">${campos.map((f) =>
-    f.tipo === 'check' ? `<label><input type="checkbox" name="${f.k}"> ${esc(f.t)}</label>`
-      : f.tipo === 'select' ? `<div class="field"><span>${esc(f.t)}</span><select name="${f.k}">${options(f.opciones, '')}</select></div>`
-      : `<div class="field"><span>${esc(f.t)}</span><input name="${f.k}" ${f.tipo === 'number' ? 'type="number" step="0.01" min="0"' : ''}
-          ${f.tipo === 'password' ? 'type="password"' : ''} maxlength="${f.max || 120}" ${f.mayus ? 'style="text-transform:uppercase"' : ''}></div>`).join('')}
-      <div class="sub ayuda"></div></div></fieldset>
-    <div class="row"><button data-nuevo>Nuevo</button><button data-editar>Editar</button>${alEliminar ? '<button data-eliminar>Eliminar</button>' : ''}</div>
-    <div class="row"><span class="spacer"></span><button class="primary" data-guardar>Guardar</button><button data-cancelar-ed>Cancelar</button></div>`;
-  const f = (k) => panel.querySelector(`[name=${k}]`);
-  const st = { id: null, edicion: false, fila: null };
-  const pintar = () => {
-    panel.querySelector('fieldset').disabled = !st.edicion;
-    panel.querySelector('legend').textContent = !st.edicion ? 'Datos (lectura)' : st.id ? 'Editando' : 'Nuevo registro';
-    panel.querySelector('[data-nuevo]').disabled = st.edicion || !puede;
-    panel.querySelector('[data-editar]').disabled = st.edicion || !puede || !st.id;
-    if (alEliminar) panel.querySelector('[data-eliminar]').disabled = st.edicion || !puede || !st.id;
-    panel.querySelector('[data-guardar]').disabled = !st.edicion;
-    panel.querySelector('[data-cancelar-ed]').disabled = !st.edicion;
-    c.querySelector('.slot').style.pointerEvents = st.edicion ? 'none' : '';
-    c.querySelector('.slot').style.opacity = st.edicion ? 0.6 : 1;
-  };
-  const llenar = (r) => campos.forEach((x) => {
-    const el = f(x.k); el.classList.remove('invalid');
-    if (x.tipo === 'check') el.checked = r ? !!r[x.k] : (x.defecto ?? true);
-    else el.value = r ? (r[x.k] ?? '') : (x.defecto ?? '');
+/* ---------- FrmOrdenes ---------- */
+async function renderOrdenes(c, parametro) {
+  const puede = tiene('gestionar_ordenes');
+  const ver = seg(['Abiertas', 'Todas'], 0, () => L.cargar());
+  const L = lista(c, {
+    filtros: [ver], abrir, botones: puede ? [['Recibir equipo', recibir, 'primary']] : [],
+    datos: () => api('/api/ordenes?abiertas=' + (ver.activo === 0 ? '1' : '')),
+    cols: [{ t: 'Folio', k: 'folio' }, { t: 'Equipo', k: 'equipo_descripcion' }, { t: 'Cliente', k: 'cliente' },
+      { t: 'Estado', k: 'estado', f: (v) => `<span class="${v === 'Cancelada' ? 'rojo' : v === 'Lista' ? 'fuerte' : ''}">${esc(v)}</span>` }, { t: 'Días', k: 'dias_en_taller', num: 1 }],
   });
-  const api_ = {
-    seleccionar(r) { if (st.edicion) return; st.id = r[campos.idKey || 'id']; st.fila = r; llenar(r); pintar(); },
-    ayuda(t) { panel.querySelector('.ayuda').textContent = t || ''; },
-    get id() { return st.id; },
-  };
-  panel.querySelector('[data-nuevo]').onclick = () => { st.id = null; llenar(null); st.edicion = true; pintar(); api_.onModo?.(true); panel.querySelector('input,select').focus(); };
-  panel.querySelector('[data-editar]').onclick = () => { st.edicion = true; pintar(); api_.onModo?.(false); };
-  panel.querySelector('[data-cancelar-ed]').onclick = () => { st.edicion = false; if (st.fila) llenar(st.fila); pintar(); };
-  panel.querySelector('[data-guardar]').onclick = async () => {
-    const datos = { id: st.id };
-    let ok = true;
-    campos.forEach((x) => {
-      const el = f(x.k);
-      datos[x.k] = x.tipo === 'check' ? el.checked : el.value.trim();
-      const falta = x.req && !datos[x.k] && !(x.reqSoloNuevo && st.id);
-      el.classList.toggle('invalid', !!falta);
-      if (falta) ok = false;
-    });
-    if (!ok) return messageBox('Llena los campos obligatorios (*).', { icon: 'error' });
-    const btn = panel.querySelector('[data-guardar]');
-    btn.disabled = true;
-    try {
-      await alGuardar(datos);
-      await messageBox(st.id ? 'Cambios guardados.' : 'Registro agregado.', { icon: 'ok' });
-      st.edicion = false; pintar();
-    } catch (e) { btn.disabled = false; showError(e); }
-  };
-  if (alEliminar) panel.querySelector('[data-eliminar]').onclick = async () => {
-    if (await messageBox('¿Eliminar el registro seleccionado?\nSi está en uso no se podrá eliminar.', { icon: 'question', buttons: ['Sí', 'No'] }) !== 'Sí') return;
-    try { await alEliminar(st.id); st.id = null; llenar(null); pintar(); } catch (e) { showError(e); }
-  };
-  llenar(null); pintar();
-  return api_;
+  function recibir() {
+    const f = campos([{ k: 'id_cliente', t: 'Cliente *', tipo: 'select', opciones: state.cat.clientes, vacio: 'Elige un cliente', req: 1, ancho: 1 },
+      { k: 'equipo', t: 'Equipo *', req: 1, max: 150 }, { k: 'serie', t: 'No. de serie', max: 50 }, { k: 'falla', t: '¿Qué le pasa? *', tipo: 'textarea', req: 1, ancho: 1, max: 500 },
+      { k: 'id_tecnico', t: 'Técnico *', tipo: 'select', opciones: state.cat.tecnicos, req: 1, ancho: 1 }]);
+    ficha('Recibir equipo', f, [['Cancelar', ''], ['Recibir equipo', 'primary', async () => {
+      const d = f.leer(); if (!d) return false;
+      const r = await api('/api/ordenes', d); aviso(`Orden ${r.folio} registrada`); L.cargar(); return true;
+    }]]);
+  }
+  async function abrir(o) {
+    const estados = state.cat.estados, id = estados.find((e) => e.nombre === o.estado).id, cerrada = id >= 5;
+    const [det, hist, cat] = await Promise.all([api('/api/ordenes/detalle?id=' + o.id_orden), api('/api/ordenes/historial?id=' + o.id_orden), api('/api/catalogos')]);
+    state.cat = cat;
+    const zona = h(`<div><div class="ayuda">${esc(o.equipo_descripcion)} · ${esc(o.cliente)}<br>${esc(o.estado)} · ${money(o.total)}</div></div>`);
+    const tabla = h('<div class="card" style="margin-top:14px;min-height:260px"></div>');
+    const pintar = (i) => tabla.replaceChildren(i ? grid([{ t: 'Fecha', k: 'fecha', f: datetime }, { t: 'Pasó a', k: 'a_estado' }], hist)
+      : grid([{ t: 'Concepto', k: 'concepto' }, { t: 'Pzas.', k: 'cantidad', num: 1 }, { t: 'Importe', k: 'subtotal', num: 1, f: $$() }], det));
+    const s = seg(['Trabajos', 'Historial'], 0, pintar); s.style.marginTop = '14px';
+    zona.append(s, tabla); pintar(0);
+    const f = campos([{ k: 'servicio', t: 'Servicio', tipo: 'select', opciones: cat.servicios }, { k: 'refaccion', t: 'Refacción', tipo: 'select', opciones: cat.refacciones }, { k: 'cantidad', t: 'Piezas', tipo: 'number', defecto: 1 }], {}, { una: true, lectura: cerrada });
+    const linea = (texto, antes, datos) => { const b = h(`<button ${cerrada ? 'disabled' : ''}>${texto}</button>`); b.onclick = () => seguir(async () => api('/api/ordenes/linea', { id_orden: o.id_orden, ...datos() })); f.querySelector(`[data-campo=${antes}]`).after(b); };
+    linea('Agregar servicio', 'servicio', () => ({ servicio: f.c('servicio').value }));
+    linea('Agregar refacción', 'cantidad', () => ({ refaccion: f.c('refaccion').value, cantidad: f.c('cantidad').value }));
+    const seguir = async (accion, terminar) => {
+      try {
+        await accion(); el.cerrar(); await L.cargar();
+        if (!terminar) { const n = (await api('/api/ordenes?abiertas=')).find((x) => x.id_orden === o.id_orden); abrir(n); }
+      } catch (e) { error(e); }
+    };
+    const cambiar = (e) => seguir(() => api('/api/ordenes/estado', { id_orden: o.id_orden, id_estado: e }).then(() => e >= 5 && aviso(e === 5 ? 'Equipo entregado' : 'Orden cancelada')), e >= 5);
+    const el = ficha(o.folio, puede ? dosZonas(f, zona) : zona, [
+      ...(puede && !cerrada ? [['Cancelar orden', 'peligro', async () => { if (await confirmar('¿Cancelar la orden? Las refacciones regresan al almacén.', 'Cancelar orden')) await cambiar(6); return false; }]] : []),
+      ['Cerrar', ''],
+      ...(puede && !cerrada ? [[id + 1 === 5 ? 'Entregar al cliente' : 'Pasar a ' + estados.find((e) => e.id === id + 1).nombre, 'primary', async () => { await cambiar(id + 1); return false; }]] : [])], { ancha: true });
+  }
+  await L.cargado;
+  if (parametro === 'recibir' && puede) recibir();
 }
 
-/* ---------- FrmCatalogo (Categorías, Marcas, Tipos de servicio) ---------- */
-async function renderCatalogo(c, tipo) {
-  const cfg = {
-    categorias: { titulo: 'Categorías', c2: 'Descripción', max: 200 },
-    marcas: { titulo: 'Marcas', c2: 'País de origen', max: 60 },
-    tipos: { titulo: 'Tipos de servicio', c2: 'Precio base', num: true },
-  }[tipo];
-  const admin = tiene('editar_catalogos');
-  c.innerHTML = `<h1>${cfg.titulo}${admin ? '' : '<span class="solo-lectura">Solo lectura</span>'}</h1>
-    <div class="sub">${admin ? 'Lo que ya está en uso no se puede eliminar.' : 'Tu perfil puede consultar este catálogo, no modificarlo.'}</div>
-    <fieldset class="groupbox"><legend>Búsqueda</legend><div class="row">
-      <div class="field"><span>Nombre:</span><input name="texto"></div><button data-buscar style="margin-top:14px">Buscar</button>
-      <span class="sub count" style="margin:14px 0 0"></span></div></fieldset>
-    <div class="split"><div class="slot" style="flex:1;display:flex;min-height:0"></div>${admin ? '<div class="crud"></div>' : ''}</div>`;
-  const form = !admin ? { seleccionar() {} } : crud(c, {
-    campos: [{ k: 'nombre', t: 'Nombre: *', req: true, max: 80 }, { k: 'campo2', t: cfg.c2 + ':', tipo: cfg.num ? 'number' : 'text', max: cfg.max }],
-    puede: admin,
-    alGuardar: async (d) => { await api('/api/catalogo', { tipo, id: d.id, nombre: d.nombre, campo2: d.campo2 }); await cargar(); },
-    alEliminar: async (id) => { await api('/api/catalogo/eliminar', { tipo, id }); await cargar(); },
+/* ---------- FrmClientes ---------- */
+function renderClientes(c) {
+  const puede = tiene('guardar_cliente');
+  const L = lista(c, {
+    pista: 'Buscar cliente…', abrir: (r) => abrir(r), botones: puede ? [['Nuevo cliente', () => abrir(null), 'primary']] : [],
+    datos: (texto) => api('/api/clientes?' + new URLSearchParams({ texto })), rowClass: (r) => (r.activo ? '' : 'apagado'),
+    cols: [{ t: 'Nombre', k: 'nombre' }, { t: 'Apellidos', k: 'apellidos' }, { t: 'Teléfono', k: 'telefono' }, { t: 'Total comprado', k: 'total_comprado', num: 1, f: $$() }, { t: 'Nivel', k: 'nivel' }],
   });
-  const cargar = async () => {
-    const rows = await api('/api/catalogo?' + new URLSearchParams({ tipo, texto: c.querySelector('[name=texto]').value }));
-    c.querySelector('.slot').replaceChildren(grid([
-      { t: 'Nombre', k: 'nombre' }, { t: cfg.c2, k: 'campo2', num: cfg.num, f: cfg.num ? M() : N },
-      { t: tipo === 'tipos' ? 'Usado en órdenes' : 'Productos', k: 'en_uso', num: 1 },
-      ...(tipo === 'tipos' ? [{ t: 'Técnicos habilitados', k: 'tecnicos', num: 1 }] : []),
-    ], rows, { onSelect: (r) => form.seleccionar(r) }));
-    c.querySelector('.count').textContent = `${rows.length} registro(s)`;
-  };
-  c.querySelector('[data-buscar]').onclick = () => cargar().catch(showError);
-  c.querySelector('[name=texto]').onkeydown = (e) => { if (e.key === 'Enter') cargar().catch(showError); };
-  await cargar();
+  async function abrir(r) {
+    const f = campos([{ k: 'nombre', t: 'Nombre *', req: 1, max: 60 }, { k: 'apellidos', t: 'Apellidos *', req: 1, max: 80 }, { k: 'correo', t: 'Correo *', req: 1, max: 100 },
+      { k: 'telefono', t: 'Teléfono', max: 20 }, { k: 'rfc', t: 'RFC', max: 13 }, { k: 'activo', t: 'Cliente activo', tipo: 'check', defecto: true, oculto: !r }], r || {}, { una: true, lectura: !puede });
+    const compras = r ? await api('/api/clientes/compras?id=' + r.id_cliente) : null;
+    ficha(r ? `${r.nombre} ${r.apellidos}` : 'Nuevo cliente', r ? dosZonas(f, tarjeta('Sus compras', grid([{ t: 'Folio', k: 'folio' }, { t: 'Fecha', k: 'fecha', f: datetime }, { t: 'Total', k: 'total', num: 1, f: $$() }, { t: 'Estado', k: 'estado' }], compras))) : f,
+      [[puede ? 'Cancelar' : 'Cerrar', ''], ...(puede ? [['Guardar', 'primary', async () => {
+        const d = f.leer(); if (!d) return false;
+        await api('/api/clientes', { ...d, id: r?.id_cliente, activo: r ? d.activo : true });
+        aviso(r ? 'Cambios guardados' : 'Cliente registrado'); L.cargar(); return true;
+      }]] : [])], { ancha: !!r });
+  }
+  return L.cargado;
+}
+
+/* ---------- FrmProductos ---------- */
+function renderProductos(c, parametro) {
+  const puede = tiene('guardar_producto'), costos = tiene('ver_costos');
+  const cat = h(`<select>${options(state.cat.categorias, '', 'Todas las categorías')}</select>`), al = seg(['Todos', 'Por resurtir'], parametro === 'alertas' ? 1 : 0, () => L.cargar());
+  const L = lista(c, {
+    pista: 'Buscar producto…', filtros: [cat, al], abrir: (r) => abrir(r), botones: puede ? [['Nuevo producto', () => abrir(null), 'primary']] : [],
+    datos: (texto) => api('/api/productos?' + new URLSearchParams({ texto, categoria: cat.value, alertas: al.activo ? '1' : '' })),
+    cols: [{ t: 'Producto', k: 'nombre' }, { t: 'Categoría', k: 'categoria' }, { t: 'Precio', k: 'precio_venta', num: 1, f: $$() }, { t: 'Stock', k: 'stock_actual', num: 1 },
+      { t: 'Estado', k: 'alerta_stock', f: (v) => `<span class="${v === 'Agotado' ? 'rojo' : v === 'OK' ? 'suave' : 'fuerte'}">${esc(v)}</span>` }],
+  });
+  cat.onchange = L.cargar;
+  async function abrir(r) {
+    const p = r ? await api('/api/producto?id=' + r.id_producto) : {};
+    const f = campos([{ k: 'nombre', t: 'Nombre *', req: 1, ancho: 1, max: 120 }, { k: 'sku', t: 'SKU *', req: 1, max: 30 }, { k: 'id_categoria', t: 'Categoría', tipo: 'select', opciones: state.cat.categorias },
+      { k: 'id_marca', t: 'Marca', tipo: 'select', opciones: state.cat.marcas }, { k: 'id_condicion', t: 'Condición', tipo: 'select', opciones: state.cat.condiciones },
+      { k: 'precio_venta', t: 'Precio de venta *', tipo: 'number', req: 1 }, { k: 'costo', t: 'Costo', tipo: 'number', oculto: !costos }, { k: 'stock_minimo', t: 'Avisar cuando queden', tipo: 'number', defecto: 0 },
+      { k: 'stock_actual', t: `En almacén: ${p.stock_actual} piezas`, tipo: 'texto', oculto: !r },
+      { k: 'requiere_serie', t: 'Cada pieza lleva número de serie', tipo: 'check' }, { k: 'activo', t: 'Producto a la venta', tipo: 'check', defecto: true }], p, { lectura: !puede });
+    ficha(r ? p.nombre : 'Nuevo producto', f, [
+      ...(r && tiene('eliminar_producto') ? [['Eliminar', 'peligro', async () => {
+        if (!await confirmar(`¿Eliminar el producto ${p.nombre}?\n\nSi ya tiene ventas, compras u órdenes, solo se desactivará para conservar el historial.`, 'Eliminar')) return false;
+        await api('/api/productos/eliminar', { id: p.id_producto }); aviso('Producto eliminado'); L.cargar(); return true;
+      }]] : []), [puede ? 'Cancelar' : 'Cerrar', ''], ...(puede ? [['Guardar', 'primary', async () => {
+        const d = f.leer(); if (!d) return false;
+        await api('/api/productos', { ...d, id: r?.id_producto }); aviso(r ? 'Cambios guardados' : 'Producto registrado'); L.cargar(); return true;
+      }]] : [])]);
+  }
+  return L.cargado;
 }
 
 /* ---------- FrmProveedores ---------- */
-async function renderProveedores(c) {
+function renderProveedores(c) {
   const puede = tiene('guardar_proveedor');
-  c.innerHTML = `<h1>Proveedores${puede ? '' : '<span class="solo-lectura">Solo lectura</span>'}</h1><div class="sub">Selecciona un proveedor para ver los productos que surte.</div>
-    <fieldset class="groupbox"><legend>Búsqueda</legend><div class="row">
-      <div class="field"><span>Razón social o RFC:</span><input name="texto" style="width:240px"></div>
-      <button ${puede ? '' : 'class="primary"'} data-buscar style="margin-top:14px">Buscar</button><span class="sub count" style="margin:14px 0 0"></span></div></fieldset>
-    <div class="split"><div class="slot" style="flex:1;display:flex;min-height:0"></div>${puede ? '<div class="crud"></div>' : ''}</div>
-    <fieldset class="groupbox"><legend>Productos que surte</legend><div class="det"><div class="sub">Selecciona un proveedor.</div></div></fieldset>`;
-  const form = !puede ? { seleccionar() {} } : crud(c, {
-    campos: Object.assign([
-      { k: 'razon_social', t: 'Razón social: *', req: true, max: 120 },
-      { k: 'rfc', t: 'RFC: *', req: true, max: 13, mayus: true },
-      { k: 'correo', t: 'Correo:', max: 100 }, { k: 'telefono', t: 'Teléfono:', max: 20 },
-      { k: 'activo', t: 'Activo', tipo: 'check' },
-    ], { idKey: 'id_proveedor' }),
-    puede,
-    alGuardar: async (d) => { await api('/api/proveedores', d); await cargar(); },
+  const L = lista(c, {
+    pista: 'Buscar proveedor…', abrir: (r) => abrir(r), botones: puede ? [['Nuevo proveedor', () => abrir(null), 'primary']] : [],
+    datos: (texto) => api('/api/proveedores?' + new URLSearchParams({ texto })), rowClass: (r) => (r.activo ? '' : 'apagado'),
+    cols: [{ t: 'Proveedor', k: 'razon_social' }, { t: 'Teléfono', k: 'telefono' }, { t: 'Correo', k: 'correo' }, { t: 'Productos', k: 'productos', num: 1 }],
   });
-  const cargar = async () => {
-    const rows = await api('/api/proveedores?' + new URLSearchParams({ texto: c.querySelector('[name=texto]').value }));
-    c.querySelector('.slot').replaceChildren(grid([
-      { t: 'Razón social', k: 'razon_social' }, { t: 'RFC', k: 'rfc' }, { t: 'Teléfono', k: 'telefono' },
-      { t: 'Productos', k: 'productos', num: 1 },
-    ], rows, {
-      rowClass: (r) => (r.activo ? '' : 'danger'),
-      onSelect: async (r) => {
-        form.seleccionar(r);
-        const det = await api('/api/proveedores/productos?id=' + r.id_proveedor);
-        c.querySelector('.det').replaceChildren(grid([
-          { t: 'Producto', k: 'nombre' }, { t: 'Costo del proveedor', k: 'costo_proveedor', num: 1, f: M() }, { t: 'Stock', k: 'stock_actual', num: 1 },
-        ], det, { cls: 'short' }));
-      },
-    }));
-    c.querySelector('.count').textContent = `${rows.length} proveedor(es)`;
-  };
-  c.querySelector('[data-buscar]').onclick = () => cargar().catch(showError);
-  await cargar();
+  async function abrir(r) {
+    const f = campos([{ k: 'razon_social', t: 'Razón social *', req: 1, max: 120 }, { k: 'rfc', t: 'RFC *', req: 1, max: 13 }, { k: 'correo', t: 'Correo', max: 100 }, { k: 'telefono', t: 'Teléfono', max: 20 },
+      { k: 'activo', t: 'Proveedor activo', tipo: 'check', defecto: true, oculto: !r }], r || {}, { una: true, lectura: !puede });
+    const surte = r ? await api('/api/proveedores/productos?id=' + r.id_proveedor) : null;
+    ficha(r ? r.razon_social : 'Nuevo proveedor', r ? dosZonas(f, tarjeta('Productos que surte', grid([{ t: 'Producto', k: 'nombre' }, { t: 'Costo', k: 'costo_proveedor', num: 1, f: $$() }, { t: 'Stock', k: 'stock_actual', num: 1 }], surte))) : f,
+      [[puede ? 'Cancelar' : 'Cerrar', ''], ...(puede ? [['Guardar', 'primary', async () => {
+        const d = f.leer(); if (!d) return false;
+        await api('/api/proveedores', { ...d, id: r?.id_proveedor, activo: r ? d.activo : true }); aviso(r ? 'Cambios guardados' : 'Proveedor registrado'); L.cargar(); return true;
+      }]] : [])], { ancha: !!r });
+  }
+  return L.cargado;
 }
 
-/* ---------- FrmCompra (maestro-detalle) ---------- */
+/* ---------- FrmCompra ---------- */
 async function renderCompras(c) {
-  const d = await api('/api/compras');
-  const lineas = [];
-  c.innerHTML = `<h1>Compras a proveedor</h1><div class="sub">El inventario sube en cuanto guardas la compra.</div>
-    <fieldset class="groupbox"><legend>Encabezado</legend><div class="row">
-      <div class="field"><span>Proveedor: *</span><select name="proveedor" style="width:320px">${options(d.proveedores, '', '(Selecciona)')}</select></div>
-      <div class="field"><span>Recibe:</span><input value="${esc(state.user.nombre)}" disabled style="width:200px"></div></div></fieldset>
-    <fieldset class="groupbox"><legend>Agregar producto</legend><div class="row" style="align-items:flex-start">
-      <div class="field"><span>Producto:</span><select name="producto" style="width:360px">${d.productos.map((p) =>
-        `<option value="${p.id}">${esc(p.sku)} — ${esc(p.nombre)}${p.requiere_serie ? '  [con número de serie]' : ''}</option>`).join('')}</select>
-        <div class="row" style="margin-top:6px"><div class="field"><span>Cantidad:</span><input name="cant" type="number" min="1" value="1" style="width:70px"></div>
-        <div class="field"><span>Costo unitario:</span><input name="costo" type="number" min="1" step="0.01" style="width:110px"></div></div></div>
-      <div class="field"><span class="lbl-series">Números de serie (uno por renglón):</span><textarea name="series" rows="4" style="width:220px;font:inherit;border:1px solid #7a7a7a"></textarea></div>
-      <div style="display:flex;flex-direction:column;gap:6px;margin-top:14px"><button data-agregar>Agregar ↓</button><button data-quitar>Quitar línea</button></div>
-    </div></fieldset>
-    <div class="slot" style="flex:1;display:flex;min-height:110px"></div>
-    <div class="row"><b class="total" style="font-size:15px"></b><span class="spacer"></span><button data-limpiar>Limpiar</button><button class="primary" data-guardar>Guardar compra</button></div>
-    <fieldset class="groupbox"><legend>Compras recientes</legend><div class="recientes"></div></fieldset>`;
-  const f = (n) => c.querySelector(`[name=${n}]`);
-  const prod = () => d.productos.find((p) => p.id === +f('producto').value);
-  let sel = null;
-  const alCambiarProducto = () => {
-    const p = prod();
-    f('costo').value = p.costo;
-    f('series').disabled = !p.requiere_serie;
-    if (!p.requiere_serie) f('series').value = '';
-    c.querySelector('.lbl-series').textContent = p.requiere_serie ? 'Números de serie (uno por renglón): *' : 'Números de serie (no aplica):';
-  };
+  const d = await api('/api/compras'), lineas = []; let sel = null;
+  c.innerHTML = '<div class="dos" style="flex:1;grid-template-columns:400px 1fr"></div>';
+  const f = campos([{ k: 'proveedor', t: 'Proveedor *', tipo: 'select', opciones: d.proveedores, vacio: 'Elige un proveedor', req: 1 }, { k: 'producto', t: 'Producto', tipo: 'select', opciones: d.productos },
+    { k: 'cant', t: 'Piezas', tipo: 'number', defecto: 1 }, { k: 'costo', t: 'Costo de cada pieza', tipo: 'number' }, { k: 'series', t: 'Números de serie (uno por renglón)', tipo: 'textarea', max: 2000 }], {}, { una: true });
+  const b = h('<button>Agregar a la compra</button>'); f.append(b);
+  const der = h(`<div class="card" style="display:flex;flex-direction:column"><h3>Esta compra</h3><div class="lineas" style="flex:1"></div><div class="total">$0.00</div>
+    <div class="row"><button data-ant>Compras anteriores</button><span class="spacer"></span><button data-quitar>Quitar</button><button class="primary" data-guardar>Guardar compra</button></div></div>`);
+  c.firstElementChild.append(tarjeta('Qué llegó', f), der);
+  const prod = () => d.productos.find((p) => p.id === +f.c('producto').value), total = () => lineas.reduce((a, l) => a + l.cantidad * l.costo_unitario, 0);
+  const cambio = () => { const p = prod(); f.c('costo').value = p.costo; f.c('series').value = ''; f.querySelector('[data-campo=series]').style.display = p.requiere_serie ? '' : 'none'; };
   const pintar = () => {
-    sel = null;
-    c.querySelector('.slot').replaceChildren(grid([
-      { t: 'Producto', k: 'nombre' }, { t: 'Cantidad', k: 'cantidad', num: 1 },
-      { t: 'Costo', k: 'costo_unitario', num: 1, f: M() }, { t: 'Importe', k: 'importe', num: 1, f: M() }, { t: 'Series', k: 'series_txt' },
-    ], lineas.map((l) => ({ ...l, importe: l.cantidad * l.costo_unitario, series_txt: (l.series || []).join(', ') })), { onSelect: (r) => sel = r }));
-    c.querySelector('.total').textContent = 'Total: ' + money(lineas.reduce((a, l) => a + l.cantidad * l.costo_unitario, 0));
+    const g = grid([{ t: 'Producto', k: 'nombre' }, { t: 'Pzas.', k: 'cantidad', num: 1 }, { t: 'Importe', k: 'importe', num: 1, f: $$() }], lineas.map((l) => ({ ...l, importe: l.cantidad * l.costo_unitario })), { onSelect: (r) => sel = r.id_producto });
+    sel = lineas[0]?.id_producto; der.querySelector('.lineas').replaceChildren(g); der.querySelector('.total').textContent = money(total());
+    der.querySelector('[data-quitar]').disabled = der.querySelector('[data-guardar]').disabled = !lineas.length;
   };
-  const recientes = (rows) => c.querySelector('.recientes').replaceChildren(grid([
-    { t: 'Folio', k: 'folio' }, { t: 'Fecha', k: 'fecha', f: datetime }, { t: 'Proveedor', k: 'proveedor' }, { t: 'Total', k: 'total', num: 1, f: M() },
-  ], rows, { cls: 'short' }));
-  f('producto').onchange = alCambiarProducto;
-  c.querySelector('[data-agregar]').onclick = () => {
-    const p = prod(), cantidad = parseInt(f('cant').value, 10), costo = +f('costo').value;
-    if (!(cantidad > 0) || !(costo > 0)) return messageBox('Cantidad y costo deben ser mayores a cero.', { icon: 'error' });
-    if (lineas.some((l) => l.id_producto === p.id)) return messageBox('Ese producto ya está en la compra; quítalo y agrégalo con la cantidad total.', { icon: 'info' });
-    const series = f('series').value.split('\n').map((x) => x.trim().toUpperCase()).filter(Boolean);
-    if (p.requiere_serie && series.length !== cantidad) return messageBox(`Captura ${cantidad} número(s) de serie, uno por renglón (llevas ${series.length}).`, { icon: 'info' });
-    if (new Set(series).size !== series.length) return messageBox('Hay números de serie repetidos.', { icon: 'info' });
-    lineas.push({ id_producto: p.id, sku: p.sku, nombre: p.nombre, cantidad, costo_unitario: costo, ...(p.requiere_serie ? { series } : {}) });
-    f('cant').value = 1; f('series').value = '';
-    pintar();
+  f.c('producto').onchange = cambio;
+  b.onclick = () => {
+    const p = prod(), cantidad = parseInt(f.c('cant').value, 10), costo = +f.c('costo').value;
+    if (!(cantidad > 0) || !(costo > 0)) return informar('Cantidad y costo deben ser mayores a cero.');
+    if (lineas.some((l) => l.id_producto === p.id)) return informar('Ese producto ya está en la compra; quítalo y vuelve a agregarlo con la cantidad total.');
+    const series = f.c('series').value.split('\n').map((x) => x.trim().toUpperCase()).filter(Boolean);
+    if (p.requiere_serie && series.length !== cantidad) return informar(`Captura ${cantidad} número(s) de serie, uno por renglón (llevas ${series.length}).`);
+    if (new Set(series).size !== series.length) return informar('Hay números de serie repetidos.');
+    lineas.push({ id_producto: p.id, nombre: p.nombre, cantidad, costo_unitario: costo, ...(p.requiere_serie ? { series } : {}) });
+    f.c('cant').value = 1; f.c('series').value = ''; pintar();
   };
-  c.querySelector('[data-quitar]').onclick = () => { if (sel) { lineas.splice(lineas.findIndex((l) => l.id_producto === sel.id_producto), 1); pintar(); } };
-  c.querySelector('[data-limpiar]').onclick = () => renderCompras(c).catch(showError);
-  const guardar = c.querySelector('[data-guardar]');
-  guardar.onclick = async () => {
-    f('proveedor').classList.toggle('invalid', !f('proveedor').value);
-    if (!f('proveedor').value) return messageBox('Selecciona el proveedor.', { icon: 'error' });
-    if (!lineas.length) return messageBox('Agrega al menos un producto.', { icon: 'error' });
-    if (await messageBox(`¿Registrar la compra por ${c.querySelector('.total').textContent.replace('Total: ', '')}?\nEl stock entra al guardar.`, { icon: 'question', buttons: ['Sí', 'No'], title: 'Confirmar compra' }) !== 'Sí') return;
-    guardar.disabled = true;
-    try {
-      const r = await api('/api/compras', { id_proveedor: f('proveedor').value, lineas: lineas.map(({ sku, nombre, ...l }) => l) });
-      await messageBox(`Compra ${r.folio} registrada; el inventario ya se actualizó.`, { icon: 'ok', title: 'Compra registrada' });
-      await renderCompras(c);
-    } catch (e) {
-      guardar.disabled = false;
-      showError(new Error(`La compra no se guardó:\n\n${e.message}`));
-    }
+  der.querySelector('[data-quitar]').onclick = () => { lineas.splice(lineas.findIndex((l) => l.id_producto === sel), 1); pintar(); };
+  der.querySelector('[data-ant]').onclick = () => ficha('Compras anteriores', grid([{ t: 'Folio', k: 'folio' }, { t: 'Fecha', k: 'fecha', f: datetime }, { t: 'Proveedor', k: 'proveedor' }, { t: 'Total', k: 'total', num: 1, f: $$() }], d.recientes), [['Cerrar', '']], { ancha: true });
+  der.querySelector('[data-guardar]').onclick = async () => {
+    const pr = f.c('proveedor'); pr.classList.toggle('invalid', !pr.value); if (!pr.value) return pr.focus();
+    if (!await confirmar(`¿Guardar la compra por ${money(total())}?\nEl inventario sube al guardar.`, 'Guardar compra')) return;
+    try { const r = await api('/api/compras', { id_proveedor: pr.value, lineas: lineas.map(({ nombre, ...l }) => l) }); aviso(`Compra ${r.folio} guardada`); abrir('compras'); } catch (e) { error(e); }
   };
-  alCambiarProducto(); pintar(); recientes(d.recientes);
-}
-
-/* ---------- FrmUsuarios ---------- */
-async function renderUsuarios(c) {
-  const d = await api('/api/usuarios');
-  c.innerHTML = `<h1>Usuarios y roles</h1><div class="sub">El rol decide qué pantallas y botones ve cada persona. La contraseña se guarda cifrada y nunca se muestra.</div>
-    <div class="split"><div class="slot" style="flex:1;display:flex;min-height:0"></div><div class="crud"></div></div>`;
-  const form = crud(c, {
-    campos: Object.assign([
-      { k: 'id_empleado', t: 'Empleado: *', tipo: 'select', opciones: d.empleados, req: true },
-      { k: 'usuario', t: 'Usuario: *', req: true, max: 40 },
-      { k: 'id_rol', t: 'Rol: *', tipo: 'select', opciones: d.roles, req: true },
-      { k: 'contrasena', t: 'Contraseña:', tipo: 'password', req: true, reqSoloNuevo: true, max: 100 },
-      { k: 'activo', t: 'Activo (desmarcar = bloquear)', tipo: 'check' },
-    ], { idKey: 'id_usuario' }),
-    puede: true,
-    alGuardar: async (x) => { await api('/api/usuarios', x); await renderUsuarios(c); },
-  });
-  form.ayuda('Contraseña nueva: 8+ caracteres y un número. Al editar, déjala vacía para conservar la actual.');
-  c.querySelector('.slot').replaceChildren(grid([
-    { t: 'Usuario', k: 'usuario' }, { t: 'Empleado', k: 'empleado' }, { t: 'Rol', k: 'rol' },
-    { t: 'Activo', k: 'activo', f: (v) => (v ? 'Sí' : 'Bloqueado') }, { t: 'Último acceso', k: 'ultimo_acceso', f: datetime },
-  ], d.usuarios, { rowClass: (r) => (r.activo ? '' : 'danger'), onSelect: (r) => form.seleccionar({ ...r, contrasena: '' }) }));
+  cambio(); pintar();
 }
 
 /* ---------- FrmAjusteStock ---------- */
 async function renderAjustes(c) {
   const d = await api('/api/ajustes');
-  const stock = tiene('ajustar_stock'), precio = tiene('ajustar_precio');
-  c.innerHTML = `<h1>Ajustes de inventario y precios</h1><div class="sub">Cada cambio queda en la auditoría con su motivo.</div>
-    ${stock ? `<fieldset class="groupbox"><legend>Ajuste de inventario · máximo ±20 piezas</legend>
-      <div class="row"><div class="field"><span>Producto (sin número de serie):</span><select name="producto" style="width:420px">${options(d.productos)}</select></div>
-      <div class="field"><span>Cantidad (+ entra, − sale):</span><input name="cant" type="number" min="-20" max="20" value="0" style="width:90px"></div></div>
-      <div class="row" style="margin-top:6px"><div class="field" style="flex:1"><span>Motivo: *</span><input name="motivo" maxlength="200"></div>
-      <button class="primary" data-stock style="margin-top:14px">Aplicar ajuste</button></div></fieldset>` : ''}
-    ${precio ? `<fieldset class="groupbox"><legend>Cambio de precios por categoría · máximo ±30 %</legend>
-      <div class="row"><div class="field"><span>Categoría:</span><select name="categoria" style="width:260px">${options(d.categorias)}</select></div>
-      <div class="field"><span>Porcentaje:</span><input name="pct" type="number" min="-30" max="30" step="0.5" value="0" style="width:90px"></div>
-      <button ${stock ? '' : 'class="primary"'} data-precio style="margin-top:14px">Aplicar precios</button></div>
-      <div class="sub" style="margin-top:6px">Si algún precio quedara por debajo de su costo, no se cambia ninguno.</div></fieldset>` : ''}`;
-  const f = (n) => c.querySelector(`[name=${n}]`);
-  if (stock) c.querySelector('[data-stock]').onclick = async () => {
-    const cant = parseInt(f('cant').value, 10);
-    f('motivo').classList.toggle('invalid', !f('motivo').value.trim());
-    if (!cant) return messageBox('La cantidad no puede ser cero.', { icon: 'error' });
-    if (!f('motivo').value.trim()) return messageBox('El motivo es obligatorio.', { icon: 'error' });
-    const nombre = f('producto').selectedOptions[0].textContent;
-    if (await messageBox(`¿Ajustar ${cant > 0 ? '+' : ''}${cant} pieza(s) de\n${nombre}?`, { icon: 'question', buttons: ['Sí', 'No'] }) !== 'Sí') return;
-    try { await api('/api/ajustes/stock', { id_producto: f('producto').value, cantidad: cant, motivo: f('motivo').value.trim() });
-      await messageBox('Ajuste aplicado y registrado en la auditoría.', { icon: 'ok' }); await renderAjustes(c); }
-    catch (e) { showError(e); }
+  c.innerHTML = '<div class="mitades"></div>';
+  if (tiene('ajustar_stock')) {
+    const f = campos([{ k: 'p', t: 'Producto', tipo: 'select', opciones: d.productos }, { k: 'cant', t: 'Piezas (+ entran, − salen)', tipo: 'number', defecto: 0, min: -20, maxn: 20 }, { k: 'motivo', t: 'Motivo *', req: 1 }], {}, { una: true });
+    const b = h('<button class="primary">Ajustar inventario</button>'); f.append(b);
+    b.onclick = async () => {
+      const x = f.leer(), n = parseInt(f.c('cant').value, 10); if (!n) return informar('La cantidad no puede ser cero.'); if (!x) return;
+      if (!await confirmar(`¿Ajustar ${n > 0 ? '+' : ''}${n} pieza(s) de\n${f.c('p').selectedOptions[0].textContent}?`)) return;
+      try { await api('/api/ajustes/stock', { id_producto: x.p, cantidad: n, motivo: x.motivo }); aviso('Inventario ajustado'); abrir('ajustes'); } catch (e) { error(e); }
+    };
+    c.firstElementChild.append(tarjeta('Corregir el inventario', f));
+  }
+  if (tiene('ajustar_precio')) {
+    const f = campos([{ k: 'cat', t: 'Categoría', tipo: 'select', opciones: d.categorias }, { k: 'pct', t: 'Porcentaje (+ sube, − baja)', tipo: 'number', defecto: 0, min: -30, maxn: 30 }], {}, { una: true });
+    const b = h('<button>Cambiar precios</button>'); f.append(b);
+    b.onclick = async () => {
+      const n = +f.c('pct').value; if (!n) return informar('El porcentaje no puede ser cero.');
+      if (!await confirmar(`¿Cambiar ${n > 0 ? '+' : ''}${n} % el precio de todos los productos activos de ${f.c('cat').selectedOptions[0].textContent}?`)) return;
+      try { await api('/api/ajustes/precio', { porcentaje: n, id_categoria: f.c('cat').value }); aviso('Precios actualizados'); f.c('pct').value = 0; } catch (e) { error(e); }
+    };
+    c.firstElementChild.append(tarjeta('Cambiar precios', f));
+  }
+}
+
+/* ---------- FrmDashboard (Resumen) ---------- */
+const miles = (v) => (v ? '$' + Math.round(v / 1000) + 'K' : '0');
+function columnas(datos) {
+  const W = 560, H = 230, iz = 48, ab = 26, ar = 22, max = Math.max(1, ...datos.map((d) => d.v)) * 1.12, paso = (W - iz - 10) / datos.length, ancho = paso * 0.55;
+  const y = (v) => ar + (H - ar - ab) * (1 - v / max);
+  return `<svg viewBox="0 0 ${W} ${H}" class="grafica">${[0, 0.5, 1].map((f) => `<line x1="${iz}" x2="${W - 6}" y1="${y(max * f)}" y2="${y(max * f)}" class="rejilla"/><text x="${iz - 8}" y="${y(max * f) + 4}" text-anchor="end">${miles(max * f)}</text>`).join('')}
+    ${datos.map((d, i) => { const x = iz + paso * i + (paso - ancho) / 2, yy = y(d.v); return `<rect x="${x}" y="${yy}" width="${ancho}" height="${H - ab - yy}" rx="6" class="${i === datos.length - 1 ? 'actual' : ''}"><title>${esc(d.t)}: ${money(d.v, 0)}</title></rect><text x="${x + ancho / 2}" y="${yy - 6}" text-anchor="middle">${d.v ? miles(d.v) : ''}</text><text x="${x + ancho / 2}" y="${H - 8}" text-anchor="middle">${esc(d.t)}</text>`; }).join('')}</svg>`;
+}
+async function renderDashboard(c) {
+  const d = await api('/api/dashboard'), k = d.kpi;
+  const vs = (a, b) => (!b ? (a ? 'sin datos del periodo anterior' : 'sin movimientos') : `${a >= b ? '▲' : '▼'} ${Math.abs((a - b) * 100 / b).toFixed(1)} % vs. 90 días previos`);
+  const meses = [];
+  for (let i = 5; i >= 0; i--) {
+    const f = new Date(); f.setDate(1); f.setMonth(f.getMonth() - i);
+    const t = f.toLocaleDateString('es-MX', { month: 'short' }).replace('.', '');
+    meses.push({ t: t[0].toUpperCase() + t.slice(1), v: d.meses.find((m) => m.mes === f.toISOString().slice(0, 7))?.ingresos || 0 });
+  }
+  const max = Math.max(1, ...d.categorias.map((x) => x.ingresos));
+  c.innerHTML = `<div class="kpis">${[['Ingresos · 90 días', money(k.ingresos_mes, 0), vs(k.ingresos_mes, k.ingresos_ant)], ['Ventas · 90 días', k.ventas_mes, vs(k.ventas_mes, k.ventas_ant)],
+      ['Equipos en taller', k.ordenes_abiertas, `${k.ordenes_listas} listos para entregar`], ['Productos por resurtir', k.alertas_stock, k.agotados ? `${k.agotados} agotado(s)` : 'ninguno agotado']]
+      .map(([t, v, n]) => `<div class="card kpi"><span>${esc(t)}</span><b>${esc(v)}</b><small>${esc(n)}</small></div>`).join('')}</div>
+    <div class="mitades" style="align-items:stretch"><div class="card"><h3>Ingresos por mes</h3>${columnas(meses)}</div>
+      <div class="card"><h3>Ventas por categoría · 90 días</h3><div class="barrasH">${d.categorias.map((x) => `<div class="bh"><span>${esc(x.categoria)}</span><div><i style="width:${x.ingresos / max * 100}%"></i></div><b>${miles(x.ingresos)}</b></div>`).join('')}</div></div></div>
+    <div class="mitades" data-tablas></div>`;
+  c.querySelector('[data-tablas]').append(
+    tarjeta('Por resurtir', grid([{ t: 'Producto', k: 'producto' }, { t: 'Stock', k: 'stock', num: 1, f: (v) => `<span class="${v ? '' : 'rojo'}">${v}</span>` }, { t: 'Mínimo', k: 'minimo', num: 1 }], d.alertas, { cls: 'compacta' })),
+    tarjeta('Equipos en el taller', grid([{ t: 'Equipo', k: 'equipo' }, { t: 'Estado', k: 'estado' }, { t: 'Días', k: 'dias', num: 1 }], d.taller, { cls: 'compacta' })));
+}
+
+/* ---------- FrmReportes ---------- */
+async function renderReportes(c) {
+  let TABS = [['resumen', 'Por mes', [{ t: 'Mes', k: 'mes' }, { t: 'Ventas', k: 'ventas', num: 1 }, { t: 'Ingresos', k: 'ingresos', num: 1, f: $$() }, { t: 'Ticket promedio', k: 'ticket_promedio', num: 1, f: $$() }]],
+    ['top', 'Más vendidos', [{ t: 'Producto', k: 'nombre' }, { t: 'Categoría', k: 'categoria' }, { t: 'Unidades', k: 'unidades_vendidas', num: 1 }, { t: 'Ingresos', k: 'ingresos', num: 1, f: $$() }, { t: 'Utilidad', k: 'utilidad_bruta', num: 1, f: $$() }]],
+    ['categorias', 'Por categoría', [{ t: 'Categoría', k: 'categoria' }, { t: 'Ventas', k: 'ventas', num: 1 }, { t: 'Unidades', k: 'unidades', num: 1 }, { t: 'Ingresos', k: 'ingresos', num: 1, f: $$() }]],
+    ['empleados', 'Por empleado', [{ t: 'Empleado', k: 'empleado' }, { t: 'Puesto', k: 'puesto' }, { t: 'Ventas', k: 'ventas', num: 1 }, { t: 'Vendido', k: 'vendido', num: 1, f: $$() }, { t: 'Órdenes', k: 'ordenes', num: 1 }]],
+    ['stock', 'Por resurtir', [{ t: 'Producto', k: 'nombre' }, { t: 'Stock', k: 'stock_actual', num: 1 }, { t: 'Mínimo', k: 'stock_minimo', num: 1 }, { t: 'Faltan', k: 'faltante', num: 1 }, { t: 'Proveedor sugerido', k: 'proveedor_sugerido' }]]];
+  if (!tiene('ver_costos')) TABS = TABS.filter((t) => t[0] !== 'empleados');
+  c.innerHTML = `<div class="barra" data-a></div><div class="barra" data-b></div><div class="barra" data-f style="display:none"><span class="suave">Desde</span><input type="date"><span class="suave">hasta</span><input type="date"></div><div class="card tabla"></div>`;
+  const [desde, hasta] = c.querySelectorAll('[data-f] input'); let data;
+  const s = seg(TABS.map((t) => t[1]), 0, () => pintar()), kpi = h('<b style="font-size:18px;font-weight:600"></b>');
+  const pintar = () => { const [k, , cols] = TABS[s.activo]; c.querySelector('.tabla').replaceChildren(grid(cols, data[k])); };
+  const cargar = async () => {
+    try { data = await api('/api/reportes?' + new URLSearchParams({ desde: desde.value, hasta: hasta.value })); kpi.textContent = `${data.resumen.reduce((a, r) => a + r.ventas, 0)} ventas · ${money(data.resumen.reduce((a, r) => a + r.ingresos, 0), 0)}`; pintar(); } catch (e) { error(e); }
   };
-  if (precio) c.querySelector('[data-precio]').onclick = async () => {
-    const pct = +f('pct').value;
-    if (!pct) return messageBox('El porcentaje no puede ser cero.', { icon: 'error' });
-    const cat = f('categoria').selectedOptions[0].textContent;
-    if (await messageBox(`¿Cambiar ${pct > 0 ? '+' : ''}${pct} % el precio de todos los productos activos de ${cat}?`, { icon: 'question', buttons: ['Sí', 'No'] }) !== 'Sí') return;
-    try { await api('/api/ajustes/precio', { porcentaje: pct, id_categoria: f('categoria').value });
-      await messageBox('Precios actualizados; cada cambio quedó en la auditoría.', { icon: 'ok' }); f('pct').value = 0; }
-    catch (e) { showError(new Error(`No se cambiaron los precios:\n\n${e.message}`)); }
+  const periodo = (i) => {
+    c.querySelector('[data-f]').style.display = i === 3 ? '' : 'none'; if (i === 3) return;
+    const hoy = new Date(); desde.value = i === 0 ? isoDia(new Date(hoy.getFullYear(), hoy.getMonth(), 1)) : haceMeses(i === 1 ? 3 : 6); hasta.value = isoDia(hoy); return cargar();
   };
+  const exp = h('<button>Exportar a Excel</button>');
+  exp.onclick = () => { const [k, n, cols] = TABS[s.activo]; const csv = [cols.map((x) => x.t).join(','), ...data[k].map((r) => cols.map((x) => `"${String(r[x.k] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' })); a.download = n + '.csv'; a.click(); };
+  c.querySelector('[data-a]').append(s, h('<span class="spacer"></span>'), exp);
+  c.querySelector('[data-b]').append(seg(['Este mes', '3 meses', '6 meses', 'Otro'], 2, periodo), kpi);
+  desde.onchange = hasta.onchange = cargar;
+  await periodo(2);
+}
+
+/* ---------- FrmAuditoria ---------- */
+async function renderAuditoria(c) {
+  const rows = await api('/api/auditoria');
+  c.innerHTML = '<div class="barra"></div><div class="card tabla"></div>';
+  const p = seg(['Hoy', '7 días', '30 días', 'Todo'], 2, () => pintar()), t = seg(['Todo', 'Productos', 'Ventas'], 0, () => pintar());
+  const pintar = () => {
+    const lim = new Date(); lim.setHours(0, 0, 0, 0); lim.setDate(lim.getDate() - [0, 7, 30, 3650][p.activo]);
+    c.querySelector('.tabla').replaceChildren(grid([{ t: 'Fecha', k: 'fecha', f: datetime }, { t: 'Usuario', k: 'usuario_app' }, { t: 'Qué cambió', k: 'tabla' }, { t: 'Antes', k: 'valor_anterior' }, { t: 'Después', k: 'valor_nuevo' }, { t: 'Motivo', k: 'motivo' }],
+      rows.filter((r) => new Date(r.fecha) >= lim && (!t.activo || r.tabla === ['', 'Producto', 'Venta'][t.activo]))));
+  };
+  c.firstElementChild.append(p, t); pintar();
+}
+
+/* ---------- FrmUsuarios ---------- */
+async function renderUsuarios(c) {
+  let d = await api('/api/usuarios');
+  const L = lista(c, {
+    abrir: (r) => abrir(r), botones: [['Nuevo usuario', () => abrir(null), 'primary']], datos: async () => { d = await api('/api/usuarios'); return d.usuarios; }, rowClass: (r) => (r.activo ? '' : 'apagado'),
+    cols: [{ t: 'Empleado', k: 'empleado' }, { t: 'Usuario', k: 'usuario' }, { t: 'Rol', k: 'rol' }, { t: 'Último acceso', k: 'ultimo_acceso', f: datetime }],
+  });
+  function abrir(r) {
+    const f = campos([{ k: 'id_empleado', t: 'Empleado *', tipo: 'select', opciones: d.empleados, req: 1, ancho: 1 }, { k: 'usuario', t: 'Usuario *', req: 1, max: 40 }, { k: 'id_rol', t: 'Rol *', tipo: 'select', opciones: d.roles, req: 1 },
+      { k: 'contrasena', t: 'Contraseña', tipo: 'password', req: !r, max: 100 }, { k: 'repetir', t: 'Repetir contraseña', tipo: 'password', max: 100 },
+      { k: 'x', t: r ? 'Déjala vacía para conservar la actual.' : 'Mínimo 8 caracteres y un número.', tipo: 'texto', ancho: 1 }, { k: 'activo', t: 'Puede entrar al sistema', tipo: 'check', defecto: true, ancho: 1 }], r ? { ...r, contrasena: '' } : {});
+    ficha(r ? r.empleado : 'Nuevo usuario', f, [['Cancelar', ''], ['Guardar', 'primary', async () => {
+      const x = f.leer(); if (!x) return false;
+      if (x.contrasena !== x.repetir) { f.c('repetir').classList.add('invalid'); return false; }
+      await api('/api/usuarios', { ...x, id: r?.id_usuario }); aviso(r ? 'Cambios guardados' : 'Usuario creado'); L.cargar(); return true;
+    }]]);
+  }
+  return L.cargado;
+}
+
+/* ---------- FrmCatalogo ---------- */
+function renderCatalogo(c, tipo) {
+  const cfg = { categorias: ['Descripción', 'Nueva categoría'], marcas: ['País de origen', 'Nueva marca'], tipos: ['Precio base', 'Nuevo servicio'] }[tipo], precio = tipo === 'tipos';
+  const L = lista(c, {
+    pista: 'Buscar…', abrir: (r) => abrir(r), botones: [[cfg[1], () => abrir(null), 'primary']], datos: (texto) => api('/api/catalogo?' + new URLSearchParams({ tipo, texto })),
+    cols: [{ t: 'Nombre', k: 'nombre' }, { t: cfg[0], k: 'campo2', num: precio, f: precio ? $$() : undefined }],
+  });
+  function abrir(r) {
+    const f = campos([{ k: 'nombre', t: 'Nombre *', req: 1, max: 80 }, { k: 'campo2', t: cfg[0], tipo: precio ? 'number' : 'text' }], r || {}, { una: true });
+    ficha(r ? r.nombre : cfg[1], f, [...(r ? [['Eliminar', 'peligro', async () => {
+      if (!await confirmar(`¿Eliminar "${r.nombre}"?\nSi está en uso no se podrá eliminar.`, 'Eliminar')) return false;
+      await api('/api/catalogo/eliminar', { tipo, id: r.id }); aviso('Registro eliminado'); L.cargar(); return true;
+    }]] : []), ['Cancelar', ''], ['Guardar', 'primary', async () => {
+      const d = f.leer(); if (!d) return false;
+      await api('/api/catalogo', { tipo, id: r?.id, ...d }); aviso(r ? 'Cambios guardados' : 'Registro agregado'); L.cargar(); return true;
+    }]]);
+  }
+  return L.cargado;
 }
 
 // Captura automática para la documentación: ?usuario=admin&modulo=productos
 // entra con un usuario demo y abre esa pantalla (solo usuarios demo con su contraseña conocida).
 async function inicio() {
   const p = new URLSearchParams(location.search);
-  // Modo captura (?usuario=… o ?captura): sin animaciones, para que Chrome sin ventana fotografíe el estado final
   if (p.has('usuario') || p.has('captura')) document.documentElement.classList.add('sin-animacion');
-  const demo = ['admin', 'csupervisor', 'loperador', 'fconsulta'];
-  if (!demo.includes(p.get('usuario'))) return renderLogin();
+  if (!['admin', 'csupervisor', 'loperador', 'fconsulta'].includes(p.get('usuario'))) return renderLogin();
   try {
     const r = await api('/api/login', { usuario: p.get('usuario'), contrasena: '1234' });
     state.token = r.token; state.user = r.user;
     state.cat = await api('/api/catalogos');
-    state.modulo = r.user.modulos.includes(p.get('modulo')) ? p.get('modulo') : 'inicio';
+    state.vista = p.get('modulo') || 'inicio';
     renderMain();
   } catch (e) { renderLogin(); }
 }
